@@ -219,10 +219,23 @@
     <FxCompile Include="*Lib.hlsl" />
     <FxCompile Include="*Lib.hlsl" />
     <FxCompile Include="*Lib.hlsl" />
+    <FxCompile Include="*Lib.hlsl" />
+    <FxCompile Include="*Lib.hlsl" />
+    <FxCompile Include="*Lib.hlsl" />
+    <FxCompile Include="*Lib.hlsl" />
+    <FxCompile Include="*Lib.hlsl" />
+    <FxCompile Include="*Lib.hlsl" />
+    <FxCompile Include="*Lib.hlsl" />
+    <FxCompile Include="*Lib.hlsl" />
+    <FxCompile Include="*Lib.hlsl" />
+    <FxCompile Include="*Lib.hlsl" />
+    <FxCompile Include="*Lib.hlsl" />
+    <FxCompile Include="*Lib.hlsl" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="ForwardPlusLighting.cpp" />
     <ClCompile Include="ModelViewer.cpp" />
+    <ClCompile Include="stdafx.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="ForwardPlusLighting.h" />
@@ -231,6 +244,7 @@
       <Filter>Shaders</Filter>
     </ClInclude>
     <ClInclude Include="DXSampleHelper.h" />
+    <ClInclude Include="stdafx.h" />
   </ItemGroup>
   <ItemGroup>
     <Image Include="Textures\Models\background.DDS">

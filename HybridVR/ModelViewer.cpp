@@ -11,6 +11,7 @@
 
 #define NOMINMAX
 
+#include "stdafx.h"
 #include "d3d12.h"
 #include "d3d12video.h"
 #include <d3d12.h>
@@ -839,7 +840,7 @@ void D3D12RaytracingMiniEngineSample::Startup( void )
     m_ExtraTextures[0] = g_SSAOFullScreen.GetSRV();
     m_ExtraTextures[1] = g_ShadowBuffer.GetSRV();
 
-#define ASSET_DIRECTORY "../../../../../MiniEngine/ModelViewer/"
+#define ASSET_DIRECTORY "../MiniEngine/ModelViewer/"
     TextureManager::Initialize(ASSET_DIRECTORY L"Textures/");
     bool bModelLoadSuccess = m_Model.Load(ASSET_DIRECTORY "Models/sponza.h3d");
     ASSERT(bModelLoadSuccess, "Failed to load model");
