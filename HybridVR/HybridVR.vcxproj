@@ -5,6 +5,7 @@
     </LinkIncremental>
     <PostBuildEventUseInBuild>
     </PostBuildEventUseInBuild>
+    <OutDir>$(SolutionDir)$(Configuration)\</OutDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <PostBuildEventUseInBuild>
@@ -13,6 +14,8 @@
     </ExecutablePath>
     <IncludePath>
     </IncludePath>
+    <OutDir>$(SolutionDir)Build\$(Platform)\$(Configuration)\Output\$(ProjectName)\</OutDir>
+    <IntDir>$(SolutionDir)Build\$(Platform)\$(Configuration)\Intermediate\$(ProjectName)\</IntDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">
     <PostBuildEventUseInBuild>
@@ -73,7 +76,7 @@
   <PropertyGroup Label="UserMacros" />
   <ItemDefinitionGroup>
     <ClCompile>
-      <AdditionalIncludeDirectories>$(SolutionDir)Build\$(Platform)\$(Configuration)\Output\$(ProjectName)\;$(SolutionDir)Libraries\D3DX12\;$(SolutionDir)MiniEngine\Core;$(SolutionDir)MiniEngine\Model;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)Libraries\OpenVR\include;$(SolutionDir)Build\$(Platform)\$(Configuration)\Output\$(ProjectName)\;$(SolutionDir)Libraries\D3DX12\;$(SolutionDir)MiniEngine\Core;$(SolutionDir)MiniEngine\Model;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link Condition="'$(Configuration)'=='Debug'">
       <AdditionalOptions>/nodefaultlib:MSVCRT %(AdditionalOptions)</AdditionalOptions>
@@ -219,13 +222,12 @@
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ItemDefinitionGroup>
     <Link>
-      <AdditionalLibraryDirectories>$(SolutionDir)packages\zlib-vc140-static-64.1.2.11\lib\native\libs\x64\static\Release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>zlibstatic.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(SolutionDir)Libraries\OpenVR\lib;$(SolutionDir)packages\zlib-vc140-static-64.1.2.11\lib\native\libs\x64\static\Release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>zlibstatic.lib;openvr_api.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalOptions>/nodefaultlib:LIBCMT %(AdditionalOptions)</AdditionalOptions>
     </Link>
     <PostBuildEvent>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-      </Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">xcopy /y /d "$(SolutionDir)Libraries\OpenVR\bin\*.dll" "$(OutDir)"</Command>
       <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
       </Message>
     </PostBuildEvent>
