@@ -1,0 +1,8 @@
+
+[*]
+# ReSharper properties
+resharper_cpp_max_line_length=120
+
+# guidelines
+guidelines = 80
+guidelines_style = 0.1px solid 30eeeeee
