@@ -46,11 +46,8 @@ namespace GameCore
 
     void InitializeApplication( IGameApp& game )
     {
-        auto system = vr::VR_Init(nullptr, vr::VRApplication_Scene);
-        if (system)
-        {
-
-        }
+		// TODO: Move me to an appropriate spot
+        vr::IVRSystem *system = vr::VR_Init(nullptr, vr::VRApplication_Scene);
     	
         Graphics::Initialize();
         SystemTime::Initialize();

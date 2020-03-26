@@ -255,9 +255,7 @@ inline bool IsDirectXRaytracingSupported(IDXGIAdapter1* adapter)
 
 int wmain(int argc, wchar_t** argv)
 {
-	vr::VR_Init(nullptr, vr::VRApplication_Scene);
-
-#if _DEBUG
+	#if _DEBUG
     CComPtr<ID3D12Debug> debugInterface;
     if (SUCCEEDED(D3D12GetDebugInterface(IID_PPV_ARGS(&debugInterface))))
     {
