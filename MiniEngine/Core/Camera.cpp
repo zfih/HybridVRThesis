@@ -78,3 +78,5 @@ void Camera::UpdateProjMatrix( void )
         Vector4( 0.0f, 0.0f, Q2, 0.0f )
         ) );
 }
+
+

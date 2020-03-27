@@ -209,6 +209,7 @@ private:
     void RaytraceReflections(GraphicsContext& context, const Math::Camera& camera, ColorBuffer& colorTarget, DepthBuffer& depth, ColorBuffer& normals);
 	
     Camera m_Camera;
+    VRCamera m_vrCamera;
     std::auto_ptr<CameraController> m_CameraController;
     Matrix4 m_ViewProjMatrix;
     D3D12_VIEWPORT m_MainViewport;
@@ -762,6 +763,8 @@ void InitializeStateObjects(const Model &model, UINT numMeshes)
 
 void D3D12RaytracingMiniEngineSample::Startup(void)
 {
+    m_Camera = m_vrCamera[VRCamera::CENTER];
+	
     ThrowIfFailed(g_Device->QueryInterface(IID_PPV_ARGS(&g_pRaytracingDevice)), L"Couldn't get DirectX Raytracing interface for the device.\n");
     g_SceneNormalBuffer.Create(L"Main Normal Buffer", g_SceneColorBuffer.GetWidth(), g_SceneColorBuffer.GetHeight(), 1, DXGI_FORMAT_R16G16B16A16_FLOAT);
 
@@ -1472,6 +1475,7 @@ void D3D12RaytracingMiniEngineSample::RenderScene(void)
 	{
 		Raytrace(gfxContext);
 	}
+	
     gfxContext.Finish();
 }
 

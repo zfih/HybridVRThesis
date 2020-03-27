@@ -15,6 +15,7 @@
 
 #include "VectorMath.h"
 #include "Math/Frustum.h"
+#include "openvr.h"
 
 namespace Math
 {
@@ -153,5 +154,33 @@ namespace Math
 
         m_PreviousViewProjMatrix = m_ViewProjMatrix;
     }
+
+	class VRCamera : public BaseCamera
+    {
+    public:
+        VRCamera();
+
+    	enum CameraType
+    	{
+    		LEFT = 0,
+    		RIGHT,
+    		CENTER,
+    		COUNT
+    	};
+
+        std::vector<Camera> m_cameras = std::vector<Camera>(COUNT);
+    	
+    	// Vector of cameras
+    	// Index by Cameratype
+    	// 
+
+        Camera& operator[](const UINT i) noexcept { return m_cameras[i]; }
+    };
+
+	inline VRCamera::VRCamera()
+	{
+        
+	}
+
 
 } // namespace Math
