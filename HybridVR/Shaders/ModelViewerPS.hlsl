@@ -316,8 +316,9 @@ uint PullNextBit(inout uint bits)
 
 struct MRT
 {
-    float3 Color : SV_Target0;
-    float4 Normal : SV_Target1;
+	float3 Color : SV_Target0;
+	float3 Color2 : SV_Target1;
+    float4 Normal : SV_Target2;
 };
 
 [RootSignature(ModelViewer_RootSig)]
@@ -360,7 +361,8 @@ MRT main(VSOutput vsOutput)
     float3 viewDir = normalize(vsOutput.viewDir);
     colorSum += ApplyDirectionalLight(diffuseAlbedo, specularAlbedo, specularMask, gloss, normal, viewDir, SunDirection, SunColor, vsOutput.shadowCoord);
 
-    mrt.Color = colorSum;
+	mrt.Color = colorSum;
+	mrt.Color2 = colorSum;
 
     if (AreNormalsNeeded)
     {

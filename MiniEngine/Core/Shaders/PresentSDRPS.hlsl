@@ -14,16 +14,18 @@
 #include "ShaderUtility.hlsli"
 #include "PresentRS.hlsli"
 
-Texture2D<float3> ColorTex : register(t0);
+Texture2DArray<float3> ColorTex : register(t0);
 
 [RootSignature(Present_RootSig)]
-float3 main( float4 position : SV_Position, float2 uv : TexCoord0 ) : SV_Target0
+float3 main(float4 position : SV_Position, float3 uvw : TexCoord0) : SV_Target0
 {
 	float nTextureWidth;
 	float nTextureHeight;
-	ColorTex.GetDimensions(nTextureWidth, nTextureHeight);
-	uv.y = 1 - uv.y;
-	int2 index = uv * int2(nTextureWidth, nTextureHeight);
-    float3 LinearRGB = RemoveDisplayProfile(ColorTex[index], LDR_COLOR_FORMAT);
-    return ApplyDisplayProfile(LinearRGB, DISPLAY_PLANE_FORMAT);
+	float elements;
+	ColorTex.GetDimensions(nTextureWidth, nTextureHeight, elements);
+	uvw.y = 1 - uvw.y;
+	int3 index = uvw * int3(nTextureWidth, nTextureHeight, 1);
+
+	float3 LinearRGB = RemoveDisplayProfile(ColorTex[index], LDR_COLOR_FORMAT);
+	return ApplyDisplayProfile(LinearRGB, DISPLAY_PLANE_FORMAT);
 }

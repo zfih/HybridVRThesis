@@ -98,6 +98,23 @@ void ColorBuffer::CreateDerivedViews(ID3D12Device* Device, DXGI_FORMAT Format, u
 
         UAVDesc.Texture2D.MipSlice++;
     }
+
+	if (ArraySize > 1)
+	{
+		m_RTVSubHandles.reserve(ArraySize);
+		for (int i = 0; i < ArraySize; i++)
+		{
+			D3D12_RENDER_TARGET_VIEW_DESC RTVDesc = {};
+			RTVDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2DARRAY;
+			RTVDesc.Texture2DArray.MipSlice = 0;
+			RTVDesc.Texture2DArray.FirstArraySlice = i; //D3D12CalcSubresource(0, i, 0, 0, ArraySize);
+			RTVDesc.Texture2DArray.ArraySize = (UINT)(ArraySize - i);
+			D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle{};
+			rtvHandle = Graphics::AllocateDescriptor(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+			Device->CreateRenderTargetView(Resource, &RTVDesc, rtvHandle);
+			m_RTVSubHandles.push_back(rtvHandle);
+		}
+	}
 }
 
 void ColorBuffer::CreateFromSwapChain( const std::wstring& Name, ID3D12Resource* BaseResource )

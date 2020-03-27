@@ -821,7 +821,7 @@ void D3D12RaytracingMiniEngineSample::Startup( void )
     m_ModelPSO[0] = m_DepthPSO[0];
     m_ModelPSO[0].SetBlendState(BlendDisable);
     m_ModelPSO[0].SetDepthStencilState(DepthStateTestEqual);
-    DXGI_FORMAT formats[] { ColorFormat, NormalFormat };
+    DXGI_FORMAT formats[] { ColorFormat, ColorFormat, NormalFormat };
     m_ModelPSO[0].SetRenderTargetFormats(_countof(formats), formats, DepthFormat);
     m_ModelPSO[0].SetVertexShader( g_pModelViewerVS, sizeof(g_pModelViewerVS) );
     m_ModelPSO[0].SetPixelShader( g_pModelViewerPS, sizeof(g_pModelViewerPS) );
@@ -1400,7 +1400,7 @@ void D3D12RaytracingMiniEngineSample::RenderScene(void)
                 {
                     gfxContext.SetPipelineState(ShowWaveTileCounts ? m_WaveTileCountPSO : m_ModelPSO[0]);
                     gfxContext.TransitionResource(g_SceneDepthBuffer, D3D12_RESOURCE_STATE_DEPTH_READ);
-                    D3D12_CPU_DESCRIPTOR_HANDLE rtvs[]{ g_SceneColorBuffer.GetRTV(), g_SceneNormalBuffer.GetRTV() };
+                    D3D12_CPU_DESCRIPTOR_HANDLE rtvs[]{ g_SceneColorBuffer.GetSubRTV(0), g_SceneColorBuffer.GetSubRTV(1), g_SceneNormalBuffer.GetRTV() };
                     gfxContext.SetRenderTargets(ARRAYSIZE(rtvs), rtvs, g_SceneDepthBuffer.GetDSV_DepthReadOnly());
                     gfxContext.SetViewportAndScissor(m_MainViewport, m_MainScissor);
                 }
