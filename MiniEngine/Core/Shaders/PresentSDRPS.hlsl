@@ -17,8 +17,13 @@
 Texture2D<float3> ColorTex : register(t0);
 
 [RootSignature(Present_RootSig)]
-float3 main( float4 position : SV_Position ) : SV_Target0
+float3 main( float4 position : SV_Position, float2 uv : TexCoord0 ) : SV_Target0
 {
-    float3 LinearRGB = RemoveDisplayProfile(ColorTex[(int2)position.xy], LDR_COLOR_FORMAT);
+	float nTextureWidth;
+	float nTextureHeight;
+	ColorTex.GetDimensions(nTextureWidth, nTextureHeight);
+	uv.y = 1 - uv.y;
+	int2 index = uv * int2(nTextureWidth, nTextureHeight);
+    float3 LinearRGB = RemoveDisplayProfile(ColorTex[index], LDR_COLOR_FORMAT);
     return ApplyDisplayProfile(LinearRGB, DISPLAY_PLANE_FORMAT);
 }
