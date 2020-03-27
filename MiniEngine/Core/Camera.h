@@ -15,6 +15,7 @@
 
 #include "VectorMath.h"
 #include "Math/Frustum.h"
+#include "GameCore.h"
 #include "openvr.h"
 
 namespace Math
@@ -168,6 +169,8 @@ namespace Math
     		COUNT
     	};
 
+        void Update();
+
         std::vector<Camera> m_cameras = std::vector<Camera>(COUNT);
     	
     	// Vector of cameras
@@ -181,6 +184,5 @@ namespace Math
 	{
         
 	}
-
-
+	
 } // namespace Math

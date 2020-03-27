@@ -79,4 +79,12 @@ void Camera::UpdateProjMatrix( void )
         ) );
 }
 
+void VRCamera::Update()
+{
+    XMMATRIX HMDPoseMat = GameCore::g_VRSystem.GetHMDPos();
+    XMMATRIX invPoseMat = XMMatrixInverse(nullptr, HMDPoseMat);
+
+    m_cameras[LEFT];
+}
+
 

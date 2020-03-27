@@ -14,6 +14,7 @@
 #pragma once
 
 #include "pch.h"
+#include "VR.h"
 
 namespace GameCore
 {
@@ -40,6 +41,10 @@ namespace GameCore
         virtual void RenderUI( class GraphicsContext& ) {};
     };
 
+
+    //TODO Move to an appropriate place
+    VirtualReality::VRSystem g_VRSystem;
+	
     void RunApplication( IGameApp& app, const wchar_t* className );
 }
 
