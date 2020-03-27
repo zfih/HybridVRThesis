@@ -12,7 +12,6 @@
 #define NOMINMAX
 
 #include "stdafx.h"
-#include "openvr.h"
 #include "d3d12.h"
 #include "d3d12video.h"
 #include <d3d12.h>

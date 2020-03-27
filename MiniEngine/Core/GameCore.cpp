@@ -19,7 +19,7 @@
 #include "BufferManager.h"
 #include "CommandContext.h"
 #include "PostEffects.h"
-#include "openvr.h"
+#include "VR.h"
 
 #if WINAPI_FAMILY_PARTITION(WINAPI_PARTITION_DESKTOP)
     #pragma comment(lib, "runtimeobject.lib")
@@ -46,8 +46,8 @@ namespace GameCore
 
     void InitializeApplication( IGameApp& game )
     {
-		// TODO: Move me to an appropriate spot
-        vr::IVRSystem *system = vr::VR_Init(nullptr, vr::VRApplication_Scene);
+    	//TODO Move to an appropriate place
+        VirtualReality::VRSystem vr_system;
     	
         Graphics::Initialize();
         SystemTime::Initialize();
