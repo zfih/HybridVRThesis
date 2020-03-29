@@ -27,7 +27,7 @@ static const float FLT_MAX = asfloat(0x7F7FFFFF);
 
 RaytracingAccelerationStructure g_accel : register(t0);
 
-RWTexture2D<float4> g_screenOutput : register(u2);
+RWTexture2DArray<float4> g_screenOutput : register(u2);
 
 cbuffer HitShaderConstants : register(b0)
 {

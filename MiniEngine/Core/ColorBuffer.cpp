@@ -109,6 +109,7 @@ void ColorBuffer::CreateDerivedViews(ID3D12Device* Device, DXGI_FORMAT Format, u
 			RTVDesc.Texture2DArray.MipSlice = 0;
 			RTVDesc.Texture2DArray.FirstArraySlice = i; //D3D12CalcSubresource(0, i, 0, 0, ArraySize);
 			RTVDesc.Texture2DArray.ArraySize = (UINT)(ArraySize - i);
+			RTVDesc.Format = Format;
 			D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle{};
 			rtvHandle = Graphics::AllocateDescriptor(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
 			Device->CreateRenderTargetView(Resource, &RTVDesc, rtvHandle);

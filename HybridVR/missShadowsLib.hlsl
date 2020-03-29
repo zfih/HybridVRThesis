@@ -17,6 +17,7 @@ void Miss(inout RayPayload payload)
 {
     if (!payload.SkipShading)
     {
-        g_screenOutput[DispatchRaysIndex().xy] = float4(0, 0, 0, 1);
+        g_screenOutput[int3(DispatchRaysIndex().xy, 0)] = float4(0, 0, 0, 1);
+        g_screenOutput[int3(DispatchRaysIndex().xy, 1)] = float4(0, 0, 0, 1); // TODO: Do second view differently
     }
 }

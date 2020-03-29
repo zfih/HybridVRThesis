@@ -687,7 +687,7 @@ void Graphics::CompositeOverlays( GraphicsContext& Context )
     Context.SetDynamicDescriptor(0, 0, g_OverlayBuffer.GetSRV());
     Context.SetPipelineState(s_BlendUIPSO);
     Context.SetConstants(1, 1.0f / g_NativeWidth, 1.0f / g_NativeHeight);
-    Context.Draw(3);
+    Context.Draw(12);
 }
 
 void Graphics::PreparePresentLDR(void)
