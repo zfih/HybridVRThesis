@@ -300,6 +300,9 @@ NumVar ShadowDimX("Application/Lighting/Shadow Dim X", 5000, 1000, 10000, 100 );
 NumVar ShadowDimY("Application/Lighting/Shadow Dim Y", 3000, 1000, 10000, 100 );
 NumVar ShadowDimZ("Application/Lighting/Shadow Dim Z", 3000, 1000, 10000, 100 );
 
+IntVar m_TestValueSuperDuper("Test/Test/Shadow Dim Z", 5, 0, 10, 1);
+
+
 BoolVar ShowWaveTileCounts("Application/Forward+/Show Wave Tile Counts", false);
 
 const char* rayTracingModes[] = {
@@ -978,7 +981,6 @@ void D3D12RaytracingMiniEngineSample::Update( float deltaT )
         DebugZoom.Decrement();
     else if (GameInput::IsFirstPressed(GameInput::kRShoulder))
         DebugZoom.Increment();
-	
 	if(g_RayTraceSupport)
 	{
 		if(GameInput::IsFirstPressed(GameInput::kKey_1))
@@ -995,6 +997,7 @@ void D3D12RaytracingMiniEngineSample::Update( float deltaT )
 			rayTracingMode = RTM_DIFFUSE_WITH_SHADOWRAYS;
 		else if(GameInput::IsFirstPressed(GameInput::kKey_7))
 			rayTracingMode = RTM_REFLECTIONS;
+	
 	}
     
     static bool freezeCamera = false;
@@ -1004,12 +1007,12 @@ void D3D12RaytracingMiniEngineSample::Update( float deltaT )
         freezeCamera = !freezeCamera;
     }
 
-    if (GameInput::IsFirstPressed(GameInput::kKey_left))
+    if (GameInput::IsFirstPressed(GameInput::kKey_f1))
     {
         m_CameraPosArrayCurrentPosition = (m_CameraPosArrayCurrentPosition + c_NumCameraPositions - 1) % c_NumCameraPositions;
         SetCameraToPredefinedPosition(m_CameraPosArrayCurrentPosition);
     }
-    else if (GameInput::IsFirstPressed(GameInput::kKey_right))
+    else if (GameInput::IsFirstPressed(GameInput::kKey_f2))
     {
         m_CameraPosArrayCurrentPosition = (m_CameraPosArrayCurrentPosition + 1) % c_NumCameraPositions;
         SetCameraToPredefinedPosition(m_CameraPosArrayCurrentPosition);
@@ -1024,8 +1027,8 @@ void D3D12RaytracingMiniEngineSample::Update( float deltaT )
 
     float costheta = cosf(m_SunOrientation);
     float sintheta = sinf(m_SunOrientation);
-    float cosphi = cosf(m_SunInclination * 3.14159f * 0.5f);
-    float sinphi = sinf(m_SunInclination * 3.14159f * 0.5f);
+    float cosphi = cosf(m_SunInclination * XM_PIDIV2);
+    float sinphi = sinf(m_SunInclination * XM_PIDIV2);
     m_SunDirection = Normalize(Vector3( costheta * cosphi, sinphi, sintheta * cosphi ));
 
     // We use viewport offsets to jitter sample positions from frame to frame (for TAA.)
