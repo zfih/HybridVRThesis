@@ -128,6 +128,7 @@ namespace Graphics
     uint32_t g_DisplayWidth = 1920;
     uint32_t g_DisplayHeight = 1080;
     ColorBuffer g_PreDisplayBuffer;
+	
 
     void SetNativeResolution(void)
     {
@@ -591,6 +592,7 @@ void Graphics::Initialize(void)
     TextRenderer::Initialize();
     GraphRenderer::Initialize();
     ParticleEffects::Initialize(kMaxNativeWidth, kMaxNativeHeight);
+    VR::TryInitVR();
 }
 
 void Graphics::Terminate( void )

@@ -14,6 +14,7 @@
 #pragma once
 
 #include "pch.h"
+#include "VR.h"
 
 namespace GameCore
 {
@@ -39,7 +40,7 @@ namespace GameCore
         // Optional UI (overlay) rendering pass.  This is LDR.  The buffer is already cleared.
         virtual void RenderUI( class GraphicsContext& ) {};
     };
-
+	
     void RunApplication( IGameApp& app, const wchar_t* className );
 }
 

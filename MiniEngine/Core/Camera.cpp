@@ -49,6 +49,17 @@ void BaseCamera::Update()
 }
 
 
+void Camera::UpdateVRPoseMat(XMMATRIX poseMat)
+{
+    SetTransform(AffineTransform{ poseMat });
+}
+
+void Camera::SetVRViewProjMatrices(XMMATRIX view, XMMATRIX proj)
+{
+    m_ViewMatrix = Matrix4(view);
+    m_ProjMatrix = Matrix4(proj);
+}
+
 void Camera::UpdateProjMatrix( void )
 {
     float Y = 1.0f / std::tanf( m_VerticalFOV * 0.5f );
@@ -77,4 +88,49 @@ void Camera::UpdateProjMatrix( void )
         Vector4( 0.0f, 0.0f, Q1, -1.0f ),
         Vector4( 0.0f, 0.0f, Q2, 0.0f )
         ) );
+}
+
+VRCamera::VRCamera()
+{
+    m_centerCamera = &m_cameras[CENTER];
+	
+    if(VR::GetHMD()) // TODO: Have setting for this we can check
+    {
+        for (int i = 0; i < COUNT - 1; ++i)
+        {
+            Camera* camera = &m_cameras[i];
+
+            XMMATRIX view = VR::GetEyeToHeadTransform(vr::EVREye(i));
+            XMMATRIX proj = VR::GetProjectionMatrix(vr::EVREye(i),
+                camera->GetNearClip(), camera->GetFarClip());
+            XMMATRIX HMDPoseMat = VR::GetHMDPos();
+
+            camera->UpdateVRPoseMat(HMDPoseMat);
+            camera->SetVRViewProjMatrices(view, proj);
+            camera->Update();
+        }
+
+        XMMATRIX HMDPoseMat = VR::GetHMDPos();
+        m_cameras[CENTER].UpdateVRPoseMat(HMDPoseMat);
+        m_cameras[CENTER].Update();
+    }
+}
+
+void VRCamera::Update()
+{
+    if (VR::GetHMD()) // TODO: Have setting for this we can check
+    {
+        XMMATRIX HMDPoseMat = VR::GetHMDPos();
+
+        for (int i = 0; i < COUNT; ++i)
+        {
+            m_cameras[i].UpdateVRPoseMat(HMDPoseMat);
+            m_cameras[i].Update();
+        }
+    }
+
+    for (int i = 0; i < COUNT; ++i)
+    {
+        m_cameras[i].Update();
+    }
 }
