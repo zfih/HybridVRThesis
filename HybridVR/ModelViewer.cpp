@@ -186,7 +186,7 @@ public:
     virtual void Cleanup( void ) override;
 
     virtual void Update( float deltaT ) override;
-    virtual void RenderScene( void ) override;
+    virtual void RenderScene( UINT cam ) override;
     virtual void RenderUI(class GraphicsContext&) override;
     virtual void Raytrace(class GraphicsContext&);
 
@@ -1235,7 +1235,7 @@ void D3D12RaytracingMiniEngineSample::RenderLightShadows(GraphicsContext& gfxCon
     ++LightIndex;
 }
 
-void D3D12RaytracingMiniEngineSample::RenderScene(void)
+void D3D12RaytracingMiniEngineSample::RenderScene(UINT cam)
 {
     const bool skipDiffusePass = 
         rayTracingMode == RTM_DIFFUSE_WITH_SHADOWMAPS ||
@@ -1431,6 +1431,7 @@ void D3D12RaytracingMiniEngineSample::RenderScene(void)
         else
             MotionBlur::RenderObjectBlur(gfxContext, g_VelocityBuffer);
     }
+	g_dynamicCb.curCam = cam;
     Raytrace(gfxContext);
     gfxContext.Finish();
 }

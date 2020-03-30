@@ -19,6 +19,7 @@ struct DynamicCB
     float3   worldCameraPosition;
     uint     padding;
     float2   resolution;
+	uint     curCam;
 };
 #ifdef HLSL
 #ifndef SINGLE

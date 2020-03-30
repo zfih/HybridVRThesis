@@ -74,7 +74,8 @@ namespace GameCore
         EngineTuning::Update(DeltaTime);
         
         game.Update(DeltaTime);
-        game.RenderScene();
+        game.RenderScene(0);
+        game.RenderScene(1);
 
         PostEffects::Render();
 
