@@ -207,9 +207,8 @@ private:
     void RaytraceShadows(GraphicsContext& context, const Math::Camera& camera, ColorBuffer& colorTarget, DepthBuffer& depth);
     void RaytraceReflections(GraphicsContext& context, const Math::Camera& camera, ColorBuffer& colorTarget, DepthBuffer& depth, ColorBuffer& normals);
 	
-    Camera m_Camera;
-    VRCamera m_vrCamera;
-    std::auto_ptr<CameraController> m_CameraController;
+    VRCamera m_Camera;
+    std::auto_ptr<VRCameraController> m_CameraController;
     Matrix4 m_ViewProjMatrix;
     D3D12_VIEWPORT m_MainViewport;
     D3D12_RECT m_MainScissor;
@@ -762,8 +761,8 @@ void InitializeStateObjects(const Model &model, UINT numMeshes)
 
 void D3D12RaytracingMiniEngineSample::Startup(void)
 {
-    m_Camera = m_vrCamera[VRCamera::CENTER];
-	
+    //m_Camera = m_VRCamera[VRCamera::CENTER];
+
     ThrowIfFailed(g_Device->QueryInterface(IID_PPV_ARGS(&g_pRaytracingDevice)), L"Couldn't get DirectX Raytracing interface for the device.\n");
     g_SceneNormalBuffer.Create(L"Main Normal Buffer", g_SceneColorBuffer.GetWidth(), g_SceneColorBuffer.GetHeight(), 1, DXGI_FORMAT_R16G16B16A16_FLOAT);
 
@@ -899,7 +898,7 @@ void D3D12RaytracingMiniEngineSample::Startup(void)
     InitializeViews(m_Model);
     UINT numMeshes = m_Model.m_Header.meshCount;
 
-	
+
     if (g_RayTraceSupport)
     {
         CreateRayTraceAccelerationStructures(numMeshes);
@@ -915,7 +914,7 @@ void D3D12RaytracingMiniEngineSample::Startup(void)
 
     float modelRadius = Length(m_Model.m_Header.boundingBox.max - m_Model.m_Header.boundingBox.min) * .5f;
     const Vector3 eye = (m_Model.m_Header.boundingBox.min + m_Model.m_Header.boundingBox.max) * .5f + Vector3(modelRadius * .5f, 0.0f, 0.0f);
-    m_Camera.SetEyeAtUp( eye, Vector3(kZero), Vector3(kYUnitVector) );
+    m_Camera.SetEyeAtUp(eye, Vector3(kZero), Vector3(kYUnitVector));
     
     m_CameraPosArrayCurrentPosition = 0;
     
@@ -944,9 +943,9 @@ void D3D12RaytracingMiniEngineSample::Startup(void)
     m_CameraPosArray[4].heading = -1.236f;
     m_CameraPosArray[4].pitch = 0.0f;
 
-    m_Camera.SetZRange( 1.0f, 10000.0f );
+    m_Camera.SetZRange(1.0f, 10000.0f);
 
-    m_CameraController.reset(new CameraController(m_Camera, Vector3(kYUnitVector)));
+    m_CameraController.reset(new VRCameraController(m_Camera, Vector3(kYUnitVector)));
     
     MotionBlur::Enable = false;//true;
     TemporalEffects::EnableTAA = false;//true;

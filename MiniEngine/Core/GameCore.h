@@ -40,10 +40,6 @@ namespace GameCore
         // Optional UI (overlay) rendering pass.  This is LDR.  The buffer is already cleared.
         virtual void RenderUI( class GraphicsContext& ) {};
     };
-
-
-    //TODO Move to an appropriate place
-    VirtualReality::VRSystem g_VRSystem;
 	
     void RunApplication( IGameApp& app, const wchar_t* className );
 }
