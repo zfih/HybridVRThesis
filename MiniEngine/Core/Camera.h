@@ -202,8 +202,8 @@ namespace Math
         }
         void SetPosition(Vector3 worldPos)
         {
-            m_cameras[LEFT].SetPosition(worldPos);
-            m_cameras[RIGHT].SetPosition(worldPos);
+            m_cameras[LEFT].SetPosition(worldPos + Vector3{-25.0f, 0.0f, 0.0f });
+            m_cameras[RIGHT].SetPosition(worldPos + Vector3{ 25.0f, 0.0f, 0.0f });
             m_cameras[CENTER].SetPosition(worldPos);
         }
         void SetTransform(const AffineTransform& xform)
@@ -211,6 +211,8 @@ namespace Math
             m_cameras[LEFT].SetTransform(xform);
             m_cameras[RIGHT].SetTransform(xform);
             m_cameras[CENTER].SetTransform(xform);
+
+            SetPosition(xform.GetTranslation());
         }
 
         const Quaternion GetRotation() const { return m_centerCamera->GetRotation(); }
