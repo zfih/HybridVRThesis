@@ -58,7 +58,6 @@ vr::TrackedDevicePose_t VR::GetTrackedDevicePose(UINT device)
 	if (!g_HMD)
 	{
 		DEBUGPRINT("A GetTrackedDevicePose call was made for VR with no HMD present");
-		return;
 	}
 	
 	return g_rTrackedDevicePose[device];
@@ -69,7 +68,7 @@ XMMATRIX VR::GetHMDPos()
 	if (!g_HMD)
 	{
 		DEBUGPRINT("A GetHMDPos call was made for VR with no HMD present");
-		return;
+		return XMMatrixIdentity();
 	}
 	
 	return ConvertSteamVRMatrixToXMMatrix(
@@ -83,7 +82,7 @@ XMMATRIX VR::GetEyeToHeadTransform(vr::EVREye eye)
 	if (!g_HMD)
 	{
 		DEBUGPRINT("A GetEyeToHeadTransform call was made for VR with no HMD present");
-		return;
+		return XMMatrixIdentity();
 	}
 	
 	return ConvertSteamVRMatrixToXMMatrix(
@@ -98,7 +97,7 @@ XMMATRIX VR::GetProjectionMatrix(
 	if (!g_HMD)
 	{
 		DEBUGPRINT("A GetProjectionMatrix call was made for VR with no HMD present");
-		return;
+		return XMMatrixIdentity();
 	}
 	
 	return VR::ConvertSteamVRMatrixToXMMatrix(
@@ -110,7 +109,7 @@ std::string VR::GetTrackedDeviceString(vr::TrackedDeviceIndex_t unDevice, vr::Tr
 	if (!g_HMD)
 	{
 		DEBUGPRINT("A GetTrackedDeviceString call was made for VR with no HMD present");
-		return;
+		return "NO_HMD_PRESENT";
 	}
 	
 	uint32_t unRequiredBufferLen = g_HMD->GetStringTrackedDeviceProperty(unDevice, prop, NULL, 0, peError);
