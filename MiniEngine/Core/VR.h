@@ -15,6 +15,7 @@ namespace VR
 
 	extern bool g_HMDPresent;
 	extern bool g_RuntimeInstalled;
+	extern bool g_VRRunning;
 	
 	extern std::string g_driver;
 	extern std::string g_display;

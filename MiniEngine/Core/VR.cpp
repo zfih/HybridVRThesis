@@ -9,6 +9,7 @@ namespace VR
 
 	bool g_HMDPresent;
 	bool g_RuntimeInstalled;
+	bool g_VRRunning = false;
 
 	std::string g_driver;
 	std::string g_display;
@@ -18,6 +19,9 @@ namespace VR
 
 bool VR::TryInitVR()
 {
+	g_HMDPresent = vr::VR_IsHmdPresent();
+	g_RuntimeInstalled = vr::VR_IsRuntimeInstalled();
+	
 	if (!g_HMDPresent || !g_RuntimeInstalled)
 	{
 		return false;
@@ -50,7 +54,9 @@ bool VR::TryInitVR()
 		OutputDebugStringA("Compositor initialization failed. See log file for details\n");
 	}
 
-	return true;
+	g_VRRunning = true;
+	
+	return g_VRRunning;
 }
 
 vr::TrackedDevicePose_t VR::GetTrackedDevicePose(UINT device)
