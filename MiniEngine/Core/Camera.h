@@ -202,14 +202,19 @@ namespace Math
         }
         void SetPosition(Vector3 worldPos)
         {
-            m_cameras[LEFT].SetPosition(worldPos);
-            m_cameras[RIGHT].SetPosition(worldPos);
+            m_cameras[LEFT].SetPosition(worldPos + Vector3(-25, 0, 0));
+            m_cameras[RIGHT].SetPosition(worldPos + Vector3(25, 0, 0));
             m_cameras[CENTER].SetPosition(worldPos);
         }
         void SetTransform(const AffineTransform& xform)
         {
-            m_cameras[LEFT].SetTransform(xform);
-            m_cameras[RIGHT].SetTransform(xform);
+			AffineTransform leftXform = AffineTransform(xform);
+			leftXform.SetTranslation(leftXform.GetTranslation() + Vector3(-25, 0, 0));
+			AffineTransform rightXform = AffineTransform(xform);
+			rightXform.SetTranslation(rightXform.GetTranslation() + Vector3(25, 0, 0));
+
+            m_cameras[LEFT].SetTransform(leftXform);
+            m_cameras[RIGHT].SetTransform(rightXform);
             m_cameras[CENTER].SetTransform(xform);
         }
 

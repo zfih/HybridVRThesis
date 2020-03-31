@@ -191,7 +191,7 @@ public:
     virtual void Update( float deltaT ) override;
     virtual void RenderScene( UINT cam ) override;
     virtual void RenderUI(class GraphicsContext&) override;
-    virtual void Raytrace(class GraphicsContext&);
+    virtual void Raytrace(class GraphicsContext&, UINT cam);
 
     void SetCameraToPredefinedPosition(int cameraPosition);
 
@@ -199,17 +199,17 @@ private:
 
     void CreateRayTraceAccelerationStructures(UINT numMeshes);
 
-    void RenderLightShadows(GraphicsContext& gfxContext);
+    void RenderLightShadows(GraphicsContext& gfxContext, UINT curCam);
 
     enum eObjectFilter { kOpaque = 0x1, kCutout = 0x2, kTransparent = 0x4, kAll = 0xF, kNone = 0x0 };
-    void RenderObjects( GraphicsContext& Context, const Matrix4& ViewProjMat, eObjectFilter Filter = kAll );
+    void RenderObjects( GraphicsContext& Context, const Matrix4& ViewProjMat, UINT curCam, eObjectFilter Filter = kAll );
     void RaytraceDiffuse(GraphicsContext& context, const Math::Camera& camera, ColorBuffer& colorTarget);
     void RaytraceShadows(GraphicsContext& context, const Math::Camera& camera, ColorBuffer& colorTarget, DepthBuffer& depth);
     void RaytraceReflections(GraphicsContext& context, const Math::Camera& camera, ColorBuffer& colorTarget, DepthBuffer& depth, ColorBuffer& normals);
 	
     VRCamera m_Camera;
     std::auto_ptr<VRCameraController> m_CameraController;
-    Matrix4 m_ViewProjMatrix;
+    //Matrix4 m_ViewProjMatrix;
     D3D12_VIEWPORT m_MainViewport;
     D3D12_RECT m_MainScissor;
 
@@ -1022,7 +1022,7 @@ void D3D12RaytracingMiniEngineSample::Update( float deltaT )
         m_CameraController->Update(deltaT);
     }
 
-    m_ViewProjMatrix = m_Camera.GetViewProjMatrix();
+    //m_ViewProjMatrix = m_Camera.GetViewProjMatrix();
 
     float costheta = cosf(m_SunOrientation);
     float sintheta = sinf(m_SunOrientation);
@@ -1051,17 +1051,19 @@ void D3D12RaytracingMiniEngineSample::Update( float deltaT )
     m_MainScissor.bottom = (LONG)g_SceneColorBuffer.GetHeight();
 }
 
-void D3D12RaytracingMiniEngineSample::RenderObjects( GraphicsContext& gfxContext, const Matrix4& ViewProjMat, eObjectFilter Filter )
+void D3D12RaytracingMiniEngineSample::RenderObjects( GraphicsContext& gfxContext, const Matrix4& ViewProjMat, UINT curCam, eObjectFilter Filter )
 {
     struct VSConstants
     {
         Matrix4 modelToProjection;
         Matrix4 modelToShadow;
         XMFLOAT3 viewerPos;
+		UINT curCam;
     } vsConstants;
+	vsConstants.curCam = curCam;
     vsConstants.modelToProjection = ViewProjMat;
     vsConstants.modelToShadow = m_SunShadow.GetShadowMatrix();
-    XMStoreFloat3(&vsConstants.viewerPos, m_Camera.GetPosition());
+    XMStoreFloat3(&vsConstants.viewerPos, m_Camera[curCam]->GetPosition());
 
     gfxContext.SetDynamicConstantBufferView(0, sizeof(vsConstants), &vsConstants);
 
@@ -1243,7 +1245,7 @@ void D3D12RaytracingMiniEngineSample::CreateRayTraceAccelerationStructures(UINT 
     gfxContext.Finish(true);
 }
 
-void D3D12RaytracingMiniEngineSample::RenderLightShadows(GraphicsContext& gfxContext)
+void D3D12RaytracingMiniEngineSample::RenderLightShadows(GraphicsContext& gfxContext, UINT curCam)
 {
     using namespace Lighting;
 
@@ -1256,9 +1258,9 @@ void D3D12RaytracingMiniEngineSample::RenderLightShadows(GraphicsContext& gfxCon
     m_LightShadowTempBuffer.BeginRendering(gfxContext);
     {
         gfxContext.SetPipelineState(m_ShadowPSO);
-        RenderObjects(gfxContext, m_LightShadowMatrix[LightIndex], kOpaque);
+        RenderObjects(gfxContext, m_LightShadowMatrix[LightIndex], curCam, kOpaque);
         gfxContext.SetPipelineState(m_CutoutShadowPSO);
-        RenderObjects(gfxContext, m_LightShadowMatrix[LightIndex], kCutout);
+        RenderObjects(gfxContext, m_LightShadowMatrix[LightIndex], curCam, kCutout);
     }
     m_LightShadowTempBuffer.EndRendering(gfxContext);
 
@@ -1342,7 +1344,7 @@ void D3D12RaytracingMiniEngineSample::RenderScene(UINT cam)
 
     pfnSetupGraphicsState();
 
-        RenderLightShadows(gfxContext);
+    RenderLightShadows(gfxContext, cam);
 
     {
         ScopedTimer _prof(L"Z PrePass", gfxContext);
@@ -1361,7 +1363,7 @@ void D3D12RaytracingMiniEngineSample::RenderScene(UINT cam)
                 gfxContext.SetViewportAndScissor(m_MainViewport, m_MainScissor);
             }
 
-            RenderObjects(gfxContext, m_ViewProjMatrix, kOpaque);
+            RenderObjects(gfxContext, m_Camera[cam]->GetViewProjMatrix(), cam, kOpaque);
         }
 
         {
@@ -1369,15 +1371,15 @@ void D3D12RaytracingMiniEngineSample::RenderScene(UINT cam)
             {
                 gfxContext.SetPipelineState(m_CutoutDepthPSO[0]);
             }
-            RenderObjects(gfxContext, m_ViewProjMatrix, kCutout);
+            RenderObjects(gfxContext, m_Camera[cam]->GetViewProjMatrix(), cam, kCutout);
         }
     }
 
-    SSAO::Render(gfxContext, m_Camera);
+    SSAO::Render(gfxContext, *m_Camera[cam]);
 
     if (!skipDiffusePass)
     {
-        Lighting::FillLightGrid(gfxContext, m_Camera);
+        Lighting::FillLightGrid(gfxContext, *m_Camera[cam]);
 
         if (!SSAO::DebugDraw)
         {
@@ -1385,7 +1387,7 @@ void D3D12RaytracingMiniEngineSample::RenderScene(UINT cam)
             {
                 gfxContext.TransitionResource(g_SceneColorBuffer, D3D12_RESOURCE_STATE_RENDER_TARGET, true);
                 gfxContext.TransitionResource(g_SceneNormalBuffer, D3D12_RESOURCE_STATE_RENDER_TARGET, true);
-                gfxContext.ClearColor(g_SceneColorBuffer);
+                gfxContext.ClearColor(g_SceneColorBuffer, cam);
             }
         }
     }
@@ -1403,9 +1405,9 @@ void D3D12RaytracingMiniEngineSample::RenderScene(UINT cam)
 
                 g_ShadowBuffer.BeginRendering(gfxContext);
                 gfxContext.SetPipelineState(m_ShadowPSO);
-                RenderObjects(gfxContext, m_SunShadow.GetViewProjMatrix(), kOpaque);
+                RenderObjects(gfxContext, m_SunShadow.GetViewProjMatrix(), cam, kOpaque);
                 gfxContext.SetPipelineState(m_CutoutShadowPSO);
-                RenderObjects(gfxContext, m_SunShadow.GetViewProjMatrix(), kCutout);
+                RenderObjects(gfxContext, m_SunShadow.GetViewProjMatrix(), cam, kCutout);
                 g_ShadowBuffer.EndRendering(gfxContext);
             }
         }
@@ -1435,19 +1437,34 @@ void D3D12RaytracingMiniEngineSample::RenderScene(UINT cam)
                 bool RenderIDs = !TemporalEffects::EnableTAA;
 
                 {
-                    gfxContext.SetPipelineState(ShowWaveTileCounts ? m_WaveTileCountPSO : m_ModelPSO[0]);
-                    gfxContext.TransitionResource(g_SceneDepthBuffer, D3D12_RESOURCE_STATE_DEPTH_READ);
-                    D3D12_CPU_DESCRIPTOR_HANDLE rtvs[]{ g_SceneColorBuffer.GetSubRTV(0), g_SceneColorBuffer.GetSubRTV(1), g_SceneNormalBuffer.GetRTV() };
-                    gfxContext.SetRenderTargets(ARRAYSIZE(rtvs), rtvs, g_SceneDepthBuffer.GetDSV_DepthReadOnly());
-                    gfxContext.SetViewportAndScissor(m_MainViewport, m_MainScissor);
+                    gfxContext.SetPipelineState(ShowWaveTileCounts ? 
+						m_WaveTileCountPSO : m_ModelPSO[0]);
+
+                    gfxContext.TransitionResource(g_SceneDepthBuffer, 
+						D3D12_RESOURCE_STATE_DEPTH_READ);
+
+                    /*D3D12_CPU_DESCRIPTOR_HANDLE rtvs[]{ 
+						g_SceneColorBuffer.GetSubRTV(0), 
+						g_SceneColorBuffer.GetSubRTV(1), 
+						g_SceneNormalBuffer.GetRTV() };*/
+					D3D12_CPU_DESCRIPTOR_HANDLE rtvs[2];
+					if (cam == 0) rtvs[0] = g_SceneColorBuffer.GetSubRTV(0);
+					else rtvs[0] = g_SceneColorBuffer.GetSubRTV(1);
+					rtvs[1] = g_SceneNormalBuffer.GetRTV();
+
+                    gfxContext.SetRenderTargets(ARRAYSIZE(rtvs), rtvs, 
+						g_SceneDepthBuffer.GetDSV_DepthReadOnly());
+
+                    gfxContext.SetViewportAndScissor(
+						m_MainViewport, m_MainScissor);
                 }
 
-                RenderObjects(gfxContext, m_ViewProjMatrix, kOpaque);
+                RenderObjects(gfxContext, m_Camera[cam]->GetViewProjMatrix(), cam, kOpaque);
 
                 if (!ShowWaveTileCounts)
                 {
                     gfxContext.SetPipelineState(m_CutoutModelPSO[0]);
-                    RenderObjects(gfxContext, m_ViewProjMatrix, kCutout);
+                    RenderObjects(gfxContext, m_Camera[cam]->GetViewProjMatrix(), cam, kCutout);
                 }
             }
 
@@ -1456,15 +1473,15 @@ void D3D12RaytracingMiniEngineSample::RenderScene(UINT cam)
         // Some systems generate a per-pixel velocity buffer to better track dynamic and skinned meshes.  Everything
         // is static in our scene, so we generate velocity from camera motion and the depth buffer.  A velocity buffer
         // is necessary for all temporal effects (and motion blur).
-        MotionBlur::GenerateCameraVelocityBuffer(gfxContext, m_Camera, true);
+        MotionBlur::GenerateCameraVelocityBuffer(gfxContext, *m_Camera[cam], true);
 
         TemporalEffects::ResolveImage(gfxContext);
 
-        ParticleEffects::Render(gfxContext, m_Camera, g_SceneColorBuffer, g_SceneDepthBuffer, g_LinearDepth[FrameIndex]);
+        ParticleEffects::Render(gfxContext, *m_Camera[cam], g_SceneColorBuffer, g_SceneDepthBuffer, g_LinearDepth[FrameIndex]);
 
         // Until I work out how to couple these two, it's "either-or".
         if (DepthOfField::Enable)
-            DepthOfField::Render(gfxContext, m_Camera.GetNearClip(), m_Camera.GetFarClip());
+            DepthOfField::Render(gfxContext, m_Camera[cam]->GetNearClip(), m_Camera[cam]->GetFarClip());
         else
             MotionBlur::RenderObjectBlur(gfxContext, g_VelocityBuffer);
     }
@@ -1473,7 +1490,7 @@ void D3D12RaytracingMiniEngineSample::RenderScene(UINT cam)
 
 	if(g_RayTraceSupport)
 	{
-		Raytrace(gfxContext);
+		Raytrace(gfxContext, cam);
 	}
 
     gfxContext.Finish();
@@ -1769,7 +1786,7 @@ void D3D12RaytracingMiniEngineSample::RenderUI(class GraphicsContext& gfxContext
     text.End();
 }
 
-void D3D12RaytracingMiniEngineSample::Raytrace(class GraphicsContext& gfxContext)
+void D3D12RaytracingMiniEngineSample::Raytrace(class GraphicsContext& gfxContext, UINT cam)
 {
     ScopedTimer _prof(L"Raytrace", gfxContext);
 
@@ -1780,24 +1797,24 @@ void D3D12RaytracingMiniEngineSample::Raytrace(class GraphicsContext& gfxContext
     switch (rayTracingMode)
     {
     case RTM_TRAVERSAL:
-        Raytracebarycentrics(gfxContext, m_Camera, g_SceneColorBuffer);
+        Raytracebarycentrics(gfxContext, *m_Camera[cam], g_SceneColorBuffer);
         break;
 
     case RTM_SSR:
-        RaytracebarycentricsSSR(gfxContext, m_Camera, g_SceneColorBuffer, g_SceneDepthBuffer, g_SceneNormalBuffer);
+        RaytracebarycentricsSSR(gfxContext, *m_Camera[cam], g_SceneColorBuffer, g_SceneDepthBuffer, g_SceneNormalBuffer);
         break;
 
     case RTM_SHADOWS:
-        RaytraceShadows(gfxContext, m_Camera, g_SceneColorBuffer, g_SceneDepthBuffer);
+        RaytraceShadows(gfxContext, *m_Camera[cam], g_SceneColorBuffer, g_SceneDepthBuffer);
         break;
 
     case RTM_DIFFUSE_WITH_SHADOWMAPS:
     case RTM_DIFFUSE_WITH_SHADOWRAYS:
-        RaytraceDiffuse(gfxContext, m_Camera, g_SceneColorBuffer);
+        RaytraceDiffuse(gfxContext, *m_Camera[cam], g_SceneColorBuffer);
         break;
 
     case RTM_REFLECTIONS:
-        RaytraceReflections(gfxContext, m_Camera, g_SceneColorBuffer, g_SceneDepthBuffer, g_SceneNormalBuffer);
+        RaytraceReflections(gfxContext, *m_Camera[cam], g_SceneColorBuffer, g_SceneDepthBuffer, g_SceneNormalBuffer);
         break;
     }
 

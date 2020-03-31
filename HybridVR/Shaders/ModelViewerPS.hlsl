@@ -34,6 +34,7 @@ struct VSOutput
 #if ENABLE_TRIANGLE_ID
     uint vertexID : TexCoord3;
 #endif
+	uint curCam : Cam;
 };
 
 Texture2D<float3> texDiffuse        : register(t0);
@@ -316,16 +317,20 @@ uint PullNextBit(inout uint bits)
 
 struct MRT
 {
+	/*float3 ColorLeft : SV_Target0;
+	float3 ColorRight : SV_Target1;
+    float4 Normal : SV_Target2;*/
 	float3 Color : SV_Target0;
-	float3 Color2 : SV_Target1;
-    float4 Normal : SV_Target2;
+	float4 Normal : SV_Target1;
 };
 
 [RootSignature(ModelViewer_RootSig)]
 MRT main(VSOutput vsOutput)
 {
     MRT mrt;
-    mrt.Color = 0.0;
+    /*mrt.ColorLeft = 0.0;
+    mrt.ColorRight = 0.0;*/
+	mrt.Color = 0.0;
     mrt.Normal = 0.0;
 
     uint2 pixelPos = uint2(vsOutput.position.xy);
@@ -361,8 +366,15 @@ MRT main(VSOutput vsOutput)
     float3 viewDir = normalize(vsOutput.viewDir);
     colorSum += ApplyDirectionalLight(diffuseAlbedo, specularAlbedo, specularMask, gloss, normal, viewDir, SunDirection, SunColor, vsOutput.shadowCoord);
 
+	/*if (vsOutput.curCam == 0)
+	{
+		mrt.ColorLeft = float3(1, 0, 0);
+	}
+	if (vsOutput.curCam == 1)
+	{
+		mrt.ColorRight = float3(0, 0, 1);
+	}*/
 	mrt.Color = colorSum;
-	mrt.Color2 = colorSum;
 
     if (AreNormalsNeeded)
     {

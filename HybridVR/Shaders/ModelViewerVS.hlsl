@@ -19,6 +19,7 @@ cbuffer VSConstants : register(b0)
     float4x4 modelToProjection;
     float4x4 modelToShadow;
     float3 ViewerPos;
+	uint curCam;
 };
 
 struct VSInput
@@ -49,6 +50,7 @@ struct VSOutput
 #if ENABLE_TRIANGLE_ID
     uint vertexID : TexCoord3;
 #endif
+	uint curCam : Cam;
 };
 
 [RootSignature(ModelViewer_RootSig)]
@@ -70,6 +72,8 @@ VSOutput main(VSInput vsInput, uint vertexID : SV_VertexID)
     //vsOutput.vertexID = (baseVertex & 0xFFFF) << 16 | (vertexID & 0xFFFF);
     vsOutput.vertexID = materialIdx << 24 | (vertexID & 0xFFFF);
 #endif
+
+	vsOutput.curCam = curCam;
 
     return vsOutput;
 }
