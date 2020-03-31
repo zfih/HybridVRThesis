@@ -2,6 +2,10 @@
 
 #include "string"
 #include "openvr.h"
+#include "ColorBuffer.h"
+#include "BufferManager.h"
+#include "CommandListManager.h"
+
 
 namespace VR
 {
@@ -14,6 +18,8 @@ namespace VR
 	
 	extern std::string g_driver;
 	extern std::string g_display;
+
+	extern vr::VRTextureBounds_t g_Bounds;
 	
 	bool TryInitVR();
 	
@@ -25,7 +31,11 @@ namespace VR
 	XMMATRIX GetEyeToHeadTransform(vr::EVREye eye);
 	XMMATRIX GetProjectionMatrix(vr::EVREye eye, float near_plane, float far_plane);
 
-	std::string GetTrackedDeviceString(vr::IVRSystem* hmd, vr::TrackedDeviceIndex_t unDevice, vr::TrackedDeviceProperty prop, vr::TrackedPropertyError* peError = nullptr);
+	std::string GetTrackedDeviceString( vr::TrackedDeviceIndex_t unDevice, vr::TrackedDeviceProperty prop, vr::TrackedPropertyError* peError = nullptr);
 	XMMATRIX ConvertSteamVRMatrixToXMMatrix(const vr::HmdMatrix34_t& matPose);
 	XMMATRIX ConvertSteamVRMatrixToXMMatrix(const vr::HmdMatrix44_t& matPose);
+
+	void Submit(ColorBuffer buffer_array);
+	void Submit(ColorBuffer buffer_left, ColorBuffer buffer_right);
+	void Sync();
 }
