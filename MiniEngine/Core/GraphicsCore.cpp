@@ -101,6 +101,7 @@ namespace Graphics
     void PreparePresentLDR();
     void PreparePresentHDR();
     void CompositeOverlays( GraphicsContext& Context );
+    void SubmitToVRHMD(bool isArray);
 
 #ifndef RELEASE
     const GUID WKPDID_D3DDebugObjectName = { 0x429b8c22,0x9188,0x4b0c, { 0x87,0x42,0xac,0xb0,0xbf,0x85,0xc2,0x00 }};
@@ -692,6 +693,19 @@ void Graphics::CompositeOverlays( GraphicsContext& Context )
     Context.Draw(3);
 }
 
+void Graphics::SubmitToVRHMD(bool isArray)
+{
+	// TODO: Check if g_SceneColorBuffer is the correct one
+	if(isArray)
+	{
+        VR::Submit(g_SceneColorBuffer);
+	}
+	else
+	{
+        VR::Submit(g_SceneColorBuffer, g_SceneColorBuffer);
+	}
+}
+
 void Graphics::PreparePresentLDR(void)
 {
     GraphicsContext& Context = GraphicsContext::Begin(L"Present");
@@ -772,6 +786,7 @@ void Graphics::PreparePresentLDR(void)
     }
 
     CompositeOverlays(Context);
+    SubmitToVRHMD(true);
 
     Context.TransitionResource(g_DisplayPlane[g_CurrentBuffer], D3D12_RESOURCE_STATE_PRESENT);
 
@@ -785,6 +800,9 @@ void Graphics::Present(void)
         PreparePresentHDR();
     else
         PreparePresentLDR();
+
+	// TODO: MOVE TO APPROPRITE PLACE IN PIPE - HERE FOR TESTING
+    VR::Sync();
 
     g_CurrentBuffer = (g_CurrentBuffer + 1) % SWAP_CHAIN_BUFFER_COUNT;
 

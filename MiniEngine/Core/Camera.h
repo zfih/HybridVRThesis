@@ -157,8 +157,6 @@ namespace Math
         m_PreviousViewProjMatrix = m_ViewProjMatrix;
     }
 
-	// TODO: Maybe overwrite all functions from BaseCamera that changes values
-	// that we intend the HMD to change.
 	class VRCamera : public Camera
     {
     public:
