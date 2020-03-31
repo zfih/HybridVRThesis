@@ -19,6 +19,7 @@
 namespace Math
 {
     class Camera;
+    class VRCamera;
 }
 
 namespace GameCore
@@ -48,7 +49,7 @@ namespace GameCore
         void SetCurrentPitch(float pitch) { m_CurrentPitch = pitch; }
 
 
-    private:
+    protected:
         CameraController& operator=( const CameraController& ) {return *this;}
 
         void ApplyMomentum( float& oldValue, float& newValue, float deltaTime );
@@ -76,5 +77,17 @@ namespace GameCore
         float m_LastForward;
         float m_LastStrafe;
         float m_LastAscent;
+
+        AffineTransform m_affine;
+    };
+
+    class VRCameraController : public CameraController
+    {
+    public:
+        VRCameraController(VRCamera& camera, Vector3 worldUp);
+
+        VRCamera& m_VRCam;
+
+        void Update(float dt);
     };
 }

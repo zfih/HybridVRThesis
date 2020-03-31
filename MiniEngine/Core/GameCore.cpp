@@ -46,9 +46,6 @@ namespace GameCore
 
     void InitializeApplication( IGameApp& game )
     {
-    	//TODO Move to an appropriate place
-        VirtualReality::VRSystem vr_system;
-    	
         Graphics::Initialize();
         SystemTime::Initialize();
         GameInput::Initialize();

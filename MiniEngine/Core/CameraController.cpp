@@ -112,7 +112,8 @@ void CameraController::Update( float deltaTime )
 
     Matrix3 orientation = Matrix3(m_WorldEast, m_WorldUp, -m_WorldNorth) * Matrix3::MakeYRotation( m_CurrentHeading ) * Matrix3::MakeXRotation( m_CurrentPitch );
     Vector3 position = orientation * Vector3( strafe, ascent, -forward ) + m_TargetCamera.GetPosition();
-    m_TargetCamera.SetTransform( AffineTransform( orientation, position ) );
+    m_affine = AffineTransform(orientation, position);
+    m_TargetCamera.SetTransform(m_affine);
     m_TargetCamera.Update();
 }
 
@@ -125,4 +126,15 @@ void CameraController::ApplyMomentum( float& oldValue, float& newValue, float de
         blendedValue = Lerp(newValue, oldValue, Pow(0.8f, deltaTime * 60.0f));
     oldValue = blendedValue;
     newValue = blendedValue;
+}
+
+VRCameraController::VRCameraController(VRCamera& camera, Vector3 worldUp) : CameraController(camera, worldUp), m_VRCam(camera)
+{
+}
+
+void VRCameraController::Update(float dt)
+{
+    CameraController::Update(dt);
+    m_VRCam.SetTransform(m_affine);
+    m_VRCam.Update();
 }
