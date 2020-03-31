@@ -679,6 +679,8 @@ void Graphics::PreparePresentHDR(void)
 
     Context.TransitionResource(g_DisplayPlane[g_CurrentBuffer], D3D12_RESOURCE_STATE_PRESENT);
 
+	SubmitToVRHMD(false);
+
     // Close the final context to be executed before frame present.
     Context.Finish();
 }
@@ -709,6 +711,8 @@ void Graphics::SubmitToVRHMD(bool isArray)
 void Graphics::PreparePresentLDR(void)
 {
     GraphicsContext& Context = GraphicsContext::Begin(L"Present");
+
+	SubmitToVRHMD(true);
 
     // We're going to be reading these buffers to write to the swap chain buffer(s)
     Context.TransitionResource(g_SceneColorBuffer, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
@@ -788,7 +792,6 @@ void Graphics::PreparePresentLDR(void)
     }
 
     CompositeOverlays(Context);
-    SubmitToVRHMD(true);
 
     Context.TransitionResource(g_DisplayPlane[g_CurrentBuffer], D3D12_RESOURCE_STATE_PRESENT);
 
