@@ -71,6 +71,7 @@ namespace GameCore
         EngineTuning::Update(DeltaTime);
         
         game.Update(DeltaTime);
+        
         game.RenderScene(0);
         game.RenderScene(1);
 
