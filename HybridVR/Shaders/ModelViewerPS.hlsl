@@ -328,8 +328,6 @@ struct MRT
 MRT main(VSOutput vsOutput)
 {
     MRT mrt;
-    /*mrt.ColorLeft = 0.0;
-    mrt.ColorRight = 0.0;*/
 	mrt.Color = 0.0;
     mrt.Normal = 0.0;
 
@@ -366,14 +364,6 @@ MRT main(VSOutput vsOutput)
     float3 viewDir = normalize(vsOutput.viewDir);
     colorSum += ApplyDirectionalLight(diffuseAlbedo, specularAlbedo, specularMask, gloss, normal, viewDir, SunDirection, SunColor, vsOutput.shadowCoord);
 
-	/*if (vsOutput.curCam == 0)
-	{
-		mrt.ColorLeft = float3(1, 0, 0);
-	}
-	if (vsOutput.curCam == 1)
-	{
-		mrt.ColorRight = float3(0, 0, 1);
-	}*/
 	mrt.Color = colorSum;
 
     if (AreNormalsNeeded)

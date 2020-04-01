@@ -285,7 +285,6 @@ int wmain(int argc, wchar_t** argv)
     }
 	
     s_EnableVSync.Decrement();
-    TargetResolution = k720p;
     g_DisplayWidth = 1280;
     g_DisplayHeight = 720;
     GameCore::RunApplication(D3D12RaytracingMiniEngineSample(validDeviceFound), L"D3D12RaytracingMiniEngineSample"); 
@@ -766,6 +765,8 @@ void D3D12RaytracingMiniEngineSample::Startup(void)
 {
     //m_Camera = m_VRCamera[VRCamera::CENTER];
 
+	rayTracingMode = RTM_OFF;
+
     ThrowIfFailed(g_Device->QueryInterface(IID_PPV_ARGS(&g_pRaytracingDevice)), L"Couldn't get DirectX Raytracing interface for the device.\n");
     g_SceneNormalBuffer.Create(L"Main Normal Buffer", g_SceneColorBuffer.GetWidth(), g_SceneColorBuffer.GetHeight(), 1, DXGI_FORMAT_R16G16B16A16_FLOAT);
 
@@ -946,6 +947,7 @@ void D3D12RaytracingMiniEngineSample::Startup(void)
     m_CameraPosArray[4].heading = -1.236f;
     m_CameraPosArray[4].pitch = 0.0f;
 
+	m_Camera.Setup();
     m_Camera.SetZRange(1.0f, 10000.0f);
 
     m_CameraController.reset(new VRCameraController(m_Camera, Vector3(kYUnitVector)));
@@ -1446,10 +1448,6 @@ void D3D12RaytracingMiniEngineSample::RenderScene(UINT cam)
                     gfxContext.TransitionResource(g_SceneDepthBuffer, 
 						D3D12_RESOURCE_STATE_DEPTH_READ);
 
-                    /*D3D12_CPU_DESCRIPTOR_HANDLE rtvs[]{ 
-						g_SceneColorBuffer.GetSubRTV(0), 
-						g_SceneColorBuffer.GetSubRTV(1), 
-						g_SceneNormalBuffer.GetRTV() };*/
 					D3D12_CPU_DESCRIPTOR_HANDLE rtvs[2];
 					if (cam == 0) rtvs[0] = g_SceneColorBuffer.GetSubRTV(0);
 					else rtvs[0] = g_SceneColorBuffer.GetSubRTV(1);
@@ -1491,7 +1489,7 @@ void D3D12RaytracingMiniEngineSample::RenderScene(UINT cam)
 
 	g_dynamicCb.curCam = cam;
 
-	if(g_RayTraceSupport)
+	if(g_RayTraceSupport/* && rayTracingMode != RTM_OFF*/)
 	{
 		Raytrace(gfxContext, cam);
 	}

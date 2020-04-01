@@ -40,6 +40,7 @@ namespace Graphics
     void Terminate(void);
     void Shutdown(void);
     void Present(void);
+	void SetNativeResolution(uint32_t NativeWidth, uint32_t NativeHeight);
 
     extern uint32_t g_DisplayWidth;
     extern uint32_t g_DisplayHeight;
@@ -76,7 +77,6 @@ namespace Graphics
     enum eResolution { k720p, k900p, k1080p, k1440p, k1800p, k2160p };
 
     extern BoolVar s_EnableVSync;
-    extern EnumVar TargetResolution;
     extern uint32_t g_DisplayWidth;
     extern uint32_t g_DisplayHeight;
 }
