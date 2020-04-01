@@ -92,71 +92,54 @@ void Camera::UpdateProjMatrix( void )
 
 VRCamera::VRCamera()
 {
-    m_centerCamera = &m_cameras[CENTER];
-	
-    if(VR::GetHMD()) // TODO: Have setting for this we can check
-    {
-        for (int i = 0; i < VRCamera::COUNT - 1; ++i)
-        {
-            Camera* camera = &m_cameras[i];
-
-            XMMATRIX view = VR::GetEyeToHeadTransform(vr::EVREye(i));
-            XMMATRIX proj = VR::GetProjectionMatrix(vr::EVREye(i),
-                camera->GetNearClip(), camera->GetFarClip());
-            //XMMATRIX HMDPoseMat = VR::GetHMDPos();
-
-            //camera->UpdateVRPoseMat(HMDPoseMat);
-            camera->SetVRViewProjMatrices(view, proj);
-            camera->Update();
-        }
-
-        //XMMATRIX HMDPoseMat = VR::GetHMDPos();
-        //m_cameras[CENTER].UpdateVRPoseMat(HMDPoseMat);
-        m_cameras[CENTER].Update();
-    }
+    
 }
 
 void VRCamera::Update()
 {
     if (VR::GetHMD()) // TODO: Have setting for this we can check
     {
-        XMMATRIX HMDPoseMat = VR::GetHMDPos();
+        m_HMDPoseMat = VR::GetHMDPos();
 
-        for (int i = 0; i < VRCamera::COUNT; ++i)
+        for (int i = 0; i < VRCamera::COUNT - 1; ++i)
         {
-            m_cameras[i].UpdateVRPoseMat(HMDPoseMat);
+			m_cameras[i].SetVRViewProjMatrices(m_eyeToHead[i] * m_HMDPoseMat, m_eyeProj[i]);
+			m_cameras[i].SetTransform(AffineTransform(m_eyeToHead[i] * m_HMDPoseMat));
             m_cameras[i].Update();
         }
     }
-
-    for (int i = 0; i < VRCamera::COUNT; ++i)
-    {
-        m_cameras[i].Update();
-    }
 }
 
-void VRCamera::Setup()
+Matrix4 customProj(vr::EVREye eye, float nearFloat, float farFloat)
 {
-	m_centerCamera = &m_cameras[CENTER];
+	float left, right, top, bottom;
+	VR::g_HMD->GetProjectionRaw(eye, &left, &right, &top, &bottom);
 
+	float idx = 1.0f / (right - left);
+	float idy = 1.0f / (bottom - top);
+	float idz = 1.0f / (farFloat - nearFloat);
+	float sx = right + left;
+	float sy = bottom + top;
+
+	return Matrix4(
+		Vector4(2 * idx,  0.0f,     0.0f,            0.0f),
+		Vector4(0.0f,     2 * idy,  0.0f,            0.0f),
+		Vector4(sx * idx, sy * idy, idz,            -1.0f),
+		Vector4(0.0f,     0.0f,     farFloat * idz,  0.0f)
+	);
+}
+
+void VRCamera::Setup(bool reverseZ)
+{
 	if (VR::GetHMD()) // TODO: Have setting for this we can check
 	{
-		for (int i = 0; i < VRCamera::COUNT - 1; ++i)
+		m_HMDPoseMat = VR::GetHMDPos();
+
+		for (int i = 0; i < VRCamera::COUNT - 1; i++)
 		{
-			Camera* camera = &m_cameras[i];
-
-			XMMATRIX view = VR::GetEyeToHeadTransform(vr::EVREye(i));
-			XMMATRIX proj = VR::GetProjectionMatrix(vr::EVREye(i),
-				camera->GetNearClip(), camera->GetFarClip());
-			//XMMATRIX HMDPoseMat = VR::GetHMDPos();
-
-			//camera->UpdateVRPoseMat(HMDPoseMat);
-			camera->SetVRViewProjMatrices(view, proj);
-			camera->Update();
+		m_cameras[i].ReverseZ(reverseZ);
+		m_eyeToHead[i] = VR::GetEyeToHeadTransform(vr::EVREye(i));
+		m_eyeProj[i] = customProj(vr::EVREye(i), 1.0f, 10000.0f);
 		}
-
-		//XMMATRIX HMDPoseMat = VR::GetHMDPos();
-		//m_cameras[CENTER].UpdateVRPoseMat(HMDPoseMat);
-		m_cameras[CENTER].Update();
 	}
 }

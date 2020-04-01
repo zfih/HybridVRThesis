@@ -131,7 +131,7 @@ namespace Math
     {
         // By using these functions, we rederive an orthogonal transform.
         SetLookDirection(-xform.GetZ(), xform.GetY());
-        SetPosition(xform.GetTranslation());
+        SetPosition(100 * xform.GetTranslation());
     }
 
     inline void BaseCamera::SetRotation( Quaternion basisRotation )
@@ -175,9 +175,13 @@ namespace Math
         std::vector<Camera> m_cameras = std::vector<Camera>(COUNT);
         Camera* m_centerCamera;
 
+		XMMATRIX m_HMDPoseMat;
+		XMMATRIX m_eyeToHead[CameraType::COUNT - 1]; // - 1 because we don't do center
+		XMMATRIX m_eyeProj[CameraType::COUNT - 1];
+
         Camera* operator[](const UINT i) noexcept { return &m_cameras[i]; }
     	
-		void Setup();
+		void Setup(bool reverseZ);
         void Update();
 
         // Public functions for controlling where the camera is and its orientation
