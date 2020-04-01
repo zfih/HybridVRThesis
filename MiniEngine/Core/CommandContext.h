@@ -196,6 +196,7 @@ public:
     void ClearUAV( GpuBuffer& Target );
     void ClearUAV( ColorBuffer& Target );
     void ClearColor( ColorBuffer& Target );
+	void ClearColor(ColorBuffer& Target, int subRTV);
     void ClearDepth( DepthBuffer& Target );
     void ClearStencil( DepthBuffer& Target );
     void ClearDepthAndStencil( DepthBuffer& Target );

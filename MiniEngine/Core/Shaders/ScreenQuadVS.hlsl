@@ -24,10 +24,43 @@
 void main(
     in uint VertID : SV_VertexID,
     out float4 Pos : SV_Position,
-    out float2 Tex : TexCoord0
+    out float3 Tex : TexCoord0
 )
 {
     // Texture coordinates range [0, 2], but only [0, 1] appears on screen.
-    Tex = float2(uint2(VertID, VertID << 1) & 2);
-    Pos = float4(lerp(float2(-1, 1), float2(1, -1), Tex), 0, 1);
+    //Tex = float2(uint2(VertID, VertID << 1) & 2);
+    //Pos = float4(lerp(float2(-0.5, 0.5), float2(0.5, -0.5), Tex), 0, 1);
+	if (VertID == 0) {
+        Tex = float3(0, 0, 0);
+        Pos = float4(-1, -1, 0, 1);
+    }
+    else if (VertID == 1 || VertID == 3) {
+        Tex = float3(0, 1, 0);
+        Pos = float4(-1, 1, 0, 1);
+    }
+    else if (VertID == 2 || VertID == 5) {
+        Tex = float3(1, 0, 0);
+        Pos = float4(0, -1, 0, 1);
+    }
+    else if (VertID == 4) {
+        Tex = float3(1, 1, 0);
+        Pos = float4(0, 1, 0, 1);
+    }
+
+	else if (VertID == 6) {
+		Tex = float3(0, 0, 1);
+		Pos = float4(0, -1, 0, 1);
+	}
+	else if (VertID == 7 || VertID == 9) {
+		Tex = float3(0, 1, 1);
+		Pos = float4(0, 1, 0, 1);
+	}
+	else if (VertID == 8 || VertID == 11) {
+		Tex = float3(1, 0, 1);
+		Pos = float4(1, -1, 0, 1);
+	}
+	else {
+		Tex = float3(1, 1, 1);
+		Pos = float4(1, 1, 0, 1);
+	}
 }
