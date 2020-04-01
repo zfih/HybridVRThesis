@@ -59,6 +59,8 @@ public:
     const D3D12_CPU_DESCRIPTOR_HANDLE& GetRTV(void) const { return m_RTVHandle; }
     const D3D12_CPU_DESCRIPTOR_HANDLE& GetUAV(void) const { return m_UAVHandle[0]; }
 
+	const D3D12_CPU_DESCRIPTOR_HANDLE& GetSubRTV(int i) const { return m_RTVSubHandles[i]; }
+
     void SetClearColor( Color ClearColor ) { m_ClearColor = ClearColor; }
 
     void SetMsaaMode( uint32_t NumColorSamples, uint32_t NumCoverageSamples )
@@ -107,4 +109,6 @@ protected:
     uint32_t m_NumMipMaps; // number of texture sublevels
     uint32_t m_FragmentCount;
     uint32_t m_SampleCount;
+
+	std::vector<D3D12_CPU_DESCRIPTOR_HANDLE> m_RTVSubHandles; //TODO: Magic number two is because of VR having two eyes. This magic number should be replaced.
 };

@@ -112,7 +112,6 @@ namespace Graphics
     const uint32_t kNumPredefinedResolutions = 6;
 
     const char* ResolutionLabels[] = { "1280x720", "1600x900", "1920x1080", "2560x1440", "3200x1800", "3840x2160" };
-    EnumVar TargetResolution("Graphics/Display/Native Resolution", k1080p, kNumPredefinedResolutions, ResolutionLabels);
 
     BoolVar s_EnableVSync("Timing/VSync", true);
 
@@ -131,39 +130,8 @@ namespace Graphics
     ColorBuffer g_PreDisplayBuffer;
 	
 
-    void SetNativeResolution(void)
+    void SetNativeResolution(uint32_t NativeWidth, uint32_t NativeHeight)
     {
-        uint32_t NativeWidth, NativeHeight;
-
-        switch (eResolution((int)TargetResolution))
-        {
-        default:
-        case k720p:
-            NativeWidth = 1280;
-            NativeHeight = 720;
-            break;
-        case k900p:
-            NativeWidth = 1600;
-            NativeHeight = 900;
-            break;
-        case k1080p:
-            NativeWidth = 1920;
-            NativeHeight = 1080;
-            break;
-        case k1440p:
-            NativeWidth = 2560;
-            NativeHeight = 1440;
-            break;
-        case k1800p:
-            NativeWidth = 3200;
-            NativeHeight = 1800;
-            break;
-        case k2160p:
-            NativeWidth = 3840;
-            NativeHeight = 2160;
-            break;
-        }
-
         if (g_NativeWidth == NativeWidth && g_NativeHeight == NativeHeight)
             return;
 
@@ -586,14 +554,22 @@ void Graphics::Initialize(void)
     g_PreDisplayBuffer.Create(L"PreDisplay Buffer", g_DisplayWidth, g_DisplayHeight, 1, SwapChainFormat);
 
     GpuTimeManager::Initialize(4096);
-    SetNativeResolution();
     TemporalEffects::Initialize();
     PostEffects::Initialize();
     SSAO::Initialize();
     TextRenderer::Initialize();
     GraphRenderer::Initialize();
     ParticleEffects::Initialize(kMaxNativeWidth, kMaxNativeHeight);
-    VR::TryInitVR();
+	if (VR::TryInitVR())
+	{
+		uint32_t width, height;
+		VR::g_HMD->GetRecommendedRenderTargetSize(&width, &height);
+		SetNativeResolution(width, height);
+	}
+	else
+	{
+		SetNativeResolution(1280, 720);
+	}
 }
 
 void Graphics::Terminate( void )
@@ -679,6 +655,8 @@ void Graphics::PreparePresentHDR(void)
 
     Context.TransitionResource(g_DisplayPlane[g_CurrentBuffer], D3D12_RESOURCE_STATE_PRESENT);
 
+	SubmitToVRHMD(false);
+
     // Close the final context to be executed before frame present.
     Context.Finish();
 }
@@ -690,7 +668,7 @@ void Graphics::CompositeOverlays( GraphicsContext& Context )
     Context.SetDynamicDescriptor(0, 0, g_OverlayBuffer.GetSRV());
     Context.SetPipelineState(s_BlendUIPSO);
     Context.SetConstants(1, 1.0f / g_NativeWidth, 1.0f / g_NativeHeight);
-    Context.Draw(3);
+    Context.Draw(12);
 }
 
 void Graphics::SubmitToVRHMD(bool isArray)
@@ -710,6 +688,8 @@ void Graphics::PreparePresentLDR(void)
 {
     GraphicsContext& Context = GraphicsContext::Begin(L"Present");
 
+	SubmitToVRHMD(true);
+
     // We're going to be reading these buffers to write to the swap chain buffer(s)
     Context.TransitionResource(g_SceneColorBuffer, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 
@@ -722,22 +702,24 @@ void Graphics::PreparePresentLDR(void)
 
     ColorBuffer& UpsampleDest = (DebugZoom == kDebugZoomOff ? g_DisplayPlane[g_CurrentBuffer] : g_PreDisplayBuffer);
 
-    if (g_NativeWidth == g_DisplayWidth && g_NativeHeight == g_DisplayHeight)
+	UINT32 vertCount = 12;
+
+    //if (g_NativeWidth == g_DisplayWidth && g_NativeHeight == g_DisplayHeight)
     {
         Context.SetPipelineState(PresentSDRPS);
         Context.TransitionResource(UpsampleDest, D3D12_RESOURCE_STATE_RENDER_TARGET);
         Context.SetRenderTarget(UpsampleDest.GetRTV());
-        Context.SetViewportAndScissor(0, 0, g_NativeWidth, g_NativeHeight);
-        Context.Draw(3);
+        Context.SetViewportAndScissor(0, 0, g_DisplayWidth, g_DisplayHeight);
+        Context.Draw(vertCount);
     }
-    else if (UpsampleFilter == kBicubic)
+    /*else if (UpsampleFilter == kBicubic)
     {
         Context.TransitionResource(g_HorizontalBuffer, D3D12_RESOURCE_STATE_RENDER_TARGET);
         Context.SetRenderTarget(g_HorizontalBuffer.GetRTV());
         Context.SetViewportAndScissor(0, 0, g_DisplayWidth, g_NativeHeight);
         Context.SetPipelineState(BicubicHorizontalUpsamplePS);
         Context.SetConstants(1, g_NativeWidth, g_NativeHeight, (float)BicubicUpsampleWeight);
-        Context.Draw(3);
+        Context.Draw(vertCount);
 
         Context.TransitionResource(g_HorizontalBuffer, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
         Context.TransitionResource(UpsampleDest, D3D12_RESOURCE_STATE_RENDER_TARGET);
@@ -746,7 +728,7 @@ void Graphics::PreparePresentLDR(void)
         Context.SetPipelineState(BicubicVerticalUpsamplePS);
         Context.SetConstants(1, g_DisplayWidth, g_NativeHeight, (float)BicubicUpsampleWeight);
         Context.SetDynamicDescriptor(0, 0, g_HorizontalBuffer.GetSRV());
-        Context.Draw(3);
+        Context.Draw(vertCount);
     }
     else if (UpsampleFilter == kSharpening)
     {
@@ -762,7 +744,7 @@ void Graphics::PreparePresentLDR(void)
         const float WB = 1.0f + 4.0f * WA;
         float Constants[] = { X * TexelWidth, Y * TexelHeight, Y * TexelWidth, -X * TexelHeight, WA, WB };
         Context.SetConstantArray(1, _countof(Constants), Constants);
-        Context.Draw(3);
+        Context.Draw(vertCount);
     }
     else if (UpsampleFilter == kBilinear)
     {
@@ -770,8 +752,8 @@ void Graphics::PreparePresentLDR(void)
         Context.TransitionResource(UpsampleDest, D3D12_RESOURCE_STATE_RENDER_TARGET);
         Context.SetRenderTarget(UpsampleDest.GetRTV());
         Context.SetViewportAndScissor(0, 0, g_DisplayWidth, g_DisplayHeight);
-        Context.Draw(3);
-    }
+        Context.Draw(vertCount);
+    }*/
 
     if (DebugZoom != kDebugZoomOff)
     {
@@ -782,11 +764,10 @@ void Graphics::PreparePresentLDR(void)
         Context.SetViewportAndScissor(0, 0, g_DisplayWidth, g_DisplayHeight);
         Context.SetConstants(1, 1.0f / ((int)DebugZoom + 1.0f));
         Context.SetDynamicDescriptor(0, 0, g_PreDisplayBuffer.GetSRV());
-        Context.Draw(3);
+        Context.Draw(vertCount);
     }
 
     CompositeOverlays(Context);
-    SubmitToVRHMD(true);
 
     Context.TransitionResource(g_DisplayPlane[g_CurrentBuffer], D3D12_RESOURCE_STATE_PRESENT);
 
@@ -844,7 +825,7 @@ void Graphics::Present(void)
     ++s_FrameIndex;
     TemporalEffects::Update((uint32_t)s_FrameIndex);
 
-    SetNativeResolution();
+    SetNativeResolution(g_NativeWidth, g_NativeHeight);
 }
 
 uint64_t Graphics::GetFrameCount(void)

@@ -177,6 +177,7 @@ namespace Math
 
         Camera* operator[](const UINT i) noexcept { return &m_cameras[i]; }
     	
+		void Setup();
         void Update();
 
         // Public functions for controlling where the camera is and its orientation

@@ -289,6 +289,11 @@ void GraphicsContext::ClearColor( ColorBuffer& Target )
     m_CommandList->ClearRenderTargetView(Target.GetRTV(), Target.GetClearColor().GetPtr(), 0, nullptr);
 }
 
+void GraphicsContext::ClearColor(ColorBuffer& Target, int subRTV)
+{
+	m_CommandList->ClearRenderTargetView(Target.GetSubRTV(subRTV), Target.GetClearColor().GetPtr(), 0, nullptr);
+}
+
 void GraphicsContext::ClearDepth( DepthBuffer& Target )
 {
     m_CommandList->ClearDepthStencilView(Target.GetDSV(), D3D12_CLEAR_FLAG_DEPTH, Target.GetClearDepth(), Target.GetClearStencil(), 0, nullptr );

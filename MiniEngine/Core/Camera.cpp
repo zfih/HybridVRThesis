@@ -51,7 +51,7 @@ void BaseCamera::Update()
 
 void Camera::UpdateVRPoseMat(XMMATRIX poseMat)
 {
-    SetTransform(AffineTransform{ poseMat });
+	SetTransform(AffineTransform{ poseMat });
 }
 
 void Camera::SetVRViewProjMatrices(XMMATRIX view, XMMATRIX proj)
@@ -96,22 +96,22 @@ VRCamera::VRCamera()
 	
     if(VR::GetHMD()) // TODO: Have setting for this we can check
     {
-        for (int i = 0; i < COUNT - 1; ++i)
+        for (int i = 0; i < VRCamera::COUNT - 1; ++i)
         {
             Camera* camera = &m_cameras[i];
 
             XMMATRIX view = VR::GetEyeToHeadTransform(vr::EVREye(i));
             XMMATRIX proj = VR::GetProjectionMatrix(vr::EVREye(i),
                 camera->GetNearClip(), camera->GetFarClip());
-            XMMATRIX HMDPoseMat = VR::GetHMDPos();
+            //XMMATRIX HMDPoseMat = VR::GetHMDPos();
 
-            camera->UpdateVRPoseMat(HMDPoseMat);
+            //camera->UpdateVRPoseMat(HMDPoseMat);
             camera->SetVRViewProjMatrices(view, proj);
             camera->Update();
         }
 
-        XMMATRIX HMDPoseMat = VR::GetHMDPos();
-        m_cameras[CENTER].UpdateVRPoseMat(HMDPoseMat);
+        //XMMATRIX HMDPoseMat = VR::GetHMDPos();
+        //m_cameras[CENTER].UpdateVRPoseMat(HMDPoseMat);
         m_cameras[CENTER].Update();
     }
 }
@@ -122,15 +122,41 @@ void VRCamera::Update()
     {
         XMMATRIX HMDPoseMat = VR::GetHMDPos();
 
-        for (int i = 0; i < COUNT; ++i)
+        for (int i = 0; i < VRCamera::COUNT; ++i)
         {
             m_cameras[i].UpdateVRPoseMat(HMDPoseMat);
             m_cameras[i].Update();
         }
     }
 
-    for (int i = 0; i < COUNT; ++i)
+    for (int i = 0; i < VRCamera::COUNT; ++i)
     {
         m_cameras[i].Update();
     }
+}
+
+void VRCamera::Setup()
+{
+	m_centerCamera = &m_cameras[CENTER];
+
+	if (VR::GetHMD()) // TODO: Have setting for this we can check
+	{
+		for (int i = 0; i < VRCamera::COUNT - 1; ++i)
+		{
+			Camera* camera = &m_cameras[i];
+
+			XMMATRIX view = VR::GetEyeToHeadTransform(vr::EVREye(i));
+			XMMATRIX proj = VR::GetProjectionMatrix(vr::EVREye(i),
+				camera->GetNearClip(), camera->GetFarClip());
+			//XMMATRIX HMDPoseMat = VR::GetHMDPos();
+
+			//camera->UpdateVRPoseMat(HMDPoseMat);
+			camera->SetVRViewProjMatrices(view, proj);
+			camera->Update();
+		}
+
+		//XMMATRIX HMDPoseMat = VR::GetHMDPos();
+		//m_cameras[CENTER].UpdateVRPoseMat(HMDPoseMat);
+		m_cameras[CENTER].Update();
+	}
 }
