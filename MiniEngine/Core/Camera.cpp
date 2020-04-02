@@ -108,6 +108,11 @@ void VRCamera::Update()
             m_cameras[i].Update();
         }
     }
+
+	for (int i = 0; i < VRCamera::COUNT; ++i)
+	{
+		m_cameras[i].Update();
+	}
 }
 
 Matrix4 customProj(vr::EVREye eye, float nearFloat, float farFloat)

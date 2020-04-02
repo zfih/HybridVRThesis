@@ -131,7 +131,16 @@ namespace Math
     {
         // By using these functions, we rederive an orthogonal transform.
         SetLookDirection(-xform.GetZ(), xform.GetY());
-        SetPosition(100 * xform.GetTranslation());
+		float posModifier;
+		if (VR::GetHMD()) // TODO: Have setting for this we can check
+		{
+			posModifier = 100.0f;
+		}
+		else
+		{
+			posModifier = 1.0f;
+		}
+        SetPosition(posModifier * xform.GetTranslation());
     }
 
     inline void BaseCamera::SetRotation( Quaternion basisRotation )
