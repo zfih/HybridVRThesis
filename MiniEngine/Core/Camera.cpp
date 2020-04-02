@@ -101,13 +101,12 @@ void VRCamera::Update()
     {
         m_HMDPoseMat = VR::GetHMDPos();
 
-        for (int i = 0; i < VRCamera::COUNT - 1; ++i)
+        for (int i = 0; i < VRCamera::COUNT; ++i)
         {
 			m_cameras[i].SetVRViewProjMatrices(m_eyeToHead[i] * m_HMDPoseMat, m_eyeProj[i]);
 			m_cameras[i].SetTransform(AffineTransform(m_eyeToHead[i] * m_HMDPoseMat));
             m_cameras[i].Update();
         }
-		m_cameras[CENTER].Update();
     }
 	else
 	{
@@ -118,26 +117,82 @@ void VRCamera::Update()
 	}
 }
 
-Matrix4 customProj(vr::EVREye eye, float nearFloat, float farFloat)
+void VRCamera::GetHMDProjVals(vr::EVREye eye)
 {
-	float left, right, top, bottom;
-	VR::g_HMD->GetProjectionRaw(eye, &left, &right, &top, &bottom);
+	VR::g_HMD->GetProjectionRaw(eye, &m_projVals[eye].left,
+		&m_projVals[eye].right, &m_projVals[eye].top, &m_projVals[eye].bottom);
+}
 
-	float idx = 1.0f / (right - left);
-	float idy = 1.0f / (bottom - top);
-	float idz = 1.0f / (farFloat - nearFloat);
-	float sx = right + left;
-	float sy = bottom + top;
+void VRCamera::SetCenterProjVals(float midPlane)
+{
+	//m_projVals[CENTER].left = Max(
+	//	//TODO: What is tLX in the mono stereo paper?
+	//	MonoStereoG(midPlane, m_projVals[LEFT].right, m_projVals[LEFT].top),
+	//	MonoStereoG(midPlane, m_projVals[RIGHT].right, m_projVals[RIGHT].top));
+
+	//m_projVals[CENTER].right = Min(
+	//	MonoStereoG(midPlane, m_projVals[LEFT].left, m_projVals[LEFT].top),
+	//	MonoStereoG(midPlane, m_projVals[RIGHT].left, m_projVals[RIGHT].top));
+
+	//m_projVals[CENTER].top = Max(
+	//	MonoStereoG(midPlane, m_projVals[LEFT].bottom, 0),
+	//	MonoStereoG(midPlane, m_projVals[RIGHT].bottom, 0));
+
+	//m_projVals[CENTER].top = Max(
+	//	MonoStereoG(midPlane, m_projVals[LEFT].top, 0),
+	//	MonoStereoG(midPlane, m_projVals[RIGHT].top, 0));
+
+	m_projVals[CENTER].left = 
+		Max(m_projVals[LEFT].left, m_projVals[RIGHT].left);
+
+	m_projVals[CENTER].right = 
+		Min(m_projVals[LEFT].right, m_projVals[RIGHT].right);
+
+	m_projVals[CENTER].top = 
+		Min(m_projVals[LEFT].top, m_projVals[RIGHT].top);
+
+	m_projVals[CENTER].bottom = 
+		Max(m_projVals[LEFT].bottom, m_projVals[RIGHT].bottom);
+}
+
+Matrix4 VRCamera::CustomProj(CameraType cam, float nearFloat, float farFloat)
+{
+	float idx = 1.0f / (m_projVals[cam].right - m_projVals[cam].left);
+	float idy = 1.0f / (m_projVals[cam].bottom - m_projVals[cam].top);
+	float Q1 = nearFloat / (farFloat - nearFloat);
+	float Q2 = Q1 * farFloat;
+	float sx = m_projVals[cam].right + m_projVals[cam].left;
+	float sy = m_projVals[cam].bottom + m_projVals[cam].top;
 
 	return Matrix4(
-		Vector4(2 * idx,  0.0f,     0.0f,            0.0f),
-		Vector4(0.0f,     2 * idy,  0.0f,            0.0f),
-		Vector4(sx * idx, sy * idy, idz,            -1.0f),
-		Vector4(0.0f,     0.0f,     farFloat * idz,  0.0f)
+		Vector4(2 * idx,  0.0f,     0.0f,                         0.0f),
+		Vector4(0.0f,     2 * idy,  0.0f,                         0.0f),
+		Vector4(sx * idx, sy * idy, Q1, -1.0f),
+		Vector4(0.0f,     0.0f,     Q2,  0.0f)
 	);
 }
 
-void VRCamera::Setup(bool reverseZ)
+float calcIPD(XMMATRIX leftEyeToHead, XMMATRIX rightEyeToHead)
+{
+	Matrix4 leftHeadToEye = Matrix4(XMMatrixInverse(nullptr, leftEyeToHead));
+	Matrix4 rightHeadToEye = Matrix4(XMMatrixInverse(nullptr, rightEyeToHead));
+	Vector4 center(0, 0, 0, 1);
+
+	Vector4 left = leftHeadToEye * center;
+	left /= left.GetW();
+
+	Vector4 right = rightHeadToEye * center;
+	right /= right.GetW();
+
+	Vector4 dist = right - left;
+	float x = dist.GetX();
+	float y = dist.GetY();
+	float z = dist.GetZ();
+	return Sqrt(Pow(x, 2.0f) + Pow(y, 2.0f) + Pow(z, 2.0f));
+}
+
+void VRCamera::Setup(float nearPlane, float midPlane, 
+					 float farPlane, bool reverseZ)
 {
 	if (VR::GetHMD()) // TODO: Have setting for this we can check
 	{
@@ -145,9 +200,19 @@ void VRCamera::Setup(bool reverseZ)
 
 		for (int i = 0; i < VRCamera::COUNT - 1; i++)
 		{
-		m_cameras[i].ReverseZ(reverseZ);
-		m_eyeToHead[i] = VR::GetEyeToHeadTransform(vr::EVREye(i));
-		m_eyeProj[i] = customProj(vr::EVREye(i), 1.0f, 10000.0f);
+			m_cameras[i].ReverseZ(reverseZ);
+			m_eyeToHead[i] = VR::GetEyeToHeadTransform(vr::EVREye(i));
+			GetHMDProjVals(vr::EVREye(i));
+			m_eyeProj[i] = CustomProj(CameraType(i), nearPlane, midPlane);
 		}
+
+		m_IPD = calcIPD(m_eyeToHead[0], m_eyeToHead[1]);
+		m_Zc = Min(m_IPD / (2 * m_projVals[0].left), 
+			      -m_IPD / (2 * m_projVals[1].right));
+
+		m_cameras[CENTER].ReverseZ(reverseZ);
+		m_eyeToHead[CENTER] = XMMatrixTranslation(0, 0, m_Zc);
+		SetCenterProjVals(midPlane);
+		m_eyeProj[CENTER] = CustomProj(CENTER, midPlane, farPlane);
 	}
 }

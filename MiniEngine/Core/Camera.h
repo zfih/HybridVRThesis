@@ -185,12 +185,31 @@ namespace Math
         Camera* m_centerCamera;
 
 		XMMATRIX m_HMDPoseMat;
-		XMMATRIX m_eyeToHead[CameraType::COUNT - 1]; // - 1 because we don't do center
-		XMMATRIX m_eyeProj[CameraType::COUNT - 1];
+		XMMATRIX m_eyeToHead[CameraType::COUNT];
+		XMMATRIX m_eyeProj[CameraType::COUNT];
+		
+		struct projectionValues
+		{
+			float left;
+			float right;
+			float top;
+			float bottom;
+		};
+		projectionValues m_projVals[CameraType::COUNT];
+		float m_IPD;
+		float m_Zc;
 
         Camera* operator[](const UINT i) noexcept { return &m_cameras[i]; }
     	
-		void Setup(bool reverseZ);
+		inline float MonoStereoG(float m, float a, float b)
+		{
+			return m - Pow(m_Zc, -1.0f) * (a * m + m_Zc) + b;
+		}
+		void GetHMDProjVals(vr::EVREye eye);
+		void SetCenterProjVals(float midPlane);
+		Matrix4 CustomProj(CameraType cam, float nearFloat, float farFloat);
+		void Setup(float nearPlane, float midPlane,
+				   float farPlane, bool reverseZ);
         void Update();
 
         // Public functions for controlling where the camera is and its orientation
