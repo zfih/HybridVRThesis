@@ -107,11 +107,14 @@ void VRCamera::Update()
 			m_cameras[i].SetTransform(AffineTransform(m_eyeToHead[i] * m_HMDPoseMat));
             m_cameras[i].Update();
         }
+		m_cameras[CENTER].Update();
     }
-
-	for (int i = 0; i < VRCamera::COUNT; ++i)
+	else
 	{
-		m_cameras[i].Update();
+		for (int i = 0; i < VRCamera::COUNT; ++i)
+		{
+			m_cameras[i].Update();
+		}
 	}
 }
 

@@ -1536,8 +1536,7 @@ void D3D12RaytracingMiniEngineSample::RenderScene(UINT cam)
 						D3D12_RESOURCE_STATE_DEPTH_READ);
 
 					D3D12_CPU_DESCRIPTOR_HANDLE rtvs[2];
-					if (cam == 0) rtvs[0] = g_SceneColorBuffer.GetSubRTV(0);
-					else rtvs[0] = g_SceneColorBuffer.GetSubRTV(1);
+					rtvs[0] = g_SceneColorBuffer.GetSubRTV(cam);
 					rtvs[1] = g_SceneNormalBuffer.GetRTV();
 
 					gfxContext.SetRenderTargets(ARRAYSIZE(rtvs), rtvs,
@@ -1576,7 +1575,7 @@ void D3D12RaytracingMiniEngineSample::RenderScene(UINT cam)
 
 	g_dynamicCb.curCam = cam;
 
-	if(g_RayTraceSupport/* && rayTracingMode != RTM_OFF*/)
+	if(g_RayTraceSupport && rayTracingMode != RTM_OFF)
 	{
 		Raytrace(gfxContext, cam);
 	}
