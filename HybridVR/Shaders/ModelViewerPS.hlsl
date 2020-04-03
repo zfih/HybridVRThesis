@@ -317,9 +317,6 @@ uint PullNextBit(inout uint bits)
 
 struct MRT
 {
-	/*float3 ColorLeft : SV_Target0;
-	float3 ColorRight : SV_Target1;
-    float4 Normal : SV_Target2;*/
 	float3 Color : SV_Target0;
 	float4 Normal : SV_Target1;
 };

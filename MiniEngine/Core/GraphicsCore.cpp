@@ -668,7 +668,7 @@ void Graphics::CompositeOverlays( GraphicsContext& Context )
     Context.SetDynamicDescriptor(0, 0, g_OverlayBuffer.GetSRV());
     Context.SetPipelineState(s_BlendUIPSO);
     Context.SetConstants(1, 1.0f / g_NativeWidth, 1.0f / g_NativeHeight);
-    Context.Draw(12);
+    Context.Draw(18);
 }
 
 void Graphics::SubmitToVRHMD(bool isArray)
@@ -702,7 +702,7 @@ void Graphics::PreparePresentLDR(void)
 
     ColorBuffer& UpsampleDest = (DebugZoom == kDebugZoomOff ? g_DisplayPlane[g_CurrentBuffer] : g_PreDisplayBuffer);
 
-	UINT32 vertCount = 12;
+	UINT32 vertCount = 18;
 
     //if (g_NativeWidth == g_DisplayWidth && g_NativeHeight == g_DisplayHeight)
     {
