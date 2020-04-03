@@ -90,9 +90,66 @@ void Camera::UpdateProjMatrix( void )
         ) );
 }
 
+float testMonoStereoG(float m, float a, float b, float Zc)
+{
+	return m - Pow(Zc, -1.0f) * (a * m + Zc) + b;
+}
+
+void testCenterProjVals(VRCamera::projectionValues L, VRCamera::projectionValues R, float tLX, float tRX, float midPlane, float Zc, OUT VRCamera::projectionValues& C)
+{
+	C.left = Max(
+		//TODO: What is tLX in the mono stereo paper?
+		testMonoStereoG(midPlane, L.right, tLX, Zc),
+		testMonoStereoG(midPlane, R.right, tRX, Zc));
+
+	C.right = Min(
+		testMonoStereoG(midPlane, L.left, tLX, Zc),
+		testMonoStereoG(midPlane, R.left, tRX, Zc));
+
+	C.top = Max(
+		testMonoStereoG(midPlane, L.bottom, 0, Zc),
+		testMonoStereoG(midPlane, R.bottom, 0, Zc));
+
+	C.bottom = Max(
+		testMonoStereoG(midPlane, L.top, 0, Zc),
+		testMonoStereoG(midPlane, R.top, 0, Zc));
+}
+
+Matrix4 testProj(float left, float right, float top, float bottom, float nearFloat, float farFloat)
+{
+	float idx = 1.0f / (right - left);
+	float idy = 1.0f / (bottom - top);
+	float Q1 = nearFloat / (farFloat - nearFloat);
+	float Q2 = Q1 * farFloat;
+	float sx = right + left;
+	float sy = bottom + top;
+
+	return Matrix4(
+		Vector4(2 * idx,  0.0f,     0.0f, 0.0f),
+		Vector4(0.0f,     2 * idy,  0.0f, 0.0f),
+		Vector4(sx * idx, sy * idy, Q1,  -1.0f),
+		Vector4(0.0f,     0.0f,     Q2,   0.0f)
+	);
+}
+
+void testFunc()
+{
+	float IPD = 0.064;
+	VRCamera::projectionValues L, R, C;
+	L = { -1.391937, 1.247409, -1.464287, 1.468819 };
+	R = { -1.246557, 1.398447, -1.472458, 1.465505 };
+	float Zc = Min(IPD / (2 * L.left), -IPD / (2 * R.right));
+	// The paper calls these tL, tR, and tC, but we don't
+	Vector3 vL = (-IPD / 2, 0, 0);
+	Vector3 vR = (IPD / 2, 0, 0);
+	Vector3 vC = (0, 0, Zc);
+	float midPlane = 1.0f;
+	testCenterProjVals(L, R, vL.GetX(), vR.GetX(), midPlane, Zc, C);
+}
+
 VRCamera::VRCamera()
 {
-    
+	testFunc();
 }
 
 void VRCamera::Update()
@@ -165,10 +222,10 @@ Matrix4 VRCamera::CustomProj(CameraType cam, float nearFloat, float farFloat)
 	float sy = m_projVals[cam].bottom + m_projVals[cam].top;
 
 	return Matrix4(
-		Vector4(2 * idx,  0.0f,     0.0f,                         0.0f),
-		Vector4(0.0f,     2 * idy,  0.0f,                         0.0f),
-		Vector4(sx * idx, sy * idy, Q1, -1.0f),
-		Vector4(0.0f,     0.0f,     Q2,  0.0f)
+		Vector4(2 * idx,  0.0f,     0.0f,  0.0f),
+		Vector4(0.0f,     2 * idy,  0.0f,  0.0f),
+		Vector4(sx * idx, sy * idy, Q1,   -1.0f),
+		Vector4(0.0f,     0.0f,     Q2,    0.0f)
 	);
 }
 
