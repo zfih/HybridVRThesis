@@ -92,7 +92,7 @@ void Camera::UpdateProjMatrix( void )
 
 float testMonoStereoG(float m, float a, float b, float Zc)
 {
-	return m - Pow(Zc, -1.0f) * (a * m + Zc) + b;
+	return Pow(m - Zc, -1.0f) * (a * m + Zc) + b;
 }
 
 void testCenterProjVals(VRCamera::projectionValues L, VRCamera::projectionValues R, float tLX, float tRX, float midPlane, float Zc, OUT VRCamera::projectionValues& C)
