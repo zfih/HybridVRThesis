@@ -203,7 +203,7 @@ namespace Math
     	
 		inline float MonoStereoG(float m, float a, float b)
 		{
-			return m - Pow(m_Zc, -1.0f) * (a * m + m_Zc) + b;
+			return Pow(m - m_Zc, -1.0f) * (a * m + m_Zc) + b;
 		}
 		void GetHMDProjVals(vr::EVREye eye);
 		void SetCenterProjVals(float midPlane);
