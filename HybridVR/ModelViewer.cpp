@@ -790,6 +790,12 @@ void InitializeStateObjects(const Model& model, UINT numMeshes)
 	uavDescriptorRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_UAV;
 	uavDescriptorRange.Flags = D3D12_DESCRIPTOR_RANGE_FLAG_NONE;
 
+	/*D3D12_DESCRIPTOR_RANGE1 centerSrvDescriptorRange = {};
+	srvDescriptorRange.BaseShaderRegister = 1;
+	srvDescriptorRange.NumDescriptors = 1;
+	srvDescriptorRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+	srvDescriptorRange.Flags = D3D12_DESCRIPTOR_RANGE_FLAG_NONE;*/
+
 	CD3DX12_ROOT_PARAMETER1 globalRootSignatureParameters[8];
 	globalRootSignatureParameters[0].InitAsDescriptorTable(1, &sceneBuffersDescriptorRange);
 	globalRootSignatureParameters[1].InitAsConstantBufferView(0);
@@ -799,6 +805,7 @@ void InitializeStateObjects(const Model& model, UINT numMeshes)
 	globalRootSignatureParameters[5].InitAsUnorderedAccessView(0);
 	globalRootSignatureParameters[6].InitAsUnorderedAccessView(1);
 	globalRootSignatureParameters[7].InitAsShaderResourceView(0);
+	//globalRootSignatureParameters[8].InitAsDescriptorTable(1, &centerSrvDescriptorRange);
 	auto globalRootSignatureDesc = CD3DX12_VERSIONED_ROOT_SIGNATURE_DESC(
 		ARRAYSIZE(globalRootSignatureParameters), globalRootSignatureParameters, ARRAYSIZE(staticSamplerDescs),
 		staticSamplerDescs);
@@ -859,7 +866,7 @@ void D3D12RaytracingMiniEngineSample::Startup(void)
     SamplerDesc DefaultSamplerDesc;
     DefaultSamplerDesc.MaxAnisotropy = 8;
 
-    m_RootSig.Reset(6, 2);
+    m_RootSig.Reset(7, 2);
     m_RootSig.InitStaticSampler(0, DefaultSamplerDesc, D3D12_SHADER_VISIBILITY_PIXEL);
     m_RootSig.InitStaticSampler(1, SamplerShadowDesc, D3D12_SHADER_VISIBILITY_PIXEL);
     m_RootSig[0].InitAsConstantBuffer(0, D3D12_SHADER_VISIBILITY_VERTEX);
@@ -868,6 +875,7 @@ void D3D12RaytracingMiniEngineSample::Startup(void)
     m_RootSig[3].InitAsDescriptorRange(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 64, 6, D3D12_SHADER_VISIBILITY_PIXEL);
     m_RootSig[4].InitAsConstants(1, 2, D3D12_SHADER_VISIBILITY_VERTEX);
     m_RootSig[5].InitAsConstants(1, 1, D3D12_SHADER_VISIBILITY_PIXEL);
+    m_RootSig[6].InitAsDescriptorRange(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 6, 1, D3D12_SHADER_VISIBILITY_PIXEL);
     m_RootSig.Finalize(L"D3D12RaytracingMiniEngineSample", D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
 
     DXGI_FORMAT ColorFormat = g_SceneColorBuffer.GetFormat();
@@ -937,11 +945,12 @@ void D3D12RaytracingMiniEngineSample::Startup(void)
     m_WaveTileCountPSO.SetPixelShader(g_pWaveTileCountPS, sizeof(g_pWaveTileCountPS));
     m_WaveTileCountPSO.Finalize();
 
-	m_ComputeRootSig.Reset(1, 0);
-	m_RootSig[2].InitAsDescriptorRange(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 0, 2, D3D12_SHADER_VISIBILITY_ALL);
-	m_RootSig.Finalize(L"D3D12RaytracingMiniEngineSampleCompute", D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
+	m_ComputeRootSig.Reset(2, 0);
+	m_ComputeRootSig[0].InitAsDescriptorRange(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 0, 2, D3D12_SHADER_VISIBILITY_ALL);
+	m_ComputeRootSig[1].InitAsDescriptorRange(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 0, 1, D3D12_SHADER_VISIBILITY_ALL);
+	m_ComputeRootSig.Finalize(L"D3D12RaytracingMiniEngineSampleCompute", D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
 
-	m_CombineDepthPSO.SetRootSignature(m_RootSig);
+	m_CombineDepthPSO.SetRootSignature(m_ComputeRootSig);
 	m_CombineDepthPSO.SetComputeShader(g_pCombineDepthsCS, sizeof(g_pCombineDepthsCS));
 	m_CombineDepthPSO.Finalize();
 
@@ -1387,7 +1396,7 @@ void D3D12RaytracingMiniEngineSample::RenderLightShadows(GraphicsContext& gfxCon
 
 void D3D12RaytracingMiniEngineSample::RenderScene(UINT cam)
 {
-    const bool skipDiffusePass = 
+	const bool skipDiffusePass = 
         rayTracingMode == RTM_DIFFUSE_WITH_SHADOWMAPS ||
         rayTracingMode == RTM_DIFFUSE_WITH_SHADOWRAYS ||
         rayTracingMode == RTM_TRAVERSAL;
@@ -1413,8 +1422,6 @@ void D3D12RaytracingMiniEngineSample::RenderScene(UINT cam)
         s_ShowLightCounts = ShowWaveTileCounts;
     }
 
-    GraphicsContext& gfxContext = GraphicsContext::Begin(L"Scene Render");
-
 	DepthBuffer* curDepthBuf;
 	if (cam == 0)
 	{
@@ -1426,10 +1433,40 @@ void D3D12RaytracingMiniEngineSample::RenderScene(UINT cam)
 	}
 	else if (cam == 2)
 	{
+		ComputeContext& cmpContext = 
+			ComputeContext::Begin(L"Combine Depth Buffers", true);
 		
+		cmpContext.SetRootSignature(m_ComputeRootSig);
+		cmpContext.SetPipelineState(m_CombineDepthPSO);
+
+		cmpContext.TransitionResource(g_SceneLeftDepthBuffer, 
+			D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE, true);
+		cmpContext.TransitionResource(g_SceneRightDepthBuffer, 
+			D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE, true);
+		cmpContext.TransitionResource(g_SceneCenterDepthBuffer,
+			D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE, true);
+
+		cmpContext.SetDynamicDescriptor(
+			0, 0, g_SceneLeftDepthBuffer.GetDepthSRV());
+		cmpContext.SetDynamicDescriptor(
+			0, 1, g_SceneRightDepthBuffer.GetDepthSRV());
+		cmpContext.SetDynamicDescriptor(
+			1, 0, g_SceneCenterDepthBuffer.GetUAV());
+
+		cmpContext.Dispatch2D(g_SceneLeftDepthBuffer.GetWidth(), 
+							  g_SceneLeftDepthBuffer.GetHeight());
+
+		/*cmpContext.TransitionResource(g_SceneLeftDepthBuffer,
+			D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE, true);
+		cmpContext.TransitionResource(g_SceneRightDepthBuffer,
+			D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE, true);*/
+
+		cmpContext.Finish();
 
 		curDepthBuf = &g_SceneLeftDepthBuffer;
 	}
+    
+	GraphicsContext& gfxContext = GraphicsContext::Begin(L"Scene Render");
 
     ParticleEffects::Update(gfxContext.GetComputeContext(), Graphics::GetFrameTime());
 
@@ -1482,7 +1519,7 @@ void D3D12RaytracingMiniEngineSample::RenderScene(UINT cam)
             ScopedTimer _prof(L"Opaque", gfxContext);
             {
                 gfxContext.TransitionResource(*curDepthBuf, D3D12_RESOURCE_STATE_DEPTH_WRITE, true);
-                gfxContext.ClearDepth(*curDepthBuf);
+				gfxContext.ClearDepth(*curDepthBuf);
 
                 gfxContext.SetPipelineState(m_DepthPSO[0]);
                 gfxContext.SetDepthStencilTarget(curDepthBuf->GetDSV());
@@ -1506,7 +1543,7 @@ void D3D12RaytracingMiniEngineSample::RenderScene(UINT cam)
 
     if (!skipDiffusePass)
     {
-        Lighting::FillLightGrid(gfxContext, *m_Camera[cam]);
+        Lighting::FillLightGrid(gfxContext, *m_Camera[cam], curDepthBuf);
 
         if (!SSAO::DebugDraw)
         {
@@ -1560,6 +1597,7 @@ void D3D12RaytracingMiniEngineSample::RenderScene(UINT cam)
 
                 gfxContext.SetDynamicDescriptors(3, 0, ARRAYSIZE(m_ExtraTextures), m_ExtraTextures);
                 gfxContext.SetDynamicConstantBufferView(1, sizeof(psConstants), &psConstants);
+				gfxContext.SetDynamicDescriptor(6, 0, g_SceneCenterDepthBuffer.GetSRV());
 
                 bool RenderIDs = !TemporalEffects::EnableTAA;
 
@@ -1614,6 +1652,9 @@ void D3D12RaytracingMiniEngineSample::RenderScene(UINT cam)
 	{
 		Raytrace(gfxContext, cam, curDepthBuf);
 	}
+
+	gfxContext.TransitionResource(*curDepthBuf,
+		D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 
 	gfxContext.Finish();
 }

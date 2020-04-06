@@ -22,6 +22,7 @@ class StructuredBuffer;
 class ByteAddressBuffer;
 class ColorBuffer;
 class ShadowBuffer;
+class DepthBuffer;
 class GraphicsContext;
 class IntVar;
 namespace Math
@@ -50,5 +51,5 @@ namespace Lighting
 
     void InitializeResources(void);
     void CreateRandomLights(const Math::Vector3 minBound, const Math::Vector3 maxBound);
-    void FillLightGrid(GraphicsContext& gfxContext, const Math::Camera& camera);
+    void FillLightGrid(GraphicsContext& gfxContext, const Math::Camera& camera, DepthBuffer *curDepthBuf);
 }

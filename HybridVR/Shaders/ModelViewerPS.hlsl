@@ -51,6 +51,8 @@ Texture2DArray<float> lightShadowArrayTex : register(t67);
 ByteAddressBuffer lightGrid : register(t68);
 ByteAddressBuffer lightGridBitMask : register(t69);
 
+Texture2D<uint> texCenterDepth : register(t6);
+
 cbuffer PSConstants : register(b0)
 {
     float3 SunDirection;
@@ -368,6 +370,11 @@ MRT main(VSOutput vsOutput)
         float reflection = specularMask * pow(1.0 - saturate(dot(-viewDir, normal)), 5.0);
         mrt.Normal = float4(normal, reflection);
     }
+
+	if (vsOutput.curCam == 2)
+	{
+		mrt.Color = texCenterDepth[vsOutput.position.xy];
+	}
 
     return mrt;
 }

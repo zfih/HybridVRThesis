@@ -19,6 +19,7 @@
     "DescriptorTable(SRV(t64, numDescriptors = 6), visibility = SHADER_VISIBILITY_PIXEL)," \
     "RootConstants(b1, num32BitConstants = 2, visibility = SHADER_VISIBILITY_VERTEX), " \
     "RootConstants(b1, num32BitConstants = 1, visibility = SHADER_VISIBILITY_PIXEL), " \
+	"DescriptorTable(SRV(t6, numDescriptors = 1), visibility = SHADER_VISIBILITY_PIXEL)," \
     "StaticSampler(s0, maxAnisotropy = 8, visibility = SHADER_VISIBILITY_PIXEL)," \
     "StaticSampler(s1, visibility = SHADER_VISIBILITY_PIXEL," \
         "addressU = TEXTURE_ADDRESS_CLAMP," \

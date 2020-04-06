@@ -254,7 +254,7 @@ void Lighting::CreateRandomLights( const Vector3 minBound, const Vector3 maxBoun
 }
 
 
-void Lighting::FillLightGrid(GraphicsContext& gfxContext, const Camera& camera)
+void Lighting::FillLightGrid(GraphicsContext& gfxContext, const Camera& camera, DepthBuffer *curDepthBuf)
 {
     ScopedTimer _prof(L"FillLightGrid", gfxContext);
 
@@ -275,8 +275,7 @@ void Lighting::FillLightGrid(GraphicsContext& gfxContext, const Camera& camera)
 
     Context.TransitionResource(m_LightBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
     Context.TransitionResource(LinearDepth, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-    Context.TransitionResource(g_SceneLeftDepthBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-    Context.TransitionResource(g_SceneRightDepthBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+    Context.TransitionResource(*curDepthBuf, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
     Context.TransitionResource(m_LightGrid, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
     Context.TransitionResource(m_LightGridBitMask, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 

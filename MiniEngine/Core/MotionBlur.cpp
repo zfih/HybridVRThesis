@@ -195,11 +195,15 @@ void MotionBlur::RenderCameraBlur( CommandContext& BaseContext, const Matrix4& r
     Context.SetDynamicConstantBufferView(1, sizeof(CurToPrevXForm), &CurToPrevXForm);
 
     ColorBuffer& LinearDepth = g_LinearDepth[ Graphics::GetFrameCount() % 2 ];
-    if (UseLinearZ)
-        Context.TransitionResource(LinearDepth, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-    else
-        Context.TransitionResource(g_SceneLeftDepthBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-        Context.TransitionResource(g_SceneRightDepthBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+	if (UseLinearZ)
+	{
+		Context.TransitionResource(LinearDepth, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+	}
+	else
+	{
+		Context.TransitionResource(g_SceneLeftDepthBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+		Context.TransitionResource(g_SceneRightDepthBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+	}
 
     if (Enable)
     {
