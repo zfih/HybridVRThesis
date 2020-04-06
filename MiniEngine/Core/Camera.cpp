@@ -218,4 +218,8 @@ void VRCamera::Setup(float nearPlane, float midPlane,
 		SetCenterProjVals(midPlane);
 		m_eyeProj[CENTER] = CustomProj(CENTER, nearPlane, farPlane);
 	}
+	else
+	{
+		m_cameras[CENTER].SetZRange(midPlane, farPlane);
+	}
 }
