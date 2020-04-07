@@ -141,10 +141,11 @@ void ColorBuffer::Create(const std::wstring& Name, uint32_t Width, uint32_t Heig
 
     D3D12_CLEAR_VALUE ClearValue = {};
     ClearValue.Format = Format;
-    ClearValue.Color[0] = m_ClearColor.R();
-    ClearValue.Color[1] = m_ClearColor.G();
-    ClearValue.Color[2] = m_ClearColor.B();
-    ClearValue.Color[3] = m_ClearColor.A();
+	ClearValue.Color[0] = 0.0f; //m_ClearColor.R();
+	ClearValue.Color[1] = 0.0f; //m_ClearColor.G();
+	ClearValue.Color[2] = 0.0f; //m_ClearColor.B();
+	ClearValue.Color[3] = 0.0f; //m_ClearColor.A();
+	//m_ClearColor = { ClearValue.Color[0], ClearValue.Color[1], ClearValue.Color[2], ClearValue.Color[3] };
 
     CreateTextureResource(Graphics::g_Device, Name, ResourceDesc, ClearValue, VidMem);
     CreateDerivedViews(Graphics::g_Device, Format, 1, NumMips);
@@ -164,10 +165,11 @@ void ColorBuffer::CreateArray( const std::wstring& Name, uint32_t Width, uint32_
 
     D3D12_CLEAR_VALUE ClearValue = {};
     ClearValue.Format = Format;
-    ClearValue.Color[0] = m_ClearColor.R();
-    ClearValue.Color[1] = m_ClearColor.G();
-    ClearValue.Color[2] = m_ClearColor.B();
-    ClearValue.Color[3] = m_ClearColor.A();
+	ClearValue.Color[0] = 1.0f; //m_ClearColor.R();
+	ClearValue.Color[1] = 0.0f; //m_ClearColor.G();
+    ClearValue.Color[2] = 0.0f; //m_ClearColor.B();
+    ClearValue.Color[3] = 0.0f; //m_ClearColor.A();
+	//m_ClearColor = { ClearValue.Color[0], ClearValue.Color[1], ClearValue.Color[2], ClearValue.Color[3] };
 
     CreateTextureResource(Graphics::g_Device, Name, ResourceDesc, ClearValue, VidMem);
     CreateDerivedViews(Graphics::g_Device, Format, ArrayCount, 1);

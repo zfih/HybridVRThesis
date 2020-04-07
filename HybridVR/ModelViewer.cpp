@@ -928,7 +928,7 @@ void D3D12RaytracingMiniEngineSample::Startup(void)
 
     // Full color pass
     m_ModelPSO[0] = m_DepthPSO[0];
-    m_ModelPSO[0].SetBlendState(BlendDisable);
+    m_ModelPSO[0].SetBlendState(BlendTraditional);
     m_ModelPSO[0].SetDepthStencilState(DepthStateTestEqual);
     DXGI_FORMAT formats[] { ColorFormat, ColorFormat, NormalFormat };
     m_ModelPSO[0].SetRenderTargetFormats(_countof(formats), formats, DepthFormat);
@@ -945,13 +945,19 @@ void D3D12RaytracingMiniEngineSample::Startup(void)
     m_WaveTileCountPSO.SetPixelShader(g_pWaveTileCountPS, sizeof(g_pWaveTileCountPS));
     m_WaveTileCountPSO.Finalize();
 
-	m_ComputeRootSig.Reset(2, 0);
-	m_ComputeRootSig[0].InitAsDescriptorRange(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 0, 2, D3D12_SHADER_VISIBILITY_ALL);
-	m_ComputeRootSig[1].InitAsDescriptorRange(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 0, 1, D3D12_SHADER_VISIBILITY_ALL);
-	m_ComputeRootSig.Finalize(L"D3D12RaytracingMiniEngineSampleCompute", D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
+	m_ComputeRootSig.Reset(3, 0);
+	m_ComputeRootSig[0].InitAsDescriptorRange(
+		D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 0, 1, D3D12_SHADER_VISIBILITY_ALL);
+	m_ComputeRootSig[1].InitAsDescriptorRange(
+		D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 1, D3D12_SHADER_VISIBILITY_ALL);
+	m_ComputeRootSig[2].InitAsDescriptorRange(
+		D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 2, 1, D3D12_SHADER_VISIBILITY_ALL);
+	m_ComputeRootSig.Finalize(L"D3D12RaytracingMiniEngineSampleCompute", 
+		D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
 
 	m_CombineDepthPSO.SetRootSignature(m_ComputeRootSig);
-	m_CombineDepthPSO.SetComputeShader(g_pCombineDepthsCS, sizeof(g_pCombineDepthsCS));
+	m_CombineDepthPSO.SetComputeShader(g_pCombineDepthsCS, 
+									   sizeof(g_pCombineDepthsCS));
 	m_CombineDepthPSO.Finalize();
 
     Lighting::InitializeResources();
@@ -1449,9 +1455,9 @@ void D3D12RaytracingMiniEngineSample::RenderScene(UINT cam)
 		cmpContext.SetDynamicDescriptor(
 			0, 0, g_SceneLeftDepthBuffer.GetDepthSRV());
 		cmpContext.SetDynamicDescriptor(
-			0, 1, g_SceneRightDepthBuffer.GetDepthSRV());
+			1, 0, g_SceneRightDepthBuffer.GetDepthSRV());
 		cmpContext.SetDynamicDescriptor(
-			1, 0, g_SceneCenterDepthBuffer.GetUAV());
+			2, 0, g_SceneCenterDepthBuffer.GetUAV());
 
 		cmpContext.Dispatch2D(g_SceneLeftDepthBuffer.GetWidth(), 
 							  g_SceneLeftDepthBuffer.GetHeight());
@@ -1595,9 +1601,15 @@ void D3D12RaytracingMiniEngineSample::RenderScene(UINT cam)
 
                 gfxContext.TransitionResource(g_SSAOFullScreen, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 
-                gfxContext.SetDynamicDescriptors(3, 0, ARRAYSIZE(m_ExtraTextures), m_ExtraTextures);
-                gfxContext.SetDynamicConstantBufferView(1, sizeof(psConstants), &psConstants);
-				gfxContext.SetDynamicDescriptor(6, 0, g_SceneCenterDepthBuffer.GetSRV());
+                gfxContext.SetDynamicDescriptors(
+					3, 0, ARRAYSIZE(m_ExtraTextures), m_ExtraTextures);
+                gfxContext.SetDynamicConstantBufferView(
+					1, sizeof(psConstants), &psConstants);
+
+				gfxContext.TransitionResource(g_SceneCenterDepthBuffer,
+					D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, true);
+				gfxContext.SetDynamicDescriptor(6, 0, 
+					g_SceneCenterDepthBuffer.GetSRV());
 
                 bool RenderIDs = !TemporalEffects::EnableTAA;
 
@@ -1655,6 +1667,8 @@ void D3D12RaytracingMiniEngineSample::RenderScene(UINT cam)
 
 	gfxContext.TransitionResource(*curDepthBuf,
 		D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+	gfxContext.TransitionResource(g_SceneCenterDepthBuffer,
+		D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE, true);
 
 	gfxContext.Finish();
 }
