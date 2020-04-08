@@ -51,6 +51,8 @@ Texture2DArray<float> lightShadowArrayTex : register(t67);
 ByteAddressBuffer lightGrid : register(t68);
 ByteAddressBuffer lightGridBitMask : register(t69);
 
+Texture2D<float> texCenterDepth : register(t6);
+
 cbuffer PSConstants : register(b0)
 {
     float3 SunDirection;
@@ -317,7 +319,7 @@ uint PullNextBit(inout uint bits)
 
 struct MRT
 {
-	float3 Color : SV_Target0;
+	float4 Color : SV_Target0;
 	float4 Normal : SV_Target1;
 };
 
@@ -327,6 +329,16 @@ MRT main(VSOutput vsOutput)
     MRT mrt;
 	mrt.Color = 0.0;
     mrt.Normal = 0.0;
+
+	if (vsOutput.curCam == 2)
+	{
+		float depth = texCenterDepth[vsOutput.position.xy];
+		if (depth > 0.0f)
+		{
+			mrt.Color = float4(0, 0, 0, 0);
+			return mrt;
+		}
+	}
 
     uint2 pixelPos = uint2(vsOutput.position.xy);
 # define SAMPLE_TEX(texName) texName.Sample(sampler0, vsOutput.uv)
@@ -361,7 +373,7 @@ MRT main(VSOutput vsOutput)
     float3 viewDir = normalize(vsOutput.viewDir);
     colorSum += ApplyDirectionalLight(diffuseAlbedo, specularAlbedo, specularMask, gloss, normal, viewDir, SunDirection, SunColor, vsOutput.shadowCoord);
 
-	mrt.Color = colorSum;
+	mrt.Color = float4(colorSum, 1.0f);
 
     if (AreNormalsNeeded)
     {
