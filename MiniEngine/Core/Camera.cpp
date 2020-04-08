@@ -276,6 +276,8 @@ void VRCamera::Setup(float nearPlane, float midPlane,
 	}
 	else
 	{
-		m_cameras[CENTER].SetZRange(midPlane, farPlane);
+		m_cameras[LEFT].SetZRange(nearPlane, midPlane);
+		m_cameras[RIGHT].SetZRange(nearPlane, midPlane);
+		m_cameras[CENTER].SetZRange(midPlane - 10.0f, farPlane);
 	}
 }

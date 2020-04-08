@@ -17,5 +17,5 @@ float Max(float f1, float f2)
 void main( uint3 DTid : SV_DispatchThreadID )
 {
 	CombinedDepth[DTid.xy] = Min(LeftDepth[DTid.xy], RightDepth[DTid.xy]);
-	//CombinedDepth[DTid.xy] = 0.5f;
+	//CombinedDepth[DTid.xy] = LeftDepth[DTid.xy];
 }

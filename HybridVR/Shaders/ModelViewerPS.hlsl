@@ -332,10 +332,10 @@ MRT main(VSOutput vsOutput)
 
 	if (vsOutput.curCam == 2)
 	{
-		float depth = (texCenterDepth[vsOutput.position.xy] + 1.0f) / 2.0f;
-		//if (depth == 0.0f)
+		float depth = texCenterDepth[vsOutput.position.xy];
+		if (depth > 0.0f)
 		{
-			mrt.Color = float4(depth, depth, depth, depth); //float4(0, 0, 0, 0.5);
+			mrt.Color = float4(0, 0, 0, 0);
 			return mrt;
 		}
 	}
