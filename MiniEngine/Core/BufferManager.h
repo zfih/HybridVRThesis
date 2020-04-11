@@ -81,6 +81,17 @@ namespace Graphics
     extern ByteAddressBuffer g_FXAAWorkQueue;
     extern TypedBuffer g_FXAAColorQueue;
 
+	struct QuadPos // TODO: Maybe this should be moved somewhere else
+	{
+		XMVECTOR topLeft;
+		XMVECTOR topRight;
+		XMVECTOR bottomLeft;
+		XMVECTOR bottomRight;
+	};
+
+	extern QuadPos g_qL;
+	extern QuadPos g_qR;
+
     void InitializeRenderingBuffers(uint32_t NativeWidth, uint32_t NativeHeight );
     void ResizeDisplayDependentBuffers(uint32_t NativeWidth, uint32_t NativeHeight);
     void DestroyRenderingBuffers();

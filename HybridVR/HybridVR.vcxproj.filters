@@ -243,7 +243,16 @@
     <FxCompile Include="*Lib.hlsl" />
     <FxCompile Include="*Lib.hlsl" />
     <FxCompile Include="*Lib.hlsl" />
-    <FxCompile Include="..\MiniEngine\Core\CombineDepthsCS.hlsl">
+    <FxCompile Include="*Lib.hlsl" />
+    <FxCompile Include="*Lib.hlsl" />
+    <FxCompile Include="*Lib.hlsl" />
+    <FxCompile Include="*Lib.hlsl" />
+    <FxCompile Include="*Lib.hlsl" />
+    <FxCompile Include="*Lib.hlsl" />
+    <FxCompile Include="..\MiniEngine\ModelViewer\Shaders\CombineDepthsCS.hlsl">
+      <Filter>Shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="..\MiniEngine\ModelViewer\Shaders\CombineColourCS.hlsl">
       <Filter>Shaders</Filter>
     </FxCompile>
   </ItemGroup>

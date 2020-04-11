@@ -55,6 +55,7 @@
 #include "CompiledShaders/MissShadowsLib.h"
 
 #include "CompiledShaders/CombineDepthsCS.h"
+#include "CompiledShaders/CombineColourCS.h"
 
 #include "RaytracingHlslCompat.h"
 #include "ModelViewerRayTracing.h"
@@ -233,6 +234,8 @@ private:
 
 	RootSignature m_ComputeRootSig;
 	ComputePSO m_CombineDepthPSO;
+	RootSignature m_CombineColourSig;
+	ComputePSO m_CombineColourPSO;
 
 	D3D12_CPU_DESCRIPTOR_HANDLE m_DefaultSampler;
 	D3D12_CPU_DESCRIPTOR_HANDLE m_ShadowSampler;
@@ -960,6 +963,20 @@ void D3D12RaytracingMiniEngineSample::Startup(void)
 									   sizeof(g_pCombineDepthsCS));
 	m_CombineDepthPSO.Finalize();
 
+	m_CombineColourSig.Reset(3, 0);
+
+	m_CombineColourSig[0].InitAsConstantBuffer(0, D3D12_SHADER_VISIBILITY_ALL);
+	m_CombineColourSig[1].InitAsConstantBuffer(1, D3D12_SHADER_VISIBILITY_ALL);
+	m_CombineColourSig[2].InitAsDescriptorRange(
+		D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 0, 1, D3D12_SHADER_VISIBILITY_ALL);
+	m_CombineColourSig.Finalize(L"D3D12RaytracingMiniEngineCombineColour",
+		D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
+
+	m_CombineColourPSO.SetRootSignature(m_CombineColourSig);
+	m_CombineColourPSO.SetComputeShader(g_pCombineColourCS,
+		sizeof(g_pCombineColourCS));
+	m_CombineColourPSO.Finalize();
+
     Lighting::InitializeResources();
 
     m_ExtraTextures[0] = g_SSAOFullScreen.GetSRV();
@@ -1050,7 +1067,7 @@ void D3D12RaytracingMiniEngineSample::Startup(void)
     m_CameraPosArray[4].heading = -1.236f;
     m_CameraPosArray[4].pitch = 0.0f;
 
-	m_Camera.Setup(1.0f, 1000.0f, 3000.0f, false);
+	m_Camera.Setup(1.0f, 500.0f, 3000.0f, false);
     //m_Camera.SetZRange(1.0f, 10000.0f);
 
     m_CameraController.reset(new VRCameraController(m_Camera, Vector3(kYUnitVector)));
@@ -1462,11 +1479,6 @@ void D3D12RaytracingMiniEngineSample::RenderScene(UINT cam)
 		cmpContext.Dispatch2D(g_SceneLeftDepthBuffer.GetWidth(), 
 							  g_SceneLeftDepthBuffer.GetHeight());
 
-		/*cmpContext.TransitionResource(g_SceneLeftDepthBuffer,
-			D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE, true);
-		cmpContext.TransitionResource(g_SceneRightDepthBuffer,
-			D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE, true);*/
-
 		cmpContext.Finish();
 
 		curDepthBuf = &g_SceneLeftDepthBuffer;
@@ -1671,6 +1683,32 @@ void D3D12RaytracingMiniEngineSample::RenderScene(UINT cam)
 		D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE, true);
 
 	gfxContext.Finish();
+
+	if (cam == 2)
+	{
+		ComputeContext& cmpContext =
+			ComputeContext::Begin(L"Combine Colour", true);
+
+		cmpContext.SetRootSignature(m_CombineColourSig);
+		cmpContext.SetPipelineState(m_CombineColourPSO);
+
+		/*cmpContext.TransitionResource(g_SceneLeftDepthBuffer,
+			D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE, true);
+		cmpContext.TransitionResource(g_SceneRightDepthBuffer,
+			D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE, true);
+		cmpContext.TransitionResource(g_SceneCenterDepthBuffer,
+			D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE, true);*/
+
+		cmpContext.SetDynamicConstantBufferView(0, sizeof(g_qL), &g_qL);
+		cmpContext.SetDynamicConstantBufferView(1, sizeof(g_qR), &g_qR);
+		cmpContext.SetDynamicDescriptor(
+			1, 0, g_SceneColorBuffer.GetUAV());
+
+		cmpContext.Dispatch2D(g_SceneLeftDepthBuffer.GetWidth(),
+			g_SceneLeftDepthBuffer.GetHeight());
+
+		cmpContext.Finish();
+	}
 }
 
 //
