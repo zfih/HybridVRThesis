@@ -13,6 +13,7 @@
 
 #include "pch.h"
 #include "BufferManager.h"
+#include "../../HybridVR/stdafx.h"
 #include "GraphicsCore.h"
 #include "CommandContext.h"
 #include "EsramAllocator.h"
@@ -80,8 +81,7 @@ namespace Graphics
     // For testing GenerateMipMaps()
     ColorBuffer g_GenMipsBuffer;
 
-    //DXGI_FORMAT DefaultHdrColorFormat = DXGI_FORMAT_R11G11B10_FLOAT;
-    DXGI_FORMAT DefaultHdrColorFormat = DXGI_FORMAT_R8G8B8A8_UNORM;
+    DXGI_FORMAT DefaultHdrColorFormat = DXGI_FORMAT_R11G11B10_FLOAT;
 }
 
 #define T2X_COLOR_FORMAT DXGI_FORMAT_R10G10B10A2_UNORM
@@ -91,7 +91,7 @@ namespace Graphics
 void Graphics::InitializeRenderingBuffers( uint32_t bufferWidth, uint32_t bufferHeight )
 {
     GraphicsContext& InitContext = GraphicsContext::Begin();
-
+    [[]] [] (){}();
     const uint32_t bufferWidth1 = (bufferWidth + 1) / 2;
     const uint32_t bufferWidth2 = (bufferWidth + 3) / 4;
     const uint32_t bufferWidth3 = (bufferWidth + 7) / 8;
@@ -121,7 +121,7 @@ void Graphics::InitializeRenderingBuffers( uint32_t bufferWidth, uint32_t buffer
             g_MinMaxDepth16.Create(L"MinMaxDepth 16x16", bufferWidth4, bufferHeight4, 1, DXGI_FORMAT_R32_UINT, esram );
             g_MinMaxDepth32.Create(L"MinMaxDepth 32x32", bufferWidth5, bufferHeight5, 1, DXGI_FORMAT_R32_UINT, esram );
 
-            g_SceneDepthBuffer.Create( L"Scene Depth Buffer", bufferWidth, bufferHeight, DSV_FORMAT, esram );
+            g_SceneDepthBuffer.CreateArray( L"Scene Depth Buffer", bufferWidth, bufferHeight, 2, DSV_FORMAT);
 
             esram.PushStack(); // Begin opaque geometry
 

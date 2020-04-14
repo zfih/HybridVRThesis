@@ -219,8 +219,8 @@ void CalculateUVDerivatives(float3 normal, float3 dpdu, float3 dpdv, float3 p, f
     ddY = abs(mul(inverse, pointOffset));
 }
 
-[shader("closesthit")]
-void Hit(inout RayPayload payload, in BuiltInTriangleIntersectionAttributes attr)
+[shader("anyhit")]
+void AnyHit(inout RayPayload payload, in BuiltInTriangleIntersectionAttributes attr)
 {
     payload.RayHitT = RayTCurrent();
     if (payload.SkipShading)
@@ -283,62 +283,13 @@ void Hit(inout RayPayload payload, in BuiltInTriangleIntersectionAttributes attr
     const float3 viewDir = normalize(-WorldRayDirection());
     uint materialInstanceId = info.m_materialInstanceId;
 
-    const float3 diffuseColor = g_localTexture.SampleGrad(g_s0, uv, ddx, ddy).rgb;
-    float3 normal;
-    float3 specularAlbedo = float3(0.56, 0.56, 0.56);
-    float specularMask = 0;     // TODO: read the texture
-    float gloss = 128.0;
-    {
-        normal = g_localNormal.SampleGrad(g_s0, uv, ddx, ddy).rgb * 2.0 - 1.0;
-        AntiAliasSpecular(normal, gloss);
-        float3x3 tbn = float3x3(vsTangent, vsBitangent, vsNormal);
-        normal = normalize(mul(normal, tbn));
-    }
-    
-    float3 outputColor = AmbientColor * diffuseColor * texSSAO[DispatchRaysIndex().xy];
-
-    float shadow = 1.0;
-    if (UseShadowRays)
-    {
-        float3 shadowDirection = SunDirection;
-        float3 shadowOrigin = worldPosition;
-        RayDesc rayDesc = { shadowOrigin,
-            0.1f,
-            shadowDirection,
-            FLT_MAX };
-        RayPayload shadowPayload;
-        shadowPayload.SkipShading = true;
-        shadowPayload.RayHitT = FLT_MAX;
-        TraceRay(g_accel, RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH,~0,0,1,0,rayDesc,shadowPayload);
-        if (shadowPayload.RayHitT < FLT_MAX)
-        {
-            shadow = 0.0;
-        }
-    }
-    else
-    {
-        // TODO: This could be pre-calculated once per vertex if this mul per pixel was a concern
-        float4 shadowCoord = mul(ModelToShadow, float4(worldPosition, 1.0f));
-        shadow = GetShadow(shadowCoord.xyz);
-    }
-    
-    outputColor +=  shadow * ApplyLightCommon(
-        diffuseColor,
-        specularAlbedo,
-        specularMask,
-        gloss,
-        normal,
-        viewDir,
-        SunDirection,
-        SunColor);
-
-    // TODO: Should be passed in via material info
-    if (IsReflection)
-    {
-        float reflectivity = normals[DispatchRaysIndex().xy].w;
-		outputColor = g_screenOutput[int3(DispatchRaysIndex().xy, g_dynamic.curCam)].rgb + reflectivity * outputColor;
-    }
+    const float4 textureSample = g_localTexture.SampleGrad(g_s0, uv, ddx, ddy);
 
 
-	g_screenOutput[int3(DispatchRaysIndex().xy, g_dynamic.curCam)] = float4(outputColor, 1);
+    if(textureSample.a == 1)
+    {
+	    /*g_screenOutput[int3(DispatchRaysIndex().xy, g_dynamic.curCam)] = float4(1,0,0, 1);
+        AcceptHitAndEndSearch();*/
+        IgnoreHit();
+    }
 }
