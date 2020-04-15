@@ -17,8 +17,6 @@
     "RootConstants(b0, num32BitConstants = 6), " \
     "SRV(t2, visibility = SHADER_VISIBILITY_PIXEL)," \
     "DescriptorTable(UAV(u0, numDescriptors = 1)), " \
-	"CBV(b1, visibility = SHADER_VISIBILITY_VERTEX), " \
-	"CBV(b2, visibility = SHADER_VISIBILITY_VERTEX), " \
     "StaticSampler(s0," \
         "addressU = TEXTURE_ADDRESS_CLAMP," \
         "addressV = TEXTURE_ADDRESS_CLAMP," \

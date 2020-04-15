@@ -185,6 +185,12 @@
       <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Profile|x64'"> -HV 2017 -Zpr </AdditionalOptions>
     </FxCompile>
     <FxCompile Include="..\MiniEngine\ModelViewer\Shaders\CombineColourCS.hlsl" />
+    <FxCompile Include="..\MiniEngine\ModelViewer\Shaders\CombineColourPS.hlsl">
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Pixel</ShaderType>
+    </FxCompile>
+    <FxCompile Include="..\MiniEngine\ModelViewer\Shaders\CombineColourVS.hlsl">
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Vertex</ShaderType>
+    </FxCompile>
     <FxCompile Include="..\MiniEngine\ModelViewer\Shaders\CombineDepthsCS.hlsl" />
     <FxCompile Include="Shaders\DepthViewerPS.hlsl">
       <ShaderType>Pixel</ShaderType>

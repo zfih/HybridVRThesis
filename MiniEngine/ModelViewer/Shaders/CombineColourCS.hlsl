@@ -1,4 +1,6 @@
 
+// TODO: Delete this file
+
 cbuffer qL : register(b0)
 {
 	float4 leftTopLeft;
@@ -21,16 +23,14 @@ void main(uint3 DTid : SV_DispatchThreadID)
 {
 	if (ColourTex[int3(DTid.xy, 0)].x == 0.0f && 
 		ColourTex[int3(DTid.xy, 0)].y == 0.0f && 
-		ColourTex[int3(DTid.xy, 0)].z == 0.0f && 
-		ColourTex[int3(DTid.xy, 0)].w == 0.0f)
+		ColourTex[int3(DTid.xy, 0)].z == 0.0f)
 	{
 		ColourTex[int3(DTid.xy, 0)] = ColourTex[int3(DTid.xy, 2)];
 	}
 
 	if (ColourTex[int3(DTid.xy, 1)].x == 0.0f &&
 		ColourTex[int3(DTid.xy, 1)].y == 0.0f &&
-		ColourTex[int3(DTid.xy, 1)].z == 0.0f &&
-		ColourTex[int3(DTid.xy, 1)].w == 0.0f)
+		ColourTex[int3(DTid.xy, 1)].z == 0.0f)
 	{
 		ColourTex[int3(DTid.xy, 1)] = ColourTex[int3(DTid.xy, 2)];
 	}

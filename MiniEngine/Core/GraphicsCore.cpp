@@ -271,6 +271,12 @@ static HRESULT EnableExperimentalShaderModels() { return S_OK; }
 // Initialize the DirectX resources required to run.
 void Graphics::Initialize(void)
 {
+    /*ComPtr<ID3D12Debug> spDebugController0;
+    ComPtr<ID3D12Debug1> spDebugController1;
+    D3D12GetDebugInterface(IID_PPV_ARGS(&spDebugController0));
+    spDebugController0->QueryInterface(IID_PPV_ARGS(&spDebugController1));
+    spDebugController1->SetEnableGPUBasedValidation(true);*/
+
     ASSERT(s_SwapChain1 == nullptr, "Graphics has already been initialized");
 
     Microsoft::WRL::ComPtr<ID3D12Device> pDevice;
@@ -481,13 +487,11 @@ void Graphics::Initialize(void)
     // Common state was moved to GraphicsCommon.*
     InitializeCommonState();
 
-    s_PresentRS.Reset(6, 2);
+    s_PresentRS.Reset(4, 2);
     s_PresentRS[0].InitAsDescriptorRange(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 0, 2);
     s_PresentRS[1].InitAsConstants(0, 6, D3D12_SHADER_VISIBILITY_ALL);
     s_PresentRS[2].InitAsBufferSRV(2, D3D12_SHADER_VISIBILITY_PIXEL);
 	s_PresentRS[3].InitAsDescriptorRange(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 0, 1);
-	s_PresentRS[4].InitAsConstantBuffer(1, D3D12_SHADER_VISIBILITY_VERTEX);
-	s_PresentRS[5].InitAsConstantBuffer(2, D3D12_SHADER_VISIBILITY_VERTEX);
     s_PresentRS.InitStaticSampler(0, SamplerLinearClampDesc);
     s_PresentRS.InitStaticSampler(1, SamplerPointClampDesc);
     s_PresentRS.Finalize(L"Present");
@@ -712,8 +716,6 @@ void Graphics::PreparePresentLDR(void)
         Context.TransitionResource(UpsampleDest, D3D12_RESOURCE_STATE_RENDER_TARGET);
         Context.SetRenderTarget(UpsampleDest.GetRTV());
 		Context.SetRenderTarget(UpsampleDest.GetRTV());
-		Context.SetDynamicConstantBufferView(4, sizeof(g_qL), &g_qL);
-		Context.SetDynamicConstantBufferView(5, sizeof(g_qR), &g_qR);
         Context.SetViewportAndScissor(0, 0, g_DisplayWidth, g_DisplayHeight);
         Context.Draw(vertCount);
     }
