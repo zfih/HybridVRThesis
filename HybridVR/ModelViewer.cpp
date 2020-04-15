@@ -197,12 +197,14 @@ public:
 	virtual void Cleanup(void) override;
 
 	virtual void Update(float deltaT) override;
-	virtual void RenderScene(UINT cam) override;
+	virtual void RenderScene() override;
 	virtual void RenderUI(class GraphicsContext&) override;
 	virtual void Raytrace(class GraphicsContext&, UINT cam, 
 						  DepthBuffer* curDepthBuf);
 
 	void SetCameraToPredefinedPosition(int cameraPosition);
+
+	void CreateQuadVerts();
 
 private:
 
@@ -217,6 +219,9 @@ private:
 	                     DepthBuffer& depth);
 	void RaytraceReflections(GraphicsContext& context, const Math::Camera& camera, ColorBuffer& colorTarget,
 	                         DepthBuffer& depth, ColorBuffer& normals);
+
+	StructuredBuffer m_leftQuadVertBuf;
+	StructuredBuffer m_rightQuadVertBuf;
 
 	VRCamera m_Camera;
 	std::auto_ptr<VRCameraController> m_CameraController;
@@ -1091,6 +1096,8 @@ void D3D12RaytracingMiniEngineSample::Startup(void)
     m_ExtraTextures[3] = Lighting::m_LightShadowArray.GetSRV();
     m_ExtraTextures[4] = Lighting::m_LightGrid.GetSRV();
     m_ExtraTextures[5] = Lighting::m_LightGridBitMask.GetSRV();
+
+	CreateQuadVerts();
 }
 
 void D3D12RaytracingMiniEngineSample::Cleanup(void)
@@ -1184,6 +1191,95 @@ void D3D12RaytracingMiniEngineSample::Update(float deltaT)
 	m_MainScissor.bottom = (LONG)g_SceneColorBuffer.GetHeight();
 }
 
+void D3D12RaytracingMiniEngineSample::CreateQuadVerts()
+{
+	{
+		__declspec(align(16)) const float vertices[] =
+		{
+			g_qL.topLeft.GetX(), g_qL.topLeft.GetY(), g_qL.topLeft.GetZ(), // Position // TODO: Does the quad need to be divided by w?
+			0, 0, // UV
+			0, 0, 0, // Normal (unused)
+			0, 0, 0, // Tangent (unused)
+			0, 0, 0, // Bitangent (unused)
+
+			g_qL.bottomLeft.GetX(), g_qL.bottomLeft.GetY(), g_qL.bottomLeft.GetZ(), // Position
+			0, 1, // UV
+			0, 0, 0, // Normal (unused)
+			0, 0, 0, // Tangent (unused)
+			0, 0, 0, // Bitangent (unused)
+
+			g_qL.topRight.GetX(), g_qL.topRight.GetY(), g_qL.topRight.GetZ(), // Position
+			1, 0, // UV
+			0, 0, 0, // Normal (unused)
+			0, 0, 0, // Tangent (unused)
+			0, 0, 0, // Bitangent (unused)
+
+			g_qL.topRight.GetX(), g_qL.topRight.GetY(), g_qL.topRight.GetZ(), // Position
+			1, 0, // UV
+			0, 0, 0, // Normal (unused)
+			0, 0, 0, // Tangent (unused)
+			0, 0, 0, // Bitangent (unused)
+
+			g_qL.bottomLeft.GetX(), g_qL.bottomLeft.GetY(), g_qL.bottomLeft.GetZ(), // Position
+			0, 1, // UV
+			0, 0, 0, // Normal (unused)
+			0, 0, 0, // Tangent (unused)
+			0, 0, 0, // Bitangent (unused)
+
+			g_qL.bottomRight.GetX(), g_qL.bottomRight.GetY(), g_qL.bottomRight.GetZ(), // Position
+			1, 1, // UV
+			0, 0, 0, // Normal (unused)
+			0, 0, 0, // Tangent (unused)
+			0, 0, 0, // Bitangent (unused)
+		};
+
+		m_leftQuadVertBuf.Create(L"Left Quad Vertex Buffer", 6, sizeof(float) * 14, vertices);
+	}
+
+	{
+		__declspec(align(16)) const float vertices[] =
+		{
+			g_qR.topLeft.GetX(), g_qR.topLeft.GetY(), g_qR.topLeft.GetZ(), // Position // TODO: Does the quad need to be divided by w?
+			0, 0, // UV
+			0, 0, 0, // Normal (unused)
+			0, 0, 0, // Tangent (unused)
+			0, 0, 0, // Bitangent (unused)
+
+			g_qR.bottomLeft.GetX(), g_qR.bottomLeft.GetY(), g_qR.bottomLeft.GetZ(), // Position
+			0, 1, // UV
+			0, 0, 0, // Normal (unused)
+			0, 0, 0, // Tangent (unused)
+			0, 0, 0, // Bitangent (unused)
+
+			g_qR.topRight.GetX(), g_qR.topRight.GetY(), g_qR.topRight.GetZ(), // Position
+			1, 0, // UV
+			0, 0, 0, // Normal (unused)
+			0, 0, 0, // Tangent (unused)
+			0, 0, 0, // Bitangent (unused)
+
+			g_qR.topRight.GetX(), g_qR.topRight.GetY(), g_qR.topRight.GetZ(), // Position
+			1, 0, // UV
+			0, 0, 0, // Normal (unused)
+			0, 0, 0, // Tangent (unused)
+			0, 0, 0, // Bitangent (unused)
+
+			g_qR.bottomLeft.GetX(), g_qR.bottomLeft.GetY(), g_qR.bottomLeft.GetZ(), // Position
+			0, 1, // UV
+			0, 0, 0, // Normal (unused)
+			0, 0, 0, // Tangent (unused)
+			0, 0, 0, // Bitangent (unused)
+
+			g_qR.bottomRight.GetX(), g_qR.bottomRight.GetY(), g_qR.bottomRight.GetZ(), // Position
+			1, 1, // UV
+			0, 0, 0, // Normal (unused)
+			0, 0, 0, // Tangent (unused)
+			0, 0, 0, // Bitangent (unused)
+		};
+
+		m_rightQuadVertBuf.Create(L"Right Quad Vertex Buffer", 6, sizeof(float) * 14, vertices);
+	}
+}
+
 void D3D12RaytracingMiniEngineSample::RenderObjects(GraphicsContext& gfxContext, const Matrix4& ViewProjMat,
                                                     UINT curCam, eObjectFilter Filter)
 {
@@ -1229,6 +1325,14 @@ void D3D12RaytracingMiniEngineSample::RenderObjects(GraphicsContext& gfxContext,
 
 		gfxContext.DrawIndexed(indexCount, startIndex, baseVertex);
 	}
+
+	vsConstants.modelToProjection = Matrix4(XMMatrixScaling(2000, 2000, 1));
+	
+	gfxContext.SetDynamicDescriptor(2, 0, g_SceneColorBuffer.GetSRV());
+	gfxContext.SetVertexBuffer(0, m_leftQuadVertBuf.VertexBufferView());
+	gfxContext.Draw(6);
+
+	gfxContext.SetVertexBuffer(0, m_Model.m_VertexBuffer.VertexBufferView());
 }
 
 
@@ -1423,7 +1527,7 @@ void D3D12RaytracingMiniEngineSample::RenderLightShadows(GraphicsContext& gfxCon
 	++LightIndex;
 }
 
-void D3D12RaytracingMiniEngineSample::RenderScene(UINT cam)
+void D3D12RaytracingMiniEngineSample::RenderScene()
 {
 	const bool skipDiffusePass = 
         rayTracingMode == RTM_DIFFUSE_WITH_SHADOWMAPS ||
@@ -1450,49 +1554,14 @@ void D3D12RaytracingMiniEngineSample::RenderScene(UINT cam)
         }
         s_ShowLightCounts = ShowWaveTileCounts;
     }
-
-	DepthBuffer* curDepthBuf;
-	if (cam == 0)
-	{
-		curDepthBuf = &g_SceneLeftDepthBuffer;
-	}
-	else if (cam == 1)
-	{
-		curDepthBuf = &g_SceneRightDepthBuffer;
-	}
-	else if (cam == 2)
-	{
-		ComputeContext& cmpContext = 
-			ComputeContext::Begin(L"Combine Depth Buffers", true);
-		
-		cmpContext.SetRootSignature(m_ComputeRootSig);
-		cmpContext.SetPipelineState(m_CombineDepthPSO);
-
-		cmpContext.TransitionResource(g_SceneLeftDepthBuffer, 
-			D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-		cmpContext.TransitionResource(g_SceneRightDepthBuffer, 
-			D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-		cmpContext.TransitionResource(g_SceneCenterDepthBuffer,
-			D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-
-		cmpContext.SetDynamicDescriptor(
-			0, 0, g_SceneLeftDepthBuffer.GetDepthSRV());
-		cmpContext.SetDynamicDescriptor(
-			1, 0, g_SceneRightDepthBuffer.GetDepthSRV());
-		cmpContext.SetDynamicDescriptor(
-			2, 0, g_SceneCenterDepthBuffer.GetUAV());
-
-		cmpContext.Dispatch2D(g_SceneLeftDepthBuffer.GetWidth(), 
-							  g_SceneLeftDepthBuffer.GetHeight());
-
-		cmpContext.Finish();
-
-		curDepthBuf = &g_SceneLeftDepthBuffer;
-	}
     
-	GraphicsContext& gfxContext = GraphicsContext::Begin(L"Scene Render");
+	GraphicsContext& leftGfxContext = GraphicsContext::Begin(L"Scene Render Left");
+	GraphicsContext& rightGfxContext = GraphicsContext::Begin(L"Scene Render Right");
+	GraphicsContext& centerGfxContext = GraphicsContext::Begin(L"Scene Render Center");
 
-    ParticleEffects::Update(gfxContext.GetComputeContext(), Graphics::GetFrameTime());
+    ParticleEffects::Update(leftGfxContext.GetComputeContext(), Graphics::GetFrameTime());
+    ParticleEffects::Update(rightGfxContext.GetComputeContext(), Graphics::GetFrameTime());
+    ParticleEffects::Update(centerGfxContext.GetComputeContext(), Graphics::GetFrameTime());
 
     uint32_t FrameIndex = TemporalEffects::GetFrameIndexMod2();
 
@@ -1522,60 +1591,124 @@ void D3D12RaytracingMiniEngineSample::RenderScene(UINT cam)
     psConstants.FrameIndexMod2 = FrameIndex;
 
     // Set the default state for command lists
-    auto& pfnSetupGraphicsState = [&](void)
+    auto& pfnSetupGraphicsState = [&](GraphicsContext* gfxContext)
     {
-        gfxContext.SetRootSignature(m_RootSig);
-        gfxContext.SetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-        gfxContext.SetIndexBuffer(m_Model.m_IndexBuffer.IndexBufferView());
-        gfxContext.SetVertexBuffer(0, m_Model.m_VertexBuffer.VertexBufferView());
+        gfxContext->SetRootSignature(m_RootSig);
+        gfxContext->SetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+        gfxContext->SetIndexBuffer(m_Model.m_IndexBuffer.IndexBufferView());
+        gfxContext->SetVertexBuffer(0, m_Model.m_VertexBuffer.VertexBufferView());
     };
 
-    pfnSetupGraphicsState();
+    pfnSetupGraphicsState(&leftGfxContext);
+    pfnSetupGraphicsState(&rightGfxContext);
+    pfnSetupGraphicsState(&centerGfxContext);
 
-    RenderLightShadows(gfxContext, cam);
+    RenderLightShadows(leftGfxContext, 0);
+    RenderLightShadows(rightGfxContext, 1);
+    RenderLightShadows(centerGfxContext, 2);
 
     {
-        ScopedTimer _prof(L"Z PrePass", gfxContext);
+        ScopedTimer _prof(L"Z PrePass", leftGfxContext);
 
-        gfxContext.SetDynamicConstantBufferView(1, sizeof(psConstants), &psConstants);
+		leftGfxContext.SetDynamicConstantBufferView(1, sizeof(psConstants), &psConstants);
+		rightGfxContext.SetDynamicConstantBufferView(1, sizeof(psConstants), &psConstants);
+		centerGfxContext.SetDynamicConstantBufferView(1, sizeof(psConstants), &psConstants);
 
         {
-            ScopedTimer _prof(L"Opaque", gfxContext);
+            ScopedTimer _prof(L"Opaque", leftGfxContext);
             {
-                gfxContext.TransitionResource(*curDepthBuf, D3D12_RESOURCE_STATE_DEPTH_WRITE, true);
-				gfxContext.ClearDepth(*curDepthBuf);
+				leftGfxContext.TransitionResource(g_SceneLeftDepthBuffer, D3D12_RESOURCE_STATE_DEPTH_WRITE, true);
+				rightGfxContext.TransitionResource(g_SceneRightDepthBuffer, D3D12_RESOURCE_STATE_DEPTH_WRITE, true);
+				centerGfxContext.TransitionResource(g_SceneCenterDepthBuffer, D3D12_RESOURCE_STATE_DEPTH_WRITE, true);
+				leftGfxContext.ClearDepth(g_SceneLeftDepthBuffer);
+				rightGfxContext.ClearDepth(g_SceneRightDepthBuffer);
+				centerGfxContext.ClearDepth(g_SceneCenterDepthBuffer);
 
-                gfxContext.SetPipelineState(m_DepthPSO[0]);
-                gfxContext.SetDepthStencilTarget(curDepthBuf->GetDSV());
+				leftGfxContext.SetPipelineState(m_DepthPSO[0]);
+				rightGfxContext.SetPipelineState(m_DepthPSO[0]);
+				centerGfxContext.SetPipelineState(m_DepthPSO[0]);
 
-                gfxContext.SetViewportAndScissor(m_MainViewport, m_MainScissor);
+				leftGfxContext.SetViewportAndScissor(m_MainViewport, m_MainScissor);
+				rightGfxContext.SetViewportAndScissor(m_MainViewport, m_MainScissor);
+				centerGfxContext.SetViewportAndScissor(m_MainViewport, m_MainScissor);
             }
 
-            RenderObjects(gfxContext, m_Camera[cam]->GetViewProjMatrix(), cam, kOpaque);
+			leftGfxContext.SetDepthStencilTarget(g_SceneLeftDepthBuffer.GetDSV());
+            RenderObjects(leftGfxContext, m_Camera[0]->GetViewProjMatrix(), 0, kOpaque);
+
+			rightGfxContext.SetDepthStencilTarget(g_SceneRightDepthBuffer.GetDSV());
+			RenderObjects(rightGfxContext, m_Camera[1]->GetViewProjMatrix(), 1, kOpaque);
+
+			centerGfxContext.SetDepthStencilTarget(g_SceneCenterDepthBuffer.GetDSV());
+			RenderObjects(centerGfxContext, m_Camera[2]->GetViewProjMatrix(), 2, kOpaque);
         }
 
         {
-            ScopedTimer _prof(L"Cutout", gfxContext);
+            ScopedTimer _prof(L"Cutout", leftGfxContext);
             {
-                gfxContext.SetPipelineState(m_CutoutDepthPSO[0]);
+				leftGfxContext.SetPipelineState(m_CutoutDepthPSO[0]);
+				rightGfxContext.SetPipelineState(m_CutoutDepthPSO[0]);
+				centerGfxContext.SetPipelineState(m_CutoutDepthPSO[0]);
             }
-            RenderObjects(gfxContext, m_Camera[cam]->GetViewProjMatrix(), cam, kCutout);
+            RenderObjects(leftGfxContext, m_Camera[0]->GetViewProjMatrix(), 0, kCutout);
+            RenderObjects(rightGfxContext, m_Camera[1]->GetViewProjMatrix(), 1, kCutout);
+            RenderObjects(centerGfxContext, m_Camera[2]->GetViewProjMatrix(), 2, kCutout);
         }
     }
 
-    SSAO::Render(gfxContext, *m_Camera[cam], curDepthBuf);
+	leftGfxContext.TransitionResource(g_SceneLeftDepthBuffer,
+		D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+	rightGfxContext.TransitionResource(g_SceneRightDepthBuffer,
+		D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+	centerGfxContext.TransitionResource(g_SceneCenterDepthBuffer,
+		D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+	centerGfxContext.TransitionResource(g_SceneCenterColourDepthBuffer,
+		D3D12_RESOURCE_STATE_UNORDERED_ACCESS, true);
+
+	{
+		ComputeContext& cmpContext =
+			ComputeContext::Begin(L"Combine Depth Buffers", true);
+
+		cmpContext.SetRootSignature(m_ComputeRootSig);
+		cmpContext.SetPipelineState(m_CombineDepthPSO);
+
+		/*cmpContext.TransitionResource(g_SceneLeftDepthBuffer,
+			D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+		cmpContext.TransitionResource(g_SceneRightDepthBuffer,
+			D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+		cmpContext.TransitionResource(g_SceneCenterColourDepthBuffer,
+			D3D12_RESOURCE_STATE_UNORDERED_ACCESS);*/
+
+		cmpContext.SetDynamicDescriptor(
+			0, 0, g_SceneLeftDepthBuffer.GetDepthSRV());
+		cmpContext.SetDynamicDescriptor(
+			1, 0, g_SceneRightDepthBuffer.GetDepthSRV());
+		cmpContext.SetDynamicDescriptor(
+			2, 0, g_SceneCenterColourDepthBuffer.GetUAV());
+
+		cmpContext.Dispatch2D(g_SceneLeftDepthBuffer.GetWidth(),
+			g_SceneLeftDepthBuffer.GetHeight());
+
+		cmpContext.Finish();
+	}
+
+    SSAO::Render(leftGfxContext, *m_Camera[0], &g_SceneLeftDepthBuffer);
+    SSAO::Render(rightGfxContext, *m_Camera[1], &g_SceneRightDepthBuffer);
+    SSAO::Render(centerGfxContext, *m_Camera[2], &g_SceneCenterDepthBuffer);
 
     if (!skipDiffusePass)
     {
-        Lighting::FillLightGrid(gfxContext, *m_Camera[cam], curDepthBuf);
+        Lighting::FillLightGrid(leftGfxContext, *m_Camera[0], &g_SceneLeftDepthBuffer);
+        Lighting::FillLightGrid(rightGfxContext, *m_Camera[1], &g_SceneRightDepthBuffer);
+        Lighting::FillLightGrid(centerGfxContext, *m_Camera[2], &g_SceneCenterDepthBuffer);
 
         if (!SSAO::DebugDraw)
         {
-            ScopedTimer _prof(L"Main Render", gfxContext);
+            ScopedTimer _prof(L"Main Render", leftGfxContext);
             {
-                gfxContext.TransitionResource(g_SceneColorBuffer, D3D12_RESOURCE_STATE_RENDER_TARGET, true);
-                gfxContext.TransitionResource(g_SceneNormalBuffer, D3D12_RESOURCE_STATE_RENDER_TARGET, true);
-                gfxContext.ClearColor(g_SceneColorBuffer, cam);
+				leftGfxContext.TransitionResource(g_SceneColorBuffer, D3D12_RESOURCE_STATE_RENDER_TARGET, true);
+				leftGfxContext.TransitionResource(g_SceneNormalBuffer, D3D12_RESOURCE_STATE_RENDER_TARGET, true);
+				leftGfxContext.ClearColor(g_SceneColorBuffer);
             }
         }
     }
@@ -1584,19 +1717,33 @@ void D3D12RaytracingMiniEngineSample::RenderScene(UINT cam)
     {
         if (!SSAO::DebugDraw)
         {
-            pfnSetupGraphicsState();
+            pfnSetupGraphicsState(&leftGfxContext);
+            pfnSetupGraphicsState(&rightGfxContext);
+            pfnSetupGraphicsState(&centerGfxContext);
             {
-                ScopedTimer _prof(L"Render Shadow Map", gfxContext);
+                ScopedTimer _prof(L"Render Shadow Map", leftGfxContext);
 
                 m_SunShadow.UpdateMatrix(-m_SunDirection, Vector3(0, -500.0f, 0), Vector3(ShadowDimX, ShadowDimY, ShadowDimZ),
                     (uint32_t)g_ShadowBuffer.GetWidth(), (uint32_t)g_ShadowBuffer.GetHeight(), 16);
 
-                g_ShadowBuffer.BeginRendering(gfxContext);
-                gfxContext.SetPipelineState(m_ShadowPSO);
-                RenderObjects(gfxContext, m_SunShadow.GetViewProjMatrix(), cam, kOpaque);
-                gfxContext.SetPipelineState(m_CutoutShadowPSO);
-                RenderObjects(gfxContext, m_SunShadow.GetViewProjMatrix(), cam, kCutout);
-                g_ShadowBuffer.EndRendering(gfxContext);
+                g_ShadowBuffer.BeginRendering(leftGfxContext);
+                g_ShadowBuffer.BeginRendering(rightGfxContext);
+                g_ShadowBuffer.BeginRendering(centerGfxContext);
+				leftGfxContext.SetPipelineState(m_ShadowPSO);
+				rightGfxContext.SetPipelineState(m_ShadowPSO);
+				centerGfxContext.SetPipelineState(m_ShadowPSO);
+                RenderObjects(leftGfxContext, m_SunShadow.GetViewProjMatrix(), 0, kOpaque);
+                RenderObjects(rightGfxContext, m_SunShadow.GetViewProjMatrix(), 1, kOpaque);
+                RenderObjects(centerGfxContext, m_SunShadow.GetViewProjMatrix(), 2, kOpaque);
+				leftGfxContext.SetPipelineState(m_CutoutShadowPSO);
+				rightGfxContext.SetPipelineState(m_CutoutShadowPSO);
+				centerGfxContext.SetPipelineState(m_CutoutShadowPSO);
+                RenderObjects(leftGfxContext, m_SunShadow.GetViewProjMatrix(), 0, kCutout);
+                RenderObjects(rightGfxContext, m_SunShadow.GetViewProjMatrix(), 1, kCutout);
+                RenderObjects(centerGfxContext, m_SunShadow.GetViewProjMatrix(), 2, kCutout);
+				g_ShadowBuffer.EndRendering(leftGfxContext);
+				g_ShadowBuffer.EndRendering(rightGfxContext);
+				g_ShadowBuffer.EndRendering(centerGfxContext);
             }
         }
     }
@@ -1607,83 +1754,116 @@ void D3D12RaytracingMiniEngineSample::RenderScene(UINT cam)
         {
             if (SSAO::AsyncCompute)
             {
-                gfxContext.Flush();
-                pfnSetupGraphicsState();
+				leftGfxContext.Flush();
+				rightGfxContext.Flush();
+				centerGfxContext.Flush();
+				pfnSetupGraphicsState(&leftGfxContext);
+				pfnSetupGraphicsState(&rightGfxContext);
+				pfnSetupGraphicsState(&centerGfxContext);
 
                 // Make the 3D queue wait for the Compute queue to finish SSAO
                 g_CommandManager.GetGraphicsQueue().StallForProducer(g_CommandManager.GetComputeQueue());
             }
 
-            {
-                ScopedTimer _prof(L"Render Color", gfxContext);
+			auto renderColour = [=](GraphicsContext* gfxContext, int cam, DepthBuffer* curDepthBuf)
+			{
+				ScopedTimer _prof(L"Render Color", *gfxContext);
 
-                gfxContext.TransitionResource(g_SSAOFullScreen, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+				gfxContext->TransitionResource(g_SSAOFullScreen, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 
-                gfxContext.SetDynamicDescriptors(
-					3, 0, ARRAYSIZE(m_ExtraTextures), m_ExtraTextures);
-                gfxContext.SetDynamicConstantBufferView(
+				gfxContext->SetDynamicConstantBufferView(
 					1, sizeof(psConstants), &psConstants);
+				gfxContext->SetDynamicDescriptors(
+					3, 0, ARRAYSIZE(m_ExtraTextures), m_ExtraTextures);
 
-				gfxContext.TransitionResource(g_SceneCenterDepthBuffer,
+				gfxContext->TransitionResource(g_SceneCenterColourDepthBuffer,
 					D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, true);
-				gfxContext.SetDynamicDescriptor(6, 0, 
-					g_SceneCenterDepthBuffer.GetSRV());
+				gfxContext->SetDynamicDescriptor(6, 0,
+					g_SceneCenterColourDepthBuffer.GetSRV());
 
-                bool RenderIDs = !TemporalEffects::EnableTAA;
+				/*gfxContext->TransitionResource(g_SceneColorBuffer,
+					D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, true);
+				gfxContext->SetDynamicDescriptor(7, 0,
+					g_SceneColorBuffer.GetSRV());*/
 
-                {
-                    gfxContext.SetPipelineState(ShowWaveTileCounts ? 
+				bool RenderIDs = !TemporalEffects::EnableTAA;
+
+
+				{
+					gfxContext->SetPipelineState(ShowWaveTileCounts ?
 						m_WaveTileCountPSO : m_ModelPSO[0]);
 
-                    gfxContext.TransitionResource(*curDepthBuf,
+					gfxContext->TransitionResource(*curDepthBuf,
 						D3D12_RESOURCE_STATE_DEPTH_READ);
 
 					D3D12_CPU_DESCRIPTOR_HANDLE rtvs[2];
 					rtvs[0] = g_SceneColorBuffer.GetSubRTV(cam);
 					rtvs[1] = g_SceneNormalBuffer.GetRTV();
 
-					gfxContext.SetRenderTargets(ARRAYSIZE(rtvs), rtvs,
+					gfxContext->SetRenderTargets(ARRAYSIZE(rtvs), rtvs,
 						curDepthBuf->GetDSV_DepthReadOnly());
 
-					gfxContext.SetViewportAndScissor(
+					gfxContext->SetViewportAndScissor(
 						m_MainViewport, m_MainScissor);
-				}
 
-				RenderObjects(gfxContext, m_Camera[cam]->GetViewProjMatrix(), cam, kOpaque);
+					RenderObjects(*gfxContext, m_Camera[cam]->GetViewProjMatrix(), cam, kOpaque);
+				};
+
 
 				if (!ShowWaveTileCounts)
 				{
-					gfxContext.SetPipelineState(m_CutoutModelPSO[0]);
-					RenderObjects(gfxContext, m_Camera[cam]->GetViewProjMatrix(), cam, kCutout);
+					gfxContext->SetPipelineState(m_CutoutModelPSO[0]);
+					RenderObjects(*gfxContext, m_Camera[0]->GetViewProjMatrix(), 0, kCutout);
+					RenderObjects(*gfxContext, m_Camera[1]->GetViewProjMatrix(), 1, kCutout);
+					RenderObjects(*gfxContext, m_Camera[2]->GetViewProjMatrix(), 2, kCutout);
 				}
-			}
+			};
+			renderColour(&centerGfxContext, 2, &g_SceneCenterDepthBuffer);
+			renderColour(&leftGfxContext, 0, &g_SceneLeftDepthBuffer);
+			renderColour(&rightGfxContext, 1, &g_SceneRightDepthBuffer);
 		}
 
 		// Some systems generate a per-pixel velocity buffer to better track dynamic and skinned meshes.  Everything
 		// is static in our scene, so we generate velocity from camera motion and the depth buffer.  A velocity buffer
 		// is necessary for all temporal effects (and motion blur).
-		MotionBlur::GenerateCameraVelocityBuffer(gfxContext, *m_Camera[cam], true);
+		MotionBlur::GenerateCameraVelocityBuffer(leftGfxContext, *m_Camera[0], true);
+		MotionBlur::GenerateCameraVelocityBuffer(rightGfxContext, *m_Camera[1], true);
+		MotionBlur::GenerateCameraVelocityBuffer(centerGfxContext, *m_Camera[2], true);
 
-		TemporalEffects::ResolveImage(gfxContext);
+		TemporalEffects::ResolveImage(leftGfxContext);
+		TemporalEffects::ResolveImage(rightGfxContext);
+		TemporalEffects::ResolveImage(centerGfxContext);
 
-		ParticleEffects::Render(gfxContext, *m_Camera[cam], g_SceneColorBuffer, *curDepthBuf,
+		ParticleEffects::Render(leftGfxContext, *m_Camera[0], g_SceneColorBuffer, g_SceneLeftDepthBuffer,
 		                        g_LinearDepth[FrameIndex]);
+		ParticleEffects::Render(rightGfxContext, *m_Camera[1], g_SceneColorBuffer, g_SceneRightDepthBuffer,
+			g_LinearDepth[FrameIndex]);
+		ParticleEffects::Render(centerGfxContext, *m_Camera[2], g_SceneColorBuffer, g_SceneCenterDepthBuffer,
+			g_LinearDepth[FrameIndex]);
 
 		// Until I work out how to couple these two, it's "either-or".
 		if (DepthOfField::Enable)
-			DepthOfField::Render(gfxContext, m_Camera[cam]->GetNearClip(), m_Camera[cam]->GetFarClip());
+		{
+			DepthOfField::Render(leftGfxContext, m_Camera[0]->GetNearClip(), m_Camera[0]->GetFarClip());
+			DepthOfField::Render(rightGfxContext, m_Camera[1]->GetNearClip(), m_Camera[1]->GetFarClip());
+			DepthOfField::Render(centerGfxContext, m_Camera[2]->GetNearClip(), m_Camera[2]->GetFarClip());
+		}
 		else
-			MotionBlur::RenderObjectBlur(gfxContext, g_VelocityBuffer);
+		{
+			MotionBlur::RenderObjectBlur(leftGfxContext, g_VelocityBuffer);
+			MotionBlur::RenderObjectBlur(rightGfxContext, g_VelocityBuffer);
+			MotionBlur::RenderObjectBlur(centerGfxContext, g_VelocityBuffer);
+		}
 	}
-
-	g_dynamicCb.curCam = cam;
 
 	if(g_RayTraceSupport && rayTracingMode != RTM_OFF)
 	{
-		Raytrace(gfxContext, cam, curDepthBuf);
+		Raytrace(leftGfxContext, 0, &g_SceneLeftDepthBuffer);
+		Raytrace(rightGfxContext, 1, &g_SceneRightDepthBuffer);
+		Raytrace(centerGfxContext, 2, &g_SceneCenterDepthBuffer);
 	}
 
-	if (cam == 2)
+	/*if (cam == 2)
 	{
 		gfxContext.SetRootSignature(m_CombineColourSig);
 		gfxContext.SetPipelineState(m_CombineColourPSO);
@@ -1702,13 +1882,11 @@ void D3D12RaytracingMiniEngineSample::RenderScene(UINT cam)
 
 		gfxContext.SetRenderTarget(g_SceneColorBuffer.GetSubRTV(2));
 		gfxContext.Draw(6);
-	}
+	}*/
 
-	gfxContext.TransitionResource(*curDepthBuf,
-		D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-	gfxContext.TransitionResource(g_SceneCenterDepthBuffer,
-		D3D12_RESOURCE_STATE_UNORDERED_ACCESS, true);
-	gfxContext.Finish();
+	leftGfxContext.Finish();
+	rightGfxContext.Finish();
+	centerGfxContext.Finish();
 }
 
 //
@@ -2016,6 +2194,8 @@ void D3D12RaytracingMiniEngineSample::Raytrace(
 	class GraphicsContext& gfxContext, UINT cam, DepthBuffer* curDepthBuf)
 {
 	ScopedTimer _prof(L"Raytrace", gfxContext);
+
+	g_dynamicCb.curCam = cam;
 
 	gfxContext.TransitionResource(g_SSAOFullScreen, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 

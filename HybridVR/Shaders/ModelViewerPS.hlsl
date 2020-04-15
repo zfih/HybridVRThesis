@@ -373,7 +373,7 @@ MRT main(VSOutput vsOutput)
     float3 viewDir = normalize(vsOutput.viewDir);
     colorSum += ApplyDirectionalLight(diffuseAlbedo, specularAlbedo, specularMask, gloss, normal, viewDir, SunDirection, SunColor, vsOutput.shadowCoord);
 
-	mrt.Color = float4(colorSum, 1.0f);
+    mrt.Color = float4(colorSum, 1.0f);
 
     if (AreNormalsNeeded)
     {
