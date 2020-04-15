@@ -1579,7 +1579,7 @@ void D3D12RaytracingMiniEngineSample::RenderScene(UINT cam)
 				gfxContext.ClearDepth(g_SceneDepthBuffer);
 
 				gfxContext.SetPipelineState(m_DepthPSO[0]);
-				gfxContext.SetDepthStencilTarget(g_SceneDepthBuffer.GetDSV());
+				gfxContext.SetDepthStencilTarget(g_SceneDepthBuffer.GetSubDSV(cam));
 
 				gfxContext.SetViewportAndScissor(m_MainViewport, m_MainScissor);
 			}

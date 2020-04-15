@@ -157,7 +157,7 @@ void DepthBuffer::CreateDerivedViews(ID3D12Device* Device, DXGI_FORMAT Format, u
 		dsvDesc.Texture2DArray.MipSlice = 0;
 		dsvDesc.Texture2DArray.FirstArraySlice = i;
 		dsvDesc.Texture2DArray.ArraySize = ArraySize - i;
-		dsvDesc.Flags = D3D12_DSV_FLAG_READ_ONLY_DEPTH;
+		dsvDesc.Flags = D3D12_DSV_FLAG_NONE;
 
 		D3D12_CPU_DESCRIPTOR_HANDLE handle {};
 		handle = Graphics::AllocateDescriptor(D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
