@@ -215,7 +215,7 @@ void TextRenderer::Initialize( void )
     s_TextPSO[0].Finalize();
 
     s_TextPSO[1] = s_TextPSO[0];
-    s_TextPSO[1].SetRenderTargetFormats(1, &g_SceneColorBuffer.GetFormat(), DXGI_FORMAT_UNKNOWN);
+    s_TextPSO[1].SetRenderTargetFormats(1, &SceneColorBuffer().GetFormat(), DXGI_FORMAT_UNKNOWN);
     s_TextPSO[1].Finalize();
 
     s_ShadowPSO[0] = s_TextPSO[0];
@@ -223,7 +223,7 @@ void TextRenderer::Initialize( void )
     s_ShadowPSO[0].Finalize();
 
     s_ShadowPSO[1] = s_ShadowPSO[0];
-    s_ShadowPSO[1].SetRenderTargetFormats(1, &g_SceneColorBuffer.GetFormat(), DXGI_FORMAT_UNKNOWN);
+    s_ShadowPSO[1].SetRenderTargetFormats(1, &SceneColorBuffer().GetFormat(), DXGI_FORMAT_UNKNOWN);
     s_ShadowPSO[1].Finalize();
 }
 

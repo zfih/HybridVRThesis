@@ -114,7 +114,7 @@ void FXAA::Render( ComputeContext& Context, bool bUsePreComputedLuma )
     if (ForceOffPreComputedLuma)
         bUsePreComputedLuma = false;
 
-    ColorBuffer& Target = g_bTypedUAVLoadSupport_R11G11B10_FLOAT ? g_SceneColorBuffer : g_PostEffectsBuffer;
+    ColorBuffer& Target = g_bTypedUAVLoadSupport_R11G11B10_FLOAT ? SceneColorBuffer() : g_PostEffectsBuffer;
 
     Context.SetRootSignature(RootSig);
     Context.SetConstants(0, 1.0f / Target.GetWidth(), 1.0f / Target.GetHeight(), (float)ContrastThreshold, (float)SubpixelRemoval);

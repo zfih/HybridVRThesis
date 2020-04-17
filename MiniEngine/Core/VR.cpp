@@ -159,7 +159,7 @@ void VR::Submit(ColorBuffer buffer_array)
 {
 	if(!g_HMD)
 	{
-		DEBUGPRINT("A submit call was made to the HMD with none present");
+		//DEBUGPRINT("A submit call was made to the HMD with none present");
 		return;
 	}
 	
@@ -225,6 +225,6 @@ void VR::Sync()
 	}
 	else
 	{
-		DEBUGPRINT("A sync call was made for VR with no HMD present");
+		//DEBUGPRINT("A sync call was made for VR with no HMD present");
 	}
 }

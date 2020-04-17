@@ -82,9 +82,9 @@ namespace GameCore
             GraphicsContext& MipsContext = GraphicsContext::Begin();
 
             // Exclude from timings this copy necessary to setup the test
-            MipsContext.TransitionResource(g_SceneColorBuffer, D3D12_RESOURCE_STATE_GENERIC_READ);
+            MipsContext.TransitionResource(SceneColorBuffer(), D3D12_RESOURCE_STATE_GENERIC_READ);
             MipsContext.TransitionResource(g_GenMipsBuffer, D3D12_RESOURCE_STATE_COPY_DEST);
-            MipsContext.CopySubresource(g_GenMipsBuffer, 0, g_SceneColorBuffer, 0);
+            MipsContext.CopySubresource(g_GenMipsBuffer, 0, SceneColorBuffer(), 0);
 
             EngineProfiling::BeginBlock(L"GenerateMipMaps()", &MipsContext);
             g_GenMipsBuffer.GenerateMipMaps(MipsContext);
