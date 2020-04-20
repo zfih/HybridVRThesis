@@ -622,14 +622,14 @@ void Graphics::PreparePresentHDR(void)
     GraphicsContext& Context = GraphicsContext::Begin(L"Present");
 
     // We're going to be reading these buffers to write to the swap chain buffer(s)
-    Context.TransitionResource(g_SceneColorBuffer, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+    Context.TransitionResource(*SceneColorBuffer(), D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
     Context.TransitionResource(g_OverlayBuffer, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
     Context.TransitionResource(g_DisplayPlane[g_CurrentBuffer], D3D12_RESOURCE_STATE_RENDER_TARGET);
 
     Context.SetRootSignature(s_PresentRS);
     Context.SetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
-    Context.SetDynamicDescriptor(0, 0, g_SceneColorBuffer.GetSRV());
+    Context.SetDynamicDescriptor(0, 0, SceneColorBuffer()->GetSRV());
     Context.SetDynamicDescriptor(0, 1, g_OverlayBuffer.GetSRV());
 
     D3D12_CPU_DESCRIPTOR_HANDLE RTVs[] =
@@ -676,11 +676,11 @@ void Graphics::SubmitToVRHMD(bool isArray)
 	// TODO: Check if g_SceneColorBuffer is the correct one
 	if(isArray)
 	{
-        VR::Submit(g_SceneColorBuffer);
+        VR::Submit(*SceneColorBuffer());
 	}
 	else
 	{
-        VR::Submit(g_SceneColorBuffer, g_SceneColorBuffer);
+        VR::Submit(*SceneColorBuffer(), *SceneColorBuffer());
 	}
 }
 
@@ -691,14 +691,15 @@ void Graphics::PreparePresentLDR(void)
 	SubmitToVRHMD(true);
 
     // We're going to be reading these buffers to write to the swap chain buffer(s)
-    Context.TransitionResource(g_SceneColorBuffer, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+    Context.TransitionResource(*SceneColorBuffer(), D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 
     Context.SetRootSignature(s_PresentRS);
     Context.SetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
     // Copy (and convert) the LDR buffer to the back buffer
 
-    Context.SetDynamicDescriptor(0, 0, g_SceneColorBuffer.GetSRV());
+    Context.SetDynamicDescriptor(0, 0, SceneColorBuffer()->GetSRV());
+    //Context.SetDynamicDescriptor(0, 0, g_SceneColorBufferFullRes.GetSRV());
 
     ColorBuffer& UpsampleDest = (DebugZoom == kDebugZoomOff ? g_DisplayPlane[g_CurrentBuffer] : g_PreDisplayBuffer);
 
