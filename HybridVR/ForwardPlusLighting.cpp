@@ -271,11 +271,11 @@ void Lighting::FillLightGrid(GraphicsContext& gfxContext, const Camera& camera)
     default: ASSERT(false); break;
     }
 
-    ColorBuffer& LinearDepth = g_LinearDepth[ Graphics::GetFrameCount() % 2 ];
+    ColorBuffer& LinearDepth = *Graphics::LinearDepth(Graphics::GetFrameCount() % 2);
 
     Context.TransitionResource(m_LightBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
     Context.TransitionResource(LinearDepth, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-    Context.TransitionResource(SceneDepthBuffer(), D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+    Context.TransitionResource(*SceneDepthBuffer(), D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
     Context.TransitionResource(m_LightGrid, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
     Context.TransitionResource(m_LightGridBitMask, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 
@@ -286,8 +286,8 @@ void Lighting::FillLightGrid(GraphicsContext& gfxContext, const Camera& camera)
     Context.SetDynamicDescriptor(2, 1, m_LightGridBitMask.GetUAV());
 
     // todo: assumes 1920x1080 resolution
-    uint32_t tileCountX = Math::DivideByMultiple(SceneColorBuffer().GetWidth(), LightGridDim);
-    uint32_t tileCountY = Math::DivideByMultiple(SceneColorBuffer().GetHeight(), LightGridDim);
+    uint32_t tileCountX = Math::DivideByMultiple(SceneColorBuffer()->GetWidth(), LightGridDim);
+    uint32_t tileCountY = Math::DivideByMultiple(SceneColorBuffer()->GetHeight(), LightGridDim);
 
     float FarClipDist = camera.GetFarClip();
     float NearClipDist = camera.GetNearClip();
@@ -302,8 +302,8 @@ void Lighting::FillLightGrid(GraphicsContext& gfxContext, const Camera& camera)
         Matrix4 ViewProjMatrix;
     } csConstants;
     // todo: assumes 1920x1080 resolution
-    csConstants.ViewportWidth = SceneColorBuffer().GetWidth();
-    csConstants.ViewportHeight = SceneColorBuffer().GetHeight();
+    csConstants.ViewportWidth = SceneColorBuffer()->GetWidth();
+    csConstants.ViewportHeight = SceneColorBuffer()->GetHeight();
     csConstants.InvTileDim = 1.0f / LightGridDim;
     csConstants.RcpZMagic = RcpZMagic;
     csConstants.TileCount = tileCountX;

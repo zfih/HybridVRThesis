@@ -470,7 +470,7 @@ void ParticleEffects::Initialize( uint32_t MaxDisplayWidth, uint32_t MaxDisplayH
     s_NoTileRasterizationPSO[0].SetBlendState(BlendPreMultiplied);
     s_NoTileRasterizationPSO[0].SetInputLayout(0, nullptr);
     s_NoTileRasterizationPSO[0].SetPrimitiveTopologyType(D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE); 
-    s_NoTileRasterizationPSO[0].SetRenderTargetFormat(SceneColorBuffer().GetFormat(), SceneDepthBuffer().GetFormat());
+    s_NoTileRasterizationPSO[0].SetRenderTargetFormat(SceneColorBuffer()->GetFormat(), SceneDepthBuffer()->GetFormat());
     s_NoTileRasterizationPSO[0].SetVertexShader(g_pParticleVS, sizeof(g_pParticleVS));
     s_NoTileRasterizationPSO[0].SetPixelShader(g_pParticlePS, sizeof(g_pParticlePS));
     s_NoTileRasterizationPSO[0].Finalize();

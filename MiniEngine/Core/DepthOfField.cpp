@@ -153,7 +153,7 @@ void DepthOfField::Render( CommandContext& BaseContext, float /*NearClipDist*/, 
     ComputeContext& Context = BaseContext.GetComputeContext();
     Context.SetRootSignature(s_RootSignature);
 
-    ColorBuffer& LinearDepth = g_LinearDepth[ Graphics::GetFrameCount() % 2 ];
+    ColorBuffer& LinearDepth = *Graphics::LinearDepth(Graphics::GetFrameCount() % 2);
 
     uint32_t BufferWidth = (uint32_t)LinearDepth.GetWidth();
     uint32_t BufferHeight = (uint32_t)LinearDepth.GetHeight();
@@ -239,12 +239,12 @@ void DepthOfField::Render( CommandContext& BaseContext, float /*NearClipDist*/, 
             Context.SetPipelineState(s_DoFPreFilterFastCS);
         else
             Context.SetPipelineState(s_DoFPreFilterCS);
-        Context.TransitionResource(SceneColorBuffer(), D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+        Context.TransitionResource(*SceneColorBuffer(), D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
         Context.TransitionResource(g_DoFPresortBuffer, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
         Context.TransitionResource(g_DoFPrefilter, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
         Context.SetDynamicDescriptor(1, 0, LinearDepth.GetSRV());
         Context.SetDynamicDescriptor(1, 1, g_DoFTileClass[1].GetSRV());
-        Context.SetDynamicDescriptor(1, 2, SceneColorBuffer().GetSRV());
+        Context.SetDynamicDescriptor(1, 2, SceneColorBuffer()->GetSRV());
         Context.SetDynamicDescriptor(1, 3, g_DoFWorkQueue.GetSRV());
         Context.SetDynamicDescriptor(2, 0, g_DoFPresortBuffer.GetUAV());
         Context.SetDynamicDescriptor(2, 1, g_DoFPrefilter.GetUAV());
@@ -319,13 +319,13 @@ void DepthOfField::Render( CommandContext& BaseContext, float /*NearClipDist*/, 
 
     {
         ScopedTimer _prof2(L"DoF Final Combine", Context);
-        Context.TransitionResource(SceneColorBuffer(), D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+        Context.TransitionResource(*SceneColorBuffer(), D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 
         if (DebugTiles)
         {
             Context.SetPipelineState(s_DoFDebugRedCS);
             Context.SetDynamicDescriptor(1, 5, g_DoFWorkQueue.GetSRV());
-            Context.SetDynamicDescriptor(2, 0, SceneColorBuffer().GetUAV());
+            Context.SetDynamicDescriptor(2, 0, SceneColorBuffer()->GetUAV());
             Context.DispatchIndirect(s_IndirectParameters, 0);
 
             Context.SetPipelineState(s_DoFDebugGreenCS);
@@ -344,7 +344,7 @@ void DepthOfField::Render( CommandContext& BaseContext, float /*NearClipDist*/, 
             Context.SetDynamicDescriptor(1, 2, g_DoFTileClass[1].GetSRV());
             Context.SetDynamicDescriptor(1, 3, LinearDepth.GetSRV());
             Context.SetDynamicDescriptor(1, 4, g_DoFWorkQueue.GetSRV());
-            Context.SetDynamicDescriptor(2, 0, SceneColorBuffer().GetUAV());
+            Context.SetDynamicDescriptor(2, 0, SceneColorBuffer()->GetUAV());
             Context.DispatchIndirect(s_IndirectParameters, 0);
 
             Context.SetPipelineState(s_DoFCombineFastCS);
@@ -352,6 +352,6 @@ void DepthOfField::Render( CommandContext& BaseContext, float /*NearClipDist*/, 
             Context.DispatchIndirect(s_IndirectParameters, 12);
         }
 
-        Context.InsertUAVBarrier(SceneColorBuffer());
+        Context.InsertUAVBarrier(*SceneColorBuffer());
     }
 }
