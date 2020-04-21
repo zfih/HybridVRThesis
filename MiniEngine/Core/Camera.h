@@ -213,9 +213,9 @@ namespace Math
             m_cameras[CENTER].SetRotation(basisRotation);
         }
         void SetPosition(Vector3 worldPos)
-        {
-            m_cameras[LEFT].SetPosition(worldPos + Vector3{-25.0f, 0.0f, 0.0f });
-            m_cameras[RIGHT].SetPosition(worldPos + Vector3{ 25.0f, 0.0f, 0.0f });
+        {	
+            m_cameras[LEFT].SetPosition(worldPos + m_cameras[LEFT].GetRotation() * Vector3 { -10.0f, 0.0f, 0.0f });
+            m_cameras[RIGHT].SetPosition(worldPos + m_cameras[RIGHT].GetRotation() * Vector3 { 10.0f, 0.0f, 0.0f });
             m_cameras[CENTER].SetPosition(worldPos);
         }
         void SetTransform(const AffineTransform& xform)
