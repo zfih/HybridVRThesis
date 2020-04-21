@@ -184,6 +184,11 @@
       <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Release|x64'"> -HV 2017 -Zpr </AdditionalOptions>
       <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Profile|x64'"> -HV 2017 -Zpr </AdditionalOptions>
     </FxCompile>
+    <FxCompile Include="..\MiniEngine\ModelViewer\Shaders\DownsampleCS.hlsl">
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">5.0</ShaderModel>
+    </FxCompile>
+    <FxCompile Include="..\MiniEngine\ModelViewer\Shaders\FrameIntegrationCS.hlsl" />
+    <FxCompile Include="..\MiniEngine\ModelViewer\Shaders\LowPassCS.hlsl" />
     <FxCompile Include="Shaders\DepthViewerPS.hlsl">
       <ShaderType>Pixel</ShaderType>
     </FxCompile>

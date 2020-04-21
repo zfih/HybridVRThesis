@@ -54,6 +54,10 @@
 #include "CompiledShaders/RayGenerationShadowsLib.h"
 #include "CompiledShaders/MissShadowsLib.h"
 
+#include "CompiledShaders/LowPassCS.h"
+#include "CompiledShaders/DownsampleCS.h"
+#include "CompiledShaders/FrameIntegrationCS.h"
+
 #include "RaytracingHlslCompat.h"
 #include "ModelViewerRayTracing.h"
 
@@ -227,6 +231,12 @@ private:
 	GraphicsPSO m_ShadowPSO;
 	GraphicsPSO m_CutoutShadowPSO;
 	GraphicsPSO m_WaveTileCountPSO;
+
+	RootSignature m_LowPassSig;
+	ComputePSO m_LowPassPSO;
+	ComputePSO m_DownsamplePSO;
+	RootSignature m_FrameIntegrationSig;
+	ComputePSO m_FrameIntegrationPSO;
 
 	D3D12_CPU_DESCRIPTOR_HANDLE m_DefaultSampler;
 	D3D12_CPU_DESCRIPTOR_HANDLE m_ShadowSampler;
@@ -931,6 +941,32 @@ void D3D12RaytracingMiniEngineSample::Startup(void)
     //m_ExtraTextures[0] = SSAOFullScreen()->GetSRV();
     m_ExtraTextures[1] = g_ShadowBuffer.GetSRV();
 
+	m_LowPassSig.Reset(2, 1);
+	m_LowPassSig[0].InitAsDescriptorRange(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 0, 1);
+	m_LowPassSig[1].InitAsDescriptorRange(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 0, 1);
+	m_LowPassSig.InitStaticSampler(0, SamplerLinearWrapDesc);
+	m_LowPassSig.Finalize(L"LowPassSignature", D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
+
+	m_LowPassPSO.SetRootSignature(m_LowPassSig);
+	m_LowPassPSO.SetComputeShader(g_pLowPassCS, sizeof(g_pLowPassCS));
+	m_LowPassPSO.Finalize();
+
+	m_DownsamplePSO.SetRootSignature(m_LowPassSig);
+	m_DownsamplePSO.SetComputeShader(g_pDownsampleCS, sizeof(g_pDownsampleCS));
+	m_DownsamplePSO.Finalize();
+
+	m_FrameIntegrationSig.Reset(4, 1);
+	m_FrameIntegrationSig[0].InitAsConstants(0, 1);
+	m_FrameIntegrationSig[1].InitAsDescriptorRange(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 0, 1);
+	m_FrameIntegrationSig[2].InitAsDescriptorRange(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 0, 1);
+	m_FrameIntegrationSig[3].InitAsDescriptorRange(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 1, 1);
+	m_FrameIntegrationSig.InitStaticSampler(0, SamplerLinearWrapDesc);
+	m_FrameIntegrationSig.Finalize(L"FrameIntegrationSignature", D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
+
+	m_FrameIntegrationPSO.SetRootSignature(m_FrameIntegrationSig);
+	m_FrameIntegrationPSO.SetComputeShader(g_pFrameIntegrationCS, sizeof(g_pFrameIntegrationCS));
+	m_FrameIntegrationPSO.Finalize();
+
 #define ASSET_DIRECTORY "../MiniEngine/ModelViewer/"
     TextureManager::Initialize(ASSET_DIRECTORY L"Textures/");
     bool bModelLoadSuccess = m_Model.Load(ASSET_DIRECTORY "Models/sponza.h3d");
@@ -1585,6 +1621,38 @@ void D3D12RaytracingMiniEngineSample::RenderScene(UINT cam)
 	}
 
 	gfxContext.Finish();
+
+	ComputeContext& cmpContext = ComputeContext::Begin(L"Frame Integration");
+
+	if (Graphics::GetFrameCount() % 2 == 0)
+	{
+		cmpContext.SetRootSignature(m_LowPassSig);
+		cmpContext.SetPipelineState(m_LowPassPSO);
+
+		cmpContext.SetDynamicDescriptor(0, 0, g_SceneColorBufferFullRes.GetSRV());
+		cmpContext.SetDynamicDescriptor(1, 0, g_SceneColorBufferLowPassed.GetUAV());
+
+		cmpContext.Dispatch2D(g_SceneColorBufferLowPassed.GetWidth(), g_SceneColorBufferLowPassed.GetHeight());
+
+		// Reuses root signature m_LowPassSig
+		cmpContext.SetPipelineState(m_DownsamplePSO);
+
+		cmpContext.SetDynamicDescriptor(0, 0, g_SceneColorBufferLowPassed.GetSRV());
+		cmpContext.SetDynamicDescriptor(1, 0, g_SceneColorBufferLowRes.GetUAV());
+
+		cmpContext.Dispatch2D(g_SceneColorBufferLowRes.GetWidth(), g_SceneColorBufferLowRes.GetHeight());
+	}
+
+	cmpContext.SetRootSignature(m_FrameIntegrationSig);
+	cmpContext.SetPipelineState(m_FrameIntegrationPSO);
+
+	cmpContext.SetConstant(0, Graphics::GetFrameCount() % 2 == 0);
+	cmpContext.SetDynamicDescriptor(1, 0, g_SceneColorBufferLowRes.GetSRV());
+	cmpContext.SetDynamicDescriptor(2, 0, g_SceneColorBufferFullRes.GetUAV());
+
+	cmpContext.Dispatch2D(g_SceneColorBufferFullRes.GetWidth(), g_SceneColorBufferFullRes.GetHeight());
+
+	cmpContext.Finish();
 }
 
 //

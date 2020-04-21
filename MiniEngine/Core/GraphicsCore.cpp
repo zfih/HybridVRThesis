@@ -698,8 +698,10 @@ void Graphics::PreparePresentLDR(void)
 
     // Copy (and convert) the LDR buffer to the back buffer
 
-    Context.SetDynamicDescriptor(0, 0, SceneColorBuffer()->GetSRV());
-    //Context.SetDynamicDescriptor(0, 0, g_SceneColorBufferFullRes.GetSRV());
+    //Context.SetDynamicDescriptor(0, 0, SceneColorBuffer()->GetSRV());
+    Context.SetDynamicDescriptor(0, 0, g_SceneColorBufferFullRes.GetSRV());
+    //Context.SetDynamicDescriptor(0, 0, g_SceneColorBufferLowRes.GetSRV());
+    //Context.SetDynamicDescriptor(0, 0, g_SceneColorBufferLowPassed.GetSRV());
 
     ColorBuffer& UpsampleDest = (DebugZoom == kDebugZoomOff ? g_DisplayPlane[g_CurrentBuffer] : g_PreDisplayBuffer);
 
