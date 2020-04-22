@@ -26,6 +26,7 @@ namespace Graphics
     extern ColorBuffer g_SceneColorBufferFullRes;    // R11G11B10_FLOAT
     extern ColorBuffer g_SceneColorBufferLowRes;    // R11G11B10_FLOAT
     extern ColorBuffer g_SceneColorBufferLowPassed;    // R11G11B10_FLOAT
+    extern ColorBuffer g_SceneColorBufferResidules;    // R11G11B10_FLOAT
     extern ColorBuffer g_PostEffectsBuffer;    // R32_UINT (to support Read-Modify-Write with a UAV)
     extern ColorBuffer g_OverlayBuffer;        // R8G8B8A8_UNORM
     extern ColorBuffer g_HorizontalBuffer;    // For separable (bicubic) upsampling

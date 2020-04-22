@@ -13,8 +13,7 @@ void main(uint3 DTid : SV_DispatchThreadID)
 	LowResImage.GetDimensions(nTextureWidth, nTextureHeight, elements);
 	
 	float3 uv = float3(DTid.x / nTextureWidth, DTid.y / nTextureHeight, 0);
-	float3 col = LowPassedImage.SampleLevel(Sampler, uv, 0);
-	LowResImage[uint3(DTid.xy, 0)] = col;
+	LowResImage[uint3(DTid.xy, 0)] = LowPassedImage.SampleLevel(Sampler, uv, 0);;
 
 	uv.z = 1;
 	LowResImage[uint3(DTid.xy, 1)] = LowPassedImage.SampleLevel(Sampler, uv, 0);

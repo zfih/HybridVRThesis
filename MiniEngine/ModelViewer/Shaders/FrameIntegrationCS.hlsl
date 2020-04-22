@@ -6,7 +6,7 @@ cbuffer consts : register(b0)
 
 Texture2DArray<float3> LowResImage : register(t0);
 RWTexture2DArray<float3> HighResImage : register(u0);
-RWTexture2D<float3> Residuals : register(u1);
+RWTexture2DArray<float3> Residuals : register(u1);
 
 SamplerState Sampler : register(s0);
 
@@ -21,19 +21,19 @@ void FullResPass(uint3 DTid, uint cam)
 	float3 colour = (2 * HighResImage[uint3(DTid.xy, cam)]) - LowResImage.SampleLevel(Sampler, uv, 0);
 	if (colour.x > 1.0f)
 	{
-		Residuals[DTid.xy] = float3(colour.x - 1.0f, Residuals[DTid.xy].y, Residuals[DTid.xy].z);
+		Residuals[uint3(DTid.xy, cam)] = float3(colour.x - 1.0f, Residuals[uint3(DTid.xy, cam)].y, Residuals[uint3(DTid.xy, cam)].z);
 		colour.x = 1.0f;
 	}
 
 	if (colour.y > 1.0f)
 	{
-		Residuals[DTid.xy] = float3(Residuals[DTid.xy].x, colour.y - 1.0f, Residuals[DTid.xy].z);
+		Residuals[uint3(DTid.xy, cam)] = float3(Residuals[uint3(DTid.xy, cam)].x, colour.y - 1.0f, Residuals[uint3(DTid.xy, cam)].z);
 		colour.y = 1.0f;
 	}
 
 	if (colour.z > 1.0f)
 	{
-		Residuals[DTid.xy] = float3(Residuals[DTid.xy].x, Residuals[DTid.xy].y, colour.z - 1.0f);
+		Residuals[uint3(DTid.xy, cam)] = float3(Residuals[uint3(DTid.xy, cam)].x, Residuals[uint3(DTid.xy, cam)].y, colour.z - 1.0f);
 		colour.z = 1.0f;
 	}
 
@@ -48,7 +48,7 @@ void LowResPass(uint3 DTid, uint cam)
 	HighResImage.GetDimensions(nTextureWidth, nTextureHeight, elements);
 	float3 uv = float3(DTid.x / nTextureWidth, DTid.y / nTextureHeight, cam);
 
-	HighResImage[uint3(DTid.xy, cam)] = LowResImage.SampleLevel(Sampler, uv, 0);
+	HighResImage[uint3(DTid.xy, cam)] = LowResImage.SampleLevel(Sampler, uv, 0) + Residuals[uint3(DTid.xy, cam)];
 }
 
 [numthreads(8, 8, 1)]

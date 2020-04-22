@@ -198,6 +198,7 @@ public:
 
 	virtual void Update(float deltaT) override;
 	virtual void RenderScene(UINT cam) override;
+	virtual void FrameIntegration() override;
 	virtual void RenderUI(class GraphicsContext&) override;
 	virtual void Raytrace(class GraphicsContext&, UINT cam);
 
@@ -1621,7 +1622,10 @@ void D3D12RaytracingMiniEngineSample::RenderScene(UINT cam)
 	}
 
 	gfxContext.Finish();
+}
 
+void D3D12RaytracingMiniEngineSample::FrameIntegration()
+{
 	ComputeContext& cmpContext = ComputeContext::Begin(L"Frame Integration");
 
 	if (Graphics::GetFrameCount() % 2 == 0)
@@ -1641,6 +1645,8 @@ void D3D12RaytracingMiniEngineSample::RenderScene(UINT cam)
 		cmpContext.SetDynamicDescriptor(1, 0, g_SceneColorBufferLowRes.GetUAV());
 
 		cmpContext.Dispatch2D(g_SceneColorBufferLowRes.GetWidth(), g_SceneColorBufferLowRes.GetHeight());
+
+		cmpContext.ClearUAV(g_SceneColorBufferResidules);
 	}
 
 	cmpContext.SetRootSignature(m_FrameIntegrationSig);
@@ -1649,6 +1655,7 @@ void D3D12RaytracingMiniEngineSample::RenderScene(UINT cam)
 	cmpContext.SetConstant(0, Graphics::GetFrameCount() % 2 == 0);
 	cmpContext.SetDynamicDescriptor(1, 0, g_SceneColorBufferLowRes.GetSRV());
 	cmpContext.SetDynamicDescriptor(2, 0, g_SceneColorBufferFullRes.GetUAV());
+	cmpContext.SetDynamicDescriptor(3, 0, g_SceneColorBufferResidules.GetUAV());
 
 	cmpContext.Dispatch2D(g_SceneColorBufferFullRes.GetWidth(), g_SceneColorBufferFullRes.GetHeight());
 
