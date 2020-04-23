@@ -702,7 +702,7 @@ void Graphics::PreparePresentLDR(void)
 
     Context.SetDynamicDescriptor(0, 0, g_SceneColorBufferFullRes.GetSRV());
     //Context.SetDynamicDescriptor(0, 0, g_SceneColorBufferLowRes.GetSRV());
-    Context.SetDynamicDescriptor(0, 1, g_SceneColorBufferLowPassed.GetSRV());
+    //Context.SetDynamicDescriptor(0, 1, g_SceneColorBufferLowPassed.GetSRV());
     //Context.SetDynamicDescriptor(0, 0, g_SceneColorBufferResidules.GetSRV());
 
     ColorBuffer& UpsampleDest = (DebugZoom == kDebugZoomOff ? g_DisplayPlane[g_CurrentBuffer] : g_PreDisplayBuffer);

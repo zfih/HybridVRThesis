@@ -24,13 +24,13 @@ void filter(uint3 DTid, int cam)
 	uint3 h = uint3(DTid.x,     DTid.y + 1, cam); 
 	uint3 i = uint3(DTid.x + 1, DTid.y + 1, cam); 
 
-	/*LowPassedImage[uint3(DTid.x, DTid.y, cam)] = 
+	LowPassedImage[uint3(DTid.x, DTid.y, cam)] = 
 		weight * HighResImage[a] + weight * HighResImage[b] + weight * HighResImage[c] +
 		weight * HighResImage[d] + weight * HighResImage[e] + weight * HighResImage[f] +
-		weight * HighResImage[g] + weight * HighResImage[h] + weight * HighResImage[i];*/
+		weight * HighResImage[g] + weight * HighResImage[h] + weight * HighResImage[i];
 
 	//LowPassedImage[uint3(DTid.x, DTid.y, cam)] = ApplySRGBCurve(HighResImage[uint3(DTid.x, DTid.y, cam)]);
-	LowPassedImage[uint3(DTid.x, DTid.y, cam)] = HighResImage[uint3(DTid.x, DTid.y, cam)];
+	//LowPassedImage[uint3(DTid.x, DTid.y, cam)] = HighResImage[uint3(DTid.x, DTid.y, cam)];
 	//LowPassedImage[uint3(DTid.x, DTid.y, cam)] = float3(1,0,0.5);
 }
 

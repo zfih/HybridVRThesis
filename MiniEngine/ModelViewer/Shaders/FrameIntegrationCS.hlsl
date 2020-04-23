@@ -30,7 +30,7 @@ void FullResPass(uint3 DTid, uint cam)
 	HighResImage.GetDimensions(nTextureWidth, nTextureHeight, elements);
 	float3 uv = float3(DTid.x / nTextureWidth, DTid.y / nTextureHeight, cam);
 
-	float3 colour = (2 * /*RemoveSRGBCurve(*/HighResImage[uint3(DTid.xy, cam)])/*)*/ - /*RemoveSRGBCurve(*/LowResImage.SampleLevel(Sampler, uv, 0)/*)*/;
+	float3 colour = (2 * RemoveSRGBCurve(HighResImage[uint3(DTid.xy, cam)])) - RemoveSRGBCurve(LowResImage.SampleLevel(Sampler, uv, 0));
 	if (colour.x > 1.0f)
 	{
 		Residuals[uint3(DTid.xy, cam)] = float3(colour.x - 1.0f, Residuals[uint3(DTid.xy, cam)].y, Residuals[uint3(DTid.xy, cam)].z);
@@ -49,7 +49,7 @@ void FullResPass(uint3 DTid, uint cam)
 		colour.z = 1.0f;
 	}
 
-	HighResImage[uint3(DTid.xy, cam)] = /*ApplySRGBCurve(*/colour/*)*/;
+	HighResImage[uint3(DTid.xy, cam)] = ApplySRGBCurve(colour);
 }
 
 void LowResPass(uint3 DTid, uint cam)
@@ -60,7 +60,7 @@ void LowResPass(uint3 DTid, uint cam)
 	HighResImage.GetDimensions(nTextureWidth, nTextureHeight, elements);
 	float3 uv = float3(DTid.x / nTextureWidth, DTid.y / nTextureHeight, cam);
 
-	HighResImage[uint3(DTid.xy, cam)] = /*ApplySRGBCurve(RemoveSRGBCurve(*/LowResImage.SampleLevel(Sampler, uv, 0)/*)*/ + Residuals[uint3(DTid.xy, cam)]/*)*/;
+	HighResImage[uint3(DTid.xy, cam)] = ApplySRGBCurve(RemoveSRGBCurve(LowResImage.SampleLevel(Sampler, uv, 0)) + Residuals[uint3(DTid.xy, cam)]);
 }
 
 [numthreads(8, 8, 1)]
