@@ -47,6 +47,20 @@ public:
     void Create( const std::wstring& Name, uint32_t Width, uint32_t Height, uint32_t NumSamples, DXGI_FORMAT Format,
         EsramAllocator& Allocator );
 
+    // Create a color buffer.  If an address is supplied, memory will not be allocated.
+    // The vmem address allows you to alias buffers (which can be especially useful for
+    // reusing ESRAM across a frame.)
+    void CreateArray(const std::wstring& Name, uint32_t Width, uint32_t Height, uint32_t ArrayCount,
+        DXGI_FORMAT Format, D3D12_GPU_VIRTUAL_ADDRESS VidMemPtr = D3D12_GPU_VIRTUAL_ADDRESS_UNKNOWN);
+
+    // Create a color buffer.  Memory will be allocated in ESRAM (on Xbox One).  On Windows,
+    // this functions the same as Create() without a video address.
+    void CreateArray(const std::wstring& Name, uint32_t Width, uint32_t Height, uint32_t ArrayCount,
+        DXGI_FORMAT Format, EsramAllocator& Allocator);
+
+    const D3D12_CPU_DESCRIPTOR_HANDLE& GetSubDSV(int i) const { return m_DSVSubHandles[i]; }
+
+
     // Get pre-created CPU-visible descriptor handles
     const D3D12_CPU_DESCRIPTOR_HANDLE& GetDSV() const { return m_hDSV[0]; }
     const D3D12_CPU_DESCRIPTOR_HANDLE& GetDSV_DepthReadOnly() const { return m_hDSV[1]; }
@@ -60,11 +74,13 @@ public:
 
 private:
 
-    void CreateDerivedViews( ID3D12Device* Device, DXGI_FORMAT Format );
+    void CreateDerivedViews( ID3D12Device* Device, DXGI_FORMAT Format, uint32_t ArraySize = 1);
 
     float m_ClearDepth;
     uint8_t m_ClearStencil;
     D3D12_CPU_DESCRIPTOR_HANDLE m_hDSV[4];
     D3D12_CPU_DESCRIPTOR_HANDLE m_hDepthSRV;
     D3D12_CPU_DESCRIPTOR_HANDLE m_hStencilSRV;
+
+    std::vector<D3D12_CPU_DESCRIPTOR_HANDLE> m_DSVSubHandles;
 };
