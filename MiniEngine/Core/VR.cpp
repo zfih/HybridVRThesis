@@ -183,7 +183,7 @@ void VR::Submit(ColorBuffer buffer_left, ColorBuffer buffer_right)
 {
 	if (!g_HMD)
 	{
-		DEBUGPRINT("A submit call was made for VR with no HMD present");
+		//DEBUGPRINT("A submit call was made for VR with no HMD present");
 		return;
 	}
 	

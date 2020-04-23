@@ -167,7 +167,7 @@
     <None Include="Shaders\ModelViewerRS.hlsli" />
   </ItemGroup>
   <ItemGroup>
-    <FxCompile Include="*Lib.hlsl">
+    <FxCompile Include="AlphaTransparencyAnyHit.hlsl">
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Library</ShaderType>
       <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">6.3</ShaderModel>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">Library</ShaderType>
@@ -189,6 +189,97 @@
     </FxCompile>
     <FxCompile Include="..\MiniEngine\ModelViewer\Shaders\FrameIntegrationCS.hlsl" />
     <FxCompile Include="..\MiniEngine\ModelViewer\Shaders\LowPassCS.hlsl" />
+    <FxCompile Include="DiffuseHitShaderLib.hlsl">
+      <ShaderType>Compute</ShaderType>
+      <ShaderModel>4.0</ShaderModel>
+      <EntryPointName>
+      </EntryPointName>
+      <AdditionalOptions> -HV 2017 -Zpr </AdditionalOptions>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Library</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">6.3</ShaderModel>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Library</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release|x64'">6.3</ShaderModel>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">Library</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">6.3</ShaderModel>
+    </FxCompile>
+    <FxCompile Include="hitShaderLib.hlsl">
+      <ShaderType>Compute</ShaderType>
+      <ShaderModel>4.0</ShaderModel>
+      <EntryPointName>
+      </EntryPointName>
+      <AdditionalOptions> -HV 2017 -Zpr </AdditionalOptions>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Library</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">6.3</ShaderModel>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Library</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release|x64'">6.3</ShaderModel>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">Library</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">6.3</ShaderModel>
+    </FxCompile>
+    <FxCompile Include="missShaderLib.hlsl">
+      <ShaderType>Compute</ShaderType>
+      <ShaderModel>4.0</ShaderModel>
+      <EntryPointName>
+      </EntryPointName>
+      <AdditionalOptions> -HV 2017 -Zpr </AdditionalOptions>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Library</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">6.3</ShaderModel>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Library</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release|x64'">6.3</ShaderModel>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">Library</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">6.3</ShaderModel>
+    </FxCompile>
+    <FxCompile Include="missShadowsLib.hlsl">
+      <ShaderType>Compute</ShaderType>
+      <ShaderModel>4.0</ShaderModel>
+      <EntryPointName>
+      </EntryPointName>
+      <AdditionalOptions> -HV 2017 -Zpr </AdditionalOptions>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Library</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">6.3</ShaderModel>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Library</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release|x64'">6.3</ShaderModel>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">Library</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">6.3</ShaderModel>
+    </FxCompile>
+    <FxCompile Include="RayGenerationShaderLib.hlsl">
+      <ShaderType>Compute</ShaderType>
+      <ShaderModel>4.0</ShaderModel>
+      <EntryPointName>
+      </EntryPointName>
+      <AdditionalOptions> -HV 2017 -Zpr </AdditionalOptions>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Library</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">6.3</ShaderModel>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Library</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release|x64'">6.3</ShaderModel>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">Library</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">6.3</ShaderModel>
+    </FxCompile>
+    <FxCompile Include="RayGenerationShaderSSRLib.hlsl">
+      <ShaderType>Compute</ShaderType>
+      <ShaderModel>4.0</ShaderModel>
+      <EntryPointName>
+      </EntryPointName>
+      <AdditionalOptions> -HV 2017 -Zpr </AdditionalOptions>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Library</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">6.3</ShaderModel>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Library</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release|x64'">6.3</ShaderModel>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">Library</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">6.3</ShaderModel>
+    </FxCompile>
+    <FxCompile Include="RayGenerationShadowsLib.hlsl">
+      <ShaderType>Compute</ShaderType>
+      <ShaderModel>4.0</ShaderModel>
+      <EntryPointName>
+      </EntryPointName>
+      <AdditionalOptions> -HV 2017 -Zpr </AdditionalOptions>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Library</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">6.3</ShaderModel>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Library</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release|x64'">6.3</ShaderModel>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">Library</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">6.3</ShaderModel>
+    </FxCompile>
     <FxCompile Include="Shaders\DepthViewerPS.hlsl">
       <ShaderType>Pixel</ShaderType>
     </FxCompile>
