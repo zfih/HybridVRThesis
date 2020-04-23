@@ -108,6 +108,7 @@ namespace Graphics
 
     //DXGI_FORMAT DefaultHdrColorFormat = DXGI_FORMAT_R11G11B10_FLOAT;
     DXGI_FORMAT DefaultHdrColorFormat = DXGI_FORMAT_R8G8B8A8_UNORM;
+    DXGI_FORMAT SRGBColorFormat = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
 }
 
 #define T2X_COLOR_FORMAT DXGI_FORMAT_R10G10B10A2_UNORM
@@ -141,9 +142,9 @@ void Graphics::InitializeRenderingBuffers( uint32_t bufferWidth, uint32_t buffer
 
     esram.PushStack();
 
-        g_SceneColorBufferFullRes.CreateArray( L"Main Color Buffers", bufferWidth, bufferHeight, 2, DefaultHdrColorFormat, esram );
-        g_SceneColorBufferLowRes.CreateArray( L"Low Resolution Main Color Buffers", divisionHelperFunc(bufferWidth), divisionHelperFunc(bufferHeight), 2, DefaultHdrColorFormat, esram );
-        g_SceneColorBufferLowPassed.CreateArray( L"Low Passed Main Color Buffers", bufferWidth, bufferHeight, 2, DefaultHdrColorFormat, esram );
+        g_SceneColorBufferFullRes.CreateArray( L"Main Color Buffers", bufferWidth, bufferHeight, 2, SRGBColorFormat, esram );
+        g_SceneColorBufferLowRes.CreateArray( L"Low Resolution Main Color Buffers", divisionHelperFunc(bufferWidth), divisionHelperFunc(bufferHeight), 2, SRGBColorFormat, esram );
+        g_SceneColorBufferLowPassed.CreateArray( L"Low Passed Main Color Buffers", bufferWidth, bufferHeight, 2, SRGBColorFormat, esram );
         g_SceneColorBufferResidules.CreateArray( L"Residules of Main Color Buffers", bufferWidth, bufferHeight, 2, DefaultHdrColorFormat, esram );
         g_VelocityBuffer.Create( L"Motion Vectors", bufferWidth, bufferHeight, 1, DXGI_FORMAT_R32_UINT );
         g_PostEffectsBuffer.Create( L"Post Effects Buffer", bufferWidth, bufferHeight, 1, DXGI_FORMAT_R32_UINT );

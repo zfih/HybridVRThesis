@@ -15,6 +15,7 @@
 #include "PresentRS.hlsli"
 
 Texture2DArray<float3> ColorTex : register(t0);
+Texture2DArray<float3> ColorTex2 : register(t1);
 
 [RootSignature(Present_RootSig)]
 float3 main(float4 position : SV_Position, float3 uvw : TexCoord0) : SV_Target0
@@ -26,6 +27,15 @@ float3 main(float4 position : SV_Position, float3 uvw : TexCoord0) : SV_Target0
 	uvw.y = 1 - uvw.y;
 	int3 index = uvw * int3(nTextureWidth, nTextureHeight, 1);
 
-	float3 LinearRGB = RemoveDisplayProfile(ColorTex[index], LDR_COLOR_FORMAT);
-	return ApplyDisplayProfile(LinearRGB, DISPLAY_PLANE_FORMAT);
+	/*return ColorTex[index];*/
+	if (index.z == 0)
+	{
+		float3 LinearRGB = RemoveDisplayProfile(ColorTex[index], LDR_COLOR_FORMAT);
+		return ApplyDisplayProfile(LinearRGB, DISPLAY_PLANE_FORMAT);
+	}
+	else
+	{
+		float3 LinearRGB = RemoveDisplayProfile(ColorTex2[index], LDR_COLOR_FORMAT);
+		return ApplyDisplayProfile(LinearRGB, DISPLAY_PLANE_FORMAT);
+	}
 }

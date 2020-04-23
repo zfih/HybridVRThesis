@@ -10,6 +10,18 @@ RWTexture2DArray<float3> Residuals : register(u1);
 
 SamplerState Sampler : register(s0);
 
+float3 ApplySRGBCurve(float3 x)
+{
+	// Approximately pow(x, 1.0 / 2.2)
+	return x < 0.0031308 ? 12.92 * x : 1.055 * pow(x, 1.0 / 2.4) - 0.055;
+}
+
+float3 RemoveSRGBCurve(float3 x)
+{
+	// Approximately pow(x, 2.2)
+	return x < 0.04045 ? x / 12.92 : pow((x + 0.055) / 1.055, 2.4);
+}
+
 void FullResPass(uint3 DTid, uint cam)
 {
 	float nTextureWidth;
@@ -18,7 +30,7 @@ void FullResPass(uint3 DTid, uint cam)
 	HighResImage.GetDimensions(nTextureWidth, nTextureHeight, elements);
 	float3 uv = float3(DTid.x / nTextureWidth, DTid.y / nTextureHeight, cam);
 
-	float3 colour = (2 * HighResImage[uint3(DTid.xy, cam)]) - LowResImage.SampleLevel(Sampler, uv, 0);
+	float3 colour = (2 * /*RemoveSRGBCurve(*/HighResImage[uint3(DTid.xy, cam)])/*)*/ - /*RemoveSRGBCurve(*/LowResImage.SampleLevel(Sampler, uv, 0)/*)*/;
 	if (colour.x > 1.0f)
 	{
 		Residuals[uint3(DTid.xy, cam)] = float3(colour.x - 1.0f, Residuals[uint3(DTid.xy, cam)].y, Residuals[uint3(DTid.xy, cam)].z);
@@ -37,7 +49,7 @@ void FullResPass(uint3 DTid, uint cam)
 		colour.z = 1.0f;
 	}
 
-	HighResImage[uint3(DTid.xy, cam)] = colour;
+	HighResImage[uint3(DTid.xy, cam)] = /*ApplySRGBCurve(*/colour/*)*/;
 }
 
 void LowResPass(uint3 DTid, uint cam)
@@ -48,7 +60,7 @@ void LowResPass(uint3 DTid, uint cam)
 	HighResImage.GetDimensions(nTextureWidth, nTextureHeight, elements);
 	float3 uv = float3(DTid.x / nTextureWidth, DTid.y / nTextureHeight, cam);
 
-	HighResImage[uint3(DTid.xy, cam)] = LowResImage.SampleLevel(Sampler, uv, 0) + Residuals[uint3(DTid.xy, cam)];
+	HighResImage[uint3(DTid.xy, cam)] = /*ApplySRGBCurve(RemoveSRGBCurve(*/LowResImage.SampleLevel(Sampler, uv, 0)/*)*/ + Residuals[uint3(DTid.xy, cam)]/*)*/;
 }
 
 [numthreads(8, 8, 1)]
