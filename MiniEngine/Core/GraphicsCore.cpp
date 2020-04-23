@@ -678,11 +678,11 @@ void Graphics::SubmitToVRHMD(bool isArray)
 	// TODO: Check if g_SceneColorBuffer is the correct one
 	if(isArray)
 	{
-        VR::Submit(*SceneColorBuffer());
+        VR::Submit(g_SceneColorBufferFullRes);
 	}
 	else
 	{
-        VR::Submit(*SceneColorBuffer(), *SceneColorBuffer());
+        VR::Submit(g_SceneColorBufferFullRes, g_SceneColorBufferFullRes);
 	}
 }
 

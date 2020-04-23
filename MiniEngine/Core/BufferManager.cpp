@@ -107,16 +107,18 @@ namespace Graphics
     // For testing GenerateMipMaps()
     ColorBuffer g_GenMipsBuffer;
 
-    DXGI_FORMAT DefaultHdrColorFormat = DXGI_FORMAT_R11G11B10_FLOAT;
+    DXGI_FORMAT DefaultHdrColorFormat = DXGI_FORMAT_R8G8B8A8_UNORM;
+
+    uint32_t divisionHelperFunc(uint32_t val);
+    const uint32_t lowResDivisor = 4;
 }
 
 #define T2X_COLOR_FORMAT DXGI_FORMAT_R10G10B10A2_UNORM
 #define HDR_MOTION_FORMAT DXGI_FORMAT_R16G16B16A16_FLOAT
 #define DSV_FORMAT DXGI_FORMAT_D32_FLOAT
 
-uint32_t divisionHelperFunc(uint32_t val)
+uint32_t Graphics::divisionHelperFunc(uint32_t val)
 {
-    const uint32_t lowResDivisor = 4;
     return (val + (lowResDivisor - 1)) / lowResDivisor;
 }
 

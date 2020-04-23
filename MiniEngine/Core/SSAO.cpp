@@ -287,13 +287,13 @@ namespace SSAO
     }
 }
 
-void SSAO::Render( GraphicsContext& GfxContext, const Camera& camera )
+void SSAO::Render( GraphicsContext& GfxContext, const Camera& camera, UINT cam )
 {
     const float* pProjMat = reinterpret_cast<const float*>(&camera.GetProjMatrix());
-    Render(GfxContext, pProjMat, camera.GetNearClip(), camera.GetFarClip() );
+    Render(GfxContext, pProjMat, camera.GetNearClip(), camera.GetFarClip(), cam );
 }
 
-void SSAO::Render( GraphicsContext& GfxContext, const float* ProjMat, float NearClipDist, float FarClipDist )
+void SSAO::Render( GraphicsContext& GfxContext, const float* ProjMat, float NearClipDist, float FarClipDist, UINT cam )
 {
     uint32_t FrameIndex = TemporalEffects::GetFrameIndexMod2();
 
@@ -317,7 +317,7 @@ void SSAO::Render( GraphicsContext& GfxContext, const float* ProjMat, float Near
 
         Context.TransitionResource(*SceneDepthBuffer(), D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
         Context.SetConstants(0, zMagic);
-        Context.SetDynamicDescriptor(3, 0, SceneDepthBuffer()->GetDepthSRV());
+        Context.SetDynamicDescriptor(3, 0, SceneDepthBuffer()->GetSubSRV(cam));
 
         Context.TransitionResource(LinearDepth, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
         Context.SetDynamicDescriptors(2, 0, 1, &LinearDepth.GetUAV());
@@ -357,7 +357,7 @@ void SSAO::Render( GraphicsContext& GfxContext, const float* ProjMat, float Near
 
     // Phase 1:  Decompress, linearize, downsample, and deinterleave the depth buffer
     Context.SetConstants(0, zMagic);
-    Context.SetDynamicDescriptor(3, 0, SceneDepthBuffer()->GetDepthSRV() );
+    Context.SetDynamicDescriptor(3, 0, SceneDepthBuffer()->GetSubSRV(cam) );
 
     Context.TransitionResource(LinearDepth, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
     Context.TransitionResource(*DepthDownsize1(), D3D12_RESOURCE_STATE_UNORDERED_ACCESS);

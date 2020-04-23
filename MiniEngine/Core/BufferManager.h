@@ -132,4 +132,7 @@ namespace Graphics
     void ResizeDisplayDependentBuffers(uint32_t NativeWidth, uint32_t NativeHeight);
     void DestroyRenderingBuffers();
 
+    uint32_t divisionHelperFunc(uint32_t val);
+    extern const uint32_t lowResDivisor;
+
 } // namespace Graphics
