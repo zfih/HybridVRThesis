@@ -386,6 +386,10 @@ void Graphics::Initialize(void)
 
             // RESOURCE_BARRIER_DUPLICATE_SUBRESOURCE_TRANSITIONS
             (D3D12_MESSAGE_ID)1008,
+
+            // FIX OF MICROSOFT'S AWFUL CODE (please kill me)
+            // https://github.com/ValveSoftware/openvr/issues/1134#issuecomment-562606742
+            D3D12_MESSAGE_ID_REFLECTSHAREDPROPERTIES_INVALIDOBJECT
         };
 
         D3D12_INFO_QUEUE_FILTER NewFilter = {};
@@ -690,10 +694,11 @@ void Graphics::PreparePresentLDR(void)
 {
     GraphicsContext& Context = GraphicsContext::Begin(L"Present");
 
+    Context.TransitionResource(g_SceneColorBufferFullRes, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, true);
+    Context.Flush();
 	SubmitToVRHMD(true);
 
     // We're going to be reading these buffers to write to the swap chain buffer(s)
-    Context.TransitionResource(*SceneColorBuffer(), D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 
     Context.SetRootSignature(s_PresentRS);
     Context.SetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
