@@ -373,6 +373,7 @@ namespace GameCore
                 Graphics::Resize((UINT)(UINT64)lParam & 0xFFFF, (UINT)(UINT64)lParam >> 16);
                 break;
 
+            case WM_CLOSE:
             case WM_DESTROY:
                 PostQuitMessage(0);
                 break;

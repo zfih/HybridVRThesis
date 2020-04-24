@@ -58,12 +58,29 @@
 #include "CompiledShaders/CombineColourVS.h"
 #include "CompiledShaders/CombineColourPS.h"
 
+// Screen texture
+// Albert
+#include "CompiledShaders/ScreenTextureVS.h"
+#include "CompiledShaders/ScreenTexturePS.h"
+
+
 #include "RaytracingHlslCompat.h"
 #include "ModelViewerRayTracing.h"
 
 using namespace GameCore;
 using namespace Math;
 using namespace Graphics;
+
+// Albert
+namespace RS_ScreenTexture
+{
+enum ScreenTextureRS
+{
+	kTextureToRender = 0,
+	kCount
+};
+};
+
 
 extern ByteAddressBuffer g_bvh_bottomLevelAccelerationStructure;
 ColorBuffer g_SceneNormalBuffer;
@@ -199,8 +216,8 @@ public:
 	virtual void Update(float deltaT) override;
 	virtual void RenderScene() override;
 	virtual void RenderUI(class GraphicsContext&) override;
-	virtual void Raytrace(class GraphicsContext&, UINT cam, 
-						  DepthBuffer* curDepthBuf);
+	virtual void Raytrace(class GraphicsContext&, UINT cam,
+	                      DepthBuffer* curDepthBuf);
 
 	void SetCameraToPredefinedPosition(int cameraPosition);
 
@@ -214,14 +231,27 @@ private:
 
 	enum eObjectFilter { kOpaque = 0x1, kCutout = 0x2, kTransparent = 0x4, kAll = 0xF, kNone = 0x0 };
 	void RenderObjects(GraphicsContext& Context, const Matrix4& ViewProjMat, UINT curCam, eObjectFilter Filter = kAll);
+	void RenderCenterViewToEye(GraphicsContext& Ctx, UINT cam);
 	void RaytraceDiffuse(GraphicsContext& context, const Math::Camera& camera, ColorBuffer& colorTarget);
 	void RaytraceShadows(GraphicsContext& context, const Math::Camera& camera, ColorBuffer& colorTarget,
 	                     DepthBuffer& depth);
 	void RaytraceReflections(GraphicsContext& context, const Math::Camera& camera, ColorBuffer& colorTarget,
 	                         DepthBuffer& depth, ColorBuffer& normals);
+	// Albert
+	struct ScreenTextureData
+	{
+		// Screen Texture quad buffers
+		StructuredBuffer m_Buffer;
 
-	StructuredBuffer m_leftQuadVertBuf;
-	StructuredBuffer m_rightQuadVertBuf;
+		// Left and right eye quads
+		QuadPos m_Quad;
+
+		// Render to Quad PSO
+		GraphicsPSO m_PSO;
+
+		RootSignature m_RootSignature;
+	} m_screenTextureData;
+
 
 	VRCamera m_Camera;
 	std::auto_ptr<VRCameraController> m_CameraController;
@@ -229,11 +259,12 @@ private:
 	D3D12_VIEWPORT m_MainViewport;
 	D3D12_RECT m_MainScissor;
 
+
 	RootSignature m_RootSig;
-	GraphicsPSO m_DepthPSO[1];
-	GraphicsPSO m_CutoutDepthPSO[1];
-	GraphicsPSO m_ModelPSO[1];
-	GraphicsPSO m_CutoutModelPSO[1];
+	GraphicsPSO m_DepthPSO;
+	GraphicsPSO m_CutoutDepthPSO;
+	GraphicsPSO m_ModelPSO;
+	GraphicsPSO m_CutoutModelPSO;
 	GraphicsPSO m_ShadowPSO;
 	GraphicsPSO m_CutoutShadowPSO;
 	GraphicsPSO m_WaveTileCountPSO;
@@ -248,7 +279,10 @@ private:
 	D3D12_CPU_DESCRIPTOR_HANDLE m_BiasedDefaultSampler;
 
 	D3D12_CPU_DESCRIPTOR_HANDLE m_ExtraTextures[6];
+
+	// Scene to render
 	Model m_Model;
+
 	std::vector<bool> m_pMaterialIsCutout;
 	std::vector<bool> m_pMaterialIsReflective;
 
@@ -290,27 +324,27 @@ int wmain(int argc, wchar_t** argv)
 	}
 #endif
 
-    CComPtr<ID3D12Device> pDevice;
-    CComPtr<IDXGIAdapter1> pAdapter;
-    CComPtr<IDXGIFactory2> pFactory;
-    CreateDXGIFactory2(0, IID_PPV_ARGS(&pFactory));
-	
-    bool validDeviceFound = false;
-    for (uint32_t Idx = 0; !validDeviceFound && DXGI_ERROR_NOT_FOUND != pFactory->EnumAdapters1(Idx, &pAdapter); ++Idx)
-    {
-        DXGI_ADAPTER_DESC1 desc;
-        pAdapter->GetDesc1(&desc);
+	CComPtr<ID3D12Device> pDevice;
+	CComPtr<IDXGIAdapter1> pAdapter;
+	CComPtr<IDXGIFactory2> pFactory;
+	CreateDXGIFactory2(0, IID_PPV_ARGS(&pFactory));
 
-        validDeviceFound = IsDirectXRaytracingSupported(pAdapter);
-        
-        pAdapter = nullptr;
-    }
-	
-    s_EnableVSync.Decrement();
-    g_DisplayWidth = 1280;
-    g_DisplayHeight = 720;
-    GameCore::RunApplication(D3D12RaytracingMiniEngineSample(validDeviceFound), L"D3D12RaytracingMiniEngineSample"); 
-    return 0;
+	bool validDeviceFound = false;
+	for (uint32_t Idx = 0; !validDeviceFound && DXGI_ERROR_NOT_FOUND != pFactory->EnumAdapters1(Idx, &pAdapter); ++Idx)
+	{
+		DXGI_ADAPTER_DESC1 desc;
+		pAdapter->GetDesc1(&desc);
+
+		validDeviceFound = IsDirectXRaytracingSupported(pAdapter);
+
+		pAdapter = nullptr;
+	}
+
+	s_EnableVSync.Decrement();
+	g_DisplayWidth = 1280;
+	g_DisplayHeight = 720;
+	GameCore::RunApplication(D3D12RaytracingMiniEngineSample(validDeviceFound), L"D3D12RaytracingMiniEngineSample");
+	return 0;
 }
 
 ExpVar m_SunLightIntensity("Application/Lighting/Sun Light Intensity", 4.0f, 0.0f, 16.0f, 0.1f);
@@ -345,6 +379,7 @@ enum RaytracingMode
 	RTM_DIFFUSE_WITH_SHADOWRAYS,
 	RTM_REFLECTIONS,
 };
+
 EnumVar rayTracingMode("Application/Raytracing/RayTraceMode", RTM_DIFFUSE_WITH_SHADOWMAPS, _countof(rayTracingModes),
                        rayTracingModes);
 
@@ -478,9 +513,9 @@ void InitializeViews(const Model& model)
 
 		UINT unused;
 		g_pRaytracingDescriptorHeap->AllocateDescriptor(srvHandle, unused); // Should this be unused?
-		Graphics::g_Device->CopyDescriptorsSimple(1, srvHandle, 
-			g_SceneRightDepthBuffer.GetDepthSRV(),
-			D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+		Graphics::g_Device->CopyDescriptorsSimple(1, srvHandle,
+		                                          g_SceneRightDepthBuffer.GetDepthSRV(),
+		                                          D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 
 		g_pRaytracingDescriptorHeap->AllocateDescriptor(srvHandle, unused);
 		Graphics::g_Device->CopyDescriptorsSimple(1, srvHandle, g_SceneNormalBuffer.GetSRV(),
@@ -859,100 +894,118 @@ void InitializeStateObjects(const Model& model, UINT numMeshes)
 
 void D3D12RaytracingMiniEngineSample::Startup(void)
 {
-    //m_Camera = m_VRCamera[VRCamera::CENTER];
+	//m_Camera = m_VRCamera[VRCamera::CENTER];
 
 	rayTracingMode = RTM_OFF;
 
-    ThrowIfFailed(g_Device->QueryInterface(IID_PPV_ARGS(&g_pRaytracingDevice)), L"Couldn't get DirectX Raytracing interface for the device.\n");
-    g_SceneNormalBuffer.Create(L"Main Normal Buffer", g_SceneColorBuffer.GetWidth(), g_SceneColorBuffer.GetHeight(), 1, DXGI_FORMAT_R16G16B16A16_FLOAT);
+	ThrowIfFailed(g_Device->QueryInterface(IID_PPV_ARGS(&g_pRaytracingDevice)),
+	              L"Couldn't get DirectX Raytracing interface for the device.\n");
+	g_SceneNormalBuffer.Create(L"Main Normal Buffer", g_SceneColorBuffer.GetWidth(), g_SceneColorBuffer.GetHeight(), 1,
+	                           DXGI_FORMAT_R16G16B16A16_FLOAT);
 
-    g_pRaytracingDescriptorHeap = std::unique_ptr<DescriptorHeapStack>(
-        new DescriptorHeapStack(*g_Device, 200, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, 0));
+	g_pRaytracingDescriptorHeap = std::unique_ptr<DescriptorHeapStack>(
+		new DescriptorHeapStack(*g_Device, 200, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, 0));
 
-    D3D12_FEATURE_DATA_D3D12_OPTIONS1 options1;
-    HRESULT hr = g_Device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS1, &options1, sizeof(options1));
+	D3D12_FEATURE_DATA_D3D12_OPTIONS1 options1;
+	HRESULT hr = g_Device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS1, &options1, sizeof(options1));
 
-    SamplerDesc DefaultSamplerDesc;
-    DefaultSamplerDesc.MaxAnisotropy = 8;
+	SamplerDesc DefaultSamplerDesc;
+	DefaultSamplerDesc.MaxAnisotropy = 8;
 
-    m_RootSig.Reset(7, 2);
-    m_RootSig.InitStaticSampler(0, DefaultSamplerDesc, D3D12_SHADER_VISIBILITY_PIXEL);
-    m_RootSig.InitStaticSampler(1, SamplerShadowDesc, D3D12_SHADER_VISIBILITY_PIXEL);
-    m_RootSig[0].InitAsConstantBuffer(0, D3D12_SHADER_VISIBILITY_VERTEX);
-    m_RootSig[1].InitAsConstantBuffer(0, D3D12_SHADER_VISIBILITY_PIXEL);
-    m_RootSig[2].InitAsDescriptorRange(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 0, 6, D3D12_SHADER_VISIBILITY_PIXEL);
-    m_RootSig[3].InitAsDescriptorRange(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 64, 6, D3D12_SHADER_VISIBILITY_PIXEL);
-    m_RootSig[4].InitAsConstants(1, 2, D3D12_SHADER_VISIBILITY_VERTEX);
-    m_RootSig[5].InitAsConstants(1, 1, D3D12_SHADER_VISIBILITY_PIXEL);
-    m_RootSig[6].InitAsDescriptorRange(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 6, 1, D3D12_SHADER_VISIBILITY_PIXEL);
-    m_RootSig.Finalize(L"D3D12RaytracingMiniEngineSample", D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
+	m_RootSig.Reset(7, 2);
+	m_RootSig.InitStaticSampler(0, DefaultSamplerDesc, D3D12_SHADER_VISIBILITY_PIXEL);
+	m_RootSig.InitStaticSampler(1, SamplerShadowDesc, D3D12_SHADER_VISIBILITY_PIXEL);
+	m_RootSig[0].InitAsConstantBuffer(0, D3D12_SHADER_VISIBILITY_VERTEX);
+	m_RootSig[1].InitAsConstantBuffer(0, D3D12_SHADER_VISIBILITY_PIXEL);
+	m_RootSig[2].InitAsDescriptorRange(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 0, 6, D3D12_SHADER_VISIBILITY_PIXEL);
+	m_RootSig[3].InitAsDescriptorRange(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 64, 6, D3D12_SHADER_VISIBILITY_PIXEL);
+	m_RootSig[4].InitAsConstants(1, 2, D3D12_SHADER_VISIBILITY_VERTEX);
+	m_RootSig[5].InitAsConstants(1, 1, D3D12_SHADER_VISIBILITY_PIXEL);
+	m_RootSig[6].InitAsDescriptorRange(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 6, 1, D3D12_SHADER_VISIBILITY_PIXEL);
+	m_RootSig.Finalize(L"D3D12RaytracingMiniEngineSample",
+	                   D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
 
-    DXGI_FORMAT ColorFormat = g_SceneColorBuffer.GetFormat();
-    DXGI_FORMAT NormalFormat = g_SceneNormalBuffer.GetFormat();
-    DXGI_FORMAT DepthFormat = g_SceneLeftDepthBuffer.GetFormat();
-    DXGI_FORMAT ShadowFormat = g_ShadowBuffer.GetFormat();
+	DXGI_FORMAT ColorFormat = g_SceneColorBuffer.GetFormat();
+	DXGI_FORMAT NormalFormat = g_SceneNormalBuffer.GetFormat();
+	DXGI_FORMAT DepthFormat = g_SceneLeftDepthBuffer.GetFormat();
+	DXGI_FORMAT ShadowFormat = g_ShadowBuffer.GetFormat();
 
-    D3D12_INPUT_ELEMENT_DESC vertElem[] =
-    {
-        { "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-        { "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-        { "NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-        { "TANGENT", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-        { "BITANGENT", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 }
-    };
+	D3D12_INPUT_ELEMENT_DESC vertElem[] =
+	{
+		{
+			"POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT,
+			D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0
+		},
+		{
+			"TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT,
+			D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0
+		},
+		{
+			"NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT,
+			D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0
+		},
+		{
+			"TANGENT", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT,
+			D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0
+		},
+		{
+			"BITANGENT", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT,
+			D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0
+		}
+	};
 
-    // Depth-only (2x rate)
-    m_DepthPSO[0].SetRootSignature(m_RootSig);
-    m_DepthPSO[0].SetRasterizerState(RasterizerDefault);
-    m_DepthPSO[0].SetBlendState(BlendNoColorWrite);
-    m_DepthPSO[0].SetDepthStencilState(DepthStateReadWrite);
-    m_DepthPSO[0].SetInputLayout(_countof(vertElem), vertElem);
-    m_DepthPSO[0].SetPrimitiveTopologyType(D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE);
-    m_DepthPSO[0].SetRenderTargetFormats(0, nullptr, DepthFormat);
-    m_DepthPSO[0].SetVertexShader(g_pDepthViewerVS, sizeof(g_pDepthViewerVS));
+	// Depth-only (2x rate)
+	m_DepthPSO.SetRootSignature(m_RootSig);
+	m_DepthPSO.SetRasterizerState(RasterizerDefault);
+	m_DepthPSO.SetBlendState(BlendNoColorWrite);
+	m_DepthPSO.SetDepthStencilState(DepthStateReadWrite);
+	m_DepthPSO.SetInputLayout(_countof(vertElem), vertElem);
+	m_DepthPSO.SetPrimitiveTopologyType(D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE);
+	m_DepthPSO.SetRenderTargetFormats(0, nullptr, DepthFormat);
+	m_DepthPSO.SetVertexShader(g_pDepthViewerVS, sizeof(g_pDepthViewerVS));
 
-    // Make a copy of the desc before we mess with it
-    m_CutoutDepthPSO[0] = m_DepthPSO[0];
-    m_ShadowPSO = m_DepthPSO[0];
+	// Make a copy of the desc before we mess with it
+	m_CutoutDepthPSO = m_DepthPSO;
+	m_ShadowPSO = m_DepthPSO;
 
-    m_DepthPSO[0].Finalize();
+	m_DepthPSO.Finalize();
 
-    // Depth-only shading but with alpha testing
+	// Depth-only shading but with alpha testing
 
-    m_CutoutDepthPSO[0].SetPixelShader(g_pDepthViewerPS, sizeof(g_pDepthViewerPS));
-    m_CutoutDepthPSO[0].SetRasterizerState(RasterizerTwoSided);
-    m_CutoutDepthPSO[0].Finalize();
+	m_CutoutDepthPSO.SetPixelShader(g_pDepthViewerPS, sizeof(g_pDepthViewerPS));
+	m_CutoutDepthPSO.SetRasterizerState(RasterizerTwoSided);
+	m_CutoutDepthPSO.Finalize();
 
-    // Depth-only but with a depth bias and/or render only backfaces
+	// Depth-only but with a depth bias and/or render only backfaces
 
-    m_ShadowPSO.SetRasterizerState(RasterizerShadow);
-    m_ShadowPSO.SetRenderTargetFormats(0, nullptr, g_ShadowBuffer.GetFormat());
-    m_ShadowPSO.Finalize();
+	m_ShadowPSO.SetRasterizerState(RasterizerShadow);
+	m_ShadowPSO.SetRenderTargetFormats(0, nullptr, g_ShadowBuffer.GetFormat());
+	m_ShadowPSO.Finalize();
 
-    // Shadows with alpha testing
-    m_CutoutShadowPSO = m_ShadowPSO;
-    m_CutoutShadowPSO.SetPixelShader(g_pDepthViewerPS, sizeof(g_pDepthViewerPS));
-    m_CutoutShadowPSO.SetRasterizerState(RasterizerShadowTwoSided);
-    m_CutoutShadowPSO.Finalize();
+	// Shadows with alpha testing
+	m_CutoutShadowPSO = m_ShadowPSO;
+	m_CutoutShadowPSO.SetPixelShader(g_pDepthViewerPS, sizeof(g_pDepthViewerPS));
+	m_CutoutShadowPSO.SetRasterizerState(RasterizerShadowTwoSided);
+	m_CutoutShadowPSO.Finalize();
 
-    // Full color pass
-    m_ModelPSO[0] = m_DepthPSO[0];
-    m_ModelPSO[0].SetBlendState(BlendTraditional);
-    m_ModelPSO[0].SetDepthStencilState(DepthStateTestEqual);
-    DXGI_FORMAT formats[] { ColorFormat, NormalFormat };
-    m_ModelPSO[0].SetRenderTargetFormats(_countof(formats), formats, DepthFormat);
-    m_ModelPSO[0].SetVertexShader(g_pModelViewerVS, sizeof(g_pModelViewerVS));
-    m_ModelPSO[0].SetPixelShader(g_pModelViewerPS, sizeof(g_pModelViewerPS));
-    m_ModelPSO[0].Finalize();
+	// Full color pass
+	m_ModelPSO = m_DepthPSO;
+	m_ModelPSO.SetBlendState(BlendTraditional);
+	m_ModelPSO.SetDepthStencilState(DepthStateTestEqual);
+	DXGI_FORMAT formats[]{ColorFormat, NormalFormat};
+	m_ModelPSO.SetRenderTargetFormats(_countof(formats), formats, DepthFormat);
+	m_ModelPSO.SetVertexShader(g_pModelViewerVS, sizeof(g_pModelViewerVS));
+	m_ModelPSO.SetPixelShader(g_pModelViewerPS, sizeof(g_pModelViewerPS));
+	m_ModelPSO.Finalize();
 
-    m_CutoutModelPSO[0] = m_ModelPSO[0];
-    m_CutoutModelPSO[0].SetRasterizerState(RasterizerTwoSided);
-    m_CutoutModelPSO[0].Finalize();
+	m_CutoutModelPSO = m_ModelPSO;
+	m_CutoutModelPSO.SetRasterizerState(RasterizerTwoSided);
+	m_CutoutModelPSO.Finalize();
 
-    // A debug shader for counting lights in a tile
-    m_WaveTileCountPSO = m_ModelPSO[0];
-    m_WaveTileCountPSO.SetPixelShader(g_pWaveTileCountPS, sizeof(g_pWaveTileCountPS));
-    m_WaveTileCountPSO.Finalize();
+	// A debug shader for counting lights in a tile
+	m_WaveTileCountPSO = m_ModelPSO;
+	m_WaveTileCountPSO.SetPixelShader(g_pWaveTileCountPS, sizeof(g_pWaveTileCountPS));
+	m_WaveTileCountPSO.Finalize();
 
 	m_ComputeRootSig.Reset(3, 0);
 	m_ComputeRootSig[0].InitAsDescriptorRange(
@@ -961,12 +1014,12 @@ void D3D12RaytracingMiniEngineSample::Startup(void)
 		D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 1, D3D12_SHADER_VISIBILITY_ALL);
 	m_ComputeRootSig[2].InitAsDescriptorRange(
 		D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 2, 1, D3D12_SHADER_VISIBILITY_ALL);
-	m_ComputeRootSig.Finalize(L"D3D12RaytracingMiniEngineSampleCompute", 
-		D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
+	m_ComputeRootSig.Finalize(L"D3D12RaytracingMiniEngineSampleCompute",
+	                          D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
 
 	m_CombineDepthPSO.SetRootSignature(m_ComputeRootSig);
-	m_CombineDepthPSO.SetComputeShader(g_pCombineDepthsCS, 
-									   sizeof(g_pCombineDepthsCS));
+	m_CombineDepthPSO.SetComputeShader(g_pCombineDepthsCS,
+	                                   sizeof(g_pCombineDepthsCS));
 	m_CombineDepthPSO.Finalize();
 
 	m_CombineColourSig.Reset(2, 0);
@@ -974,7 +1027,7 @@ void D3D12RaytracingMiniEngineSample::Startup(void)
 	m_CombineColourSig[1].InitAsDescriptorRange(
 		D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 0, 1, D3D12_SHADER_VISIBILITY_PIXEL);
 	m_CombineColourSig.Finalize(L"D3D12RaytracingMiniEngineCombineColour",
-		D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
+	                            D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
 
 	m_CombineColourPSO.SetRootSignature(m_CombineColourSig);
 	m_CombineColourPSO.SetRasterizerState(RasterizerDefault);
@@ -988,114 +1041,154 @@ void D3D12RaytracingMiniEngineSample::Startup(void)
 	m_CombineColourPSO.SetPixelShader(g_pCombineColourPS, sizeof(g_pCombineColourPS));
 	m_CombineColourPSO.Finalize();
 
-    Lighting::InitializeResources();
+	Lighting::InitializeResources();
 
-    m_ExtraTextures[0] = g_SSAOFullScreen.GetSRV();
-    m_ExtraTextures[1] = g_ShadowBuffer.GetSRV();
+	m_ExtraTextures[0] = g_SSAOFullScreen.GetSRV();
+	m_ExtraTextures[1] = g_ShadowBuffer.GetSRV();
+
+	// Screen Texture PSO
+	// Albert
+	{
+		D3D12_INPUT_ELEMENT_DESC screenVertElem[] =
+		{
+			{
+				"POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT,
+				D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0
+			},
+			{
+				"TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT,
+				D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0
+			}
+		};
+
+
+		RootSignature& rs = m_screenTextureData.m_RootSignature;
+		rs.Reset(RS_ScreenTexture::kCount, 1);
+		rs[RS_ScreenTexture::kTextureToRender].InitAsDescriptorRange(D3D12_DESCRIPTOR_RANGE_TYPE_SRV,
+		                                                             RS_ScreenTexture::kTextureToRender, 1,
+		                                                             D3D12_SHADER_VISIBILITY_PIXEL);
+		rs.InitStaticSampler(0, DefaultSamplerDesc, D3D12_SHADER_VISIBILITY_PIXEL);
+		rs.Finalize(L"D3D12RaytracingMiniEngineSample AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+		            D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
+		// SubAlbert
+		GraphicsPSO& pso = m_screenTextureData.m_PSO;
+		pso.SetRootSignature(rs);
+		pso.SetRasterizerState(RasterizerDefault);
+		pso.SetBlendState(BlendNoColorWrite);
+		pso.SetDepthStencilState(DepthStateReadWrite);
+		pso.SetInputLayout(_countof(screenVertElem), screenVertElem);
+		pso.SetPrimitiveTopologyType(D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE);
+		DXGI_FORMAT formats[]{ColorFormat, NormalFormat};
+		pso.SetRenderTargetFormats(_countof(formats), formats, DepthFormat);
+		pso.SetVertexShader(g_pScreenTextureVS, sizeof(g_pScreenTextureVS));
+		pso.SetPixelShader(g_pScreenTexturePS, sizeof(g_pScreenTexturePS));
+		pso.Finalize();
+	}
 
 #define ASSET_DIRECTORY "../MiniEngine/ModelViewer/"
-    TextureManager::Initialize(ASSET_DIRECTORY L"Textures/");
-    bool bModelLoadSuccess = m_Model.Load(ASSET_DIRECTORY "Models/sponza.h3d");
-    ASSERT(bModelLoadSuccess, "Failed to load model");
-    ASSERT(m_Model.m_Header.meshCount > 0, "Model contains no meshes");
+	TextureManager::Initialize(ASSET_DIRECTORY L"Textures/");
+	bool bModelLoadSuccess = m_Model.Load(ASSET_DIRECTORY "Models/sponza.h3d");
+	ASSERT(bModelLoadSuccess, "Failed to load model");
+	ASSERT(m_Model.m_Header.meshCount > 0, "Model contains no meshes");
 
-    // The caller of this function can override which materials are considered cutouts
-    m_pMaterialIsCutout.resize(m_Model.m_Header.materialCount);
-    m_pMaterialIsReflective.resize(m_Model.m_Header.materialCount);
-    for (uint32_t i = 0; i < m_Model.m_Header.materialCount; ++i)
-    {
-        const Model::Material& mat = m_Model.m_pMaterial[i];
-        if (std::string(mat.texDiffusePath).find("thorn") != std::string::npos ||
-            std::string(mat.texDiffusePath).find("plant") != std::string::npos ||
-            std::string(mat.texDiffusePath).find("chain") != std::string::npos)
-        {
-            m_pMaterialIsCutout[i] = true;
-        }
-        else
-        {
-            m_pMaterialIsCutout[i] = false;
-        }
+	// The caller of this function can override which materials are considered cutouts
+	m_pMaterialIsCutout.resize(m_Model.m_Header.materialCount);
+	m_pMaterialIsReflective.resize(m_Model.m_Header.materialCount);
+	for (uint32_t i = 0; i < m_Model.m_Header.materialCount; ++i)
+	{
+		const Model::Material& mat = m_Model.m_pMaterial[i];
+		if (std::string(mat.texDiffusePath).find("thorn") != std::string::npos ||
+			std::string(mat.texDiffusePath).find("plant") != std::string::npos ||
+			std::string(mat.texDiffusePath).find("chain") != std::string::npos)
+		{
+			m_pMaterialIsCutout[i] = true;
+		}
+		else
+		{
+			m_pMaterialIsCutout[i] = false;
+		}
 
-        if (std::string(mat.texDiffusePath).find("floor") != std::string::npos)
-        {
-            m_pMaterialIsReflective[i] = true;
-        }
-        else
-        {
-            m_pMaterialIsReflective[i] = false;
-        }
-    }
+		if (std::string(mat.texDiffusePath).find("floor") != std::string::npos)
+		{
+			m_pMaterialIsReflective[i] = true;
+		}
+		else
+		{
+			m_pMaterialIsReflective[i] = false;
+		}
+	}
 
-    g_hitConstantBuffer.Create(L"Hit Constant Buffer", 1, sizeof(HitShaderConstants));
-    g_dynamicConstantBuffer.Create(L"Dynamic Constant Buffer", 1, sizeof(DynamicCB));
+	g_hitConstantBuffer.Create(L"Hit Constant Buffer", 1, sizeof(HitShaderConstants));
+	g_dynamicConstantBuffer.Create(L"Dynamic Constant Buffer", 1, sizeof(DynamicCB));
 
-    InitializeSceneInfo(m_Model);
-    InitializeViews(m_Model);
-    UINT numMeshes = m_Model.m_Header.meshCount;
+	InitializeSceneInfo(m_Model);
+	InitializeViews(m_Model);
+	UINT numMeshes = m_Model.m_Header.meshCount;
 
 
-    if (g_RayTraceSupport)
-    {
-        CreateRayTraceAccelerationStructures(numMeshes);
-        OutputDebugStringW(L"DXR support present on Device");
-    }
-    else
-    {
-        rayTracingMode = RTM_OFF;
-        OutputDebugStringW(L"DXR support not present on Device");
-    }
+	if (g_RayTraceSupport)
+	{
+		CreateRayTraceAccelerationStructures(numMeshes);
+		OutputDebugStringW(L"------------------------------\nDXR support present on Device\n------------------------------\n");
+	}
+	else
+	{
+		rayTracingMode = RTM_OFF;
+		OutputDebugStringW(L"------------------------------\nDXR support not present on Device\n------------------------------\n");
+	}
 
-    InitializeStateObjects(m_Model, numMeshes);
+	InitializeStateObjects(m_Model, numMeshes);
 
-    float modelRadius = Length(m_Model.m_Header.boundingBox.max - m_Model.m_Header.boundingBox.min) * .5f;
-    const Vector3 eye = (m_Model.m_Header.boundingBox.min + m_Model.m_Header.boundingBox.max) * .5f + Vector3(modelRadius * .5f, 0.0f, 0.0f);
-    m_Camera.SetEyeAtUp(eye, Vector3(kZero), Vector3(kYUnitVector));
-    
-    m_CameraPosArrayCurrentPosition = 0;
-    
-    // Lion's head
-    m_CameraPosArray[0].position = Vector3(-1100.0f, 170.0f, -30.0f);
-    m_CameraPosArray[0].heading = 1.5707f;
-    m_CameraPosArray[0].pitch = 0.0f;
+	float modelRadius = Length(m_Model.m_Header.boundingBox.max - m_Model.m_Header.boundingBox.min) * .5f;
+	const Vector3 eye = (m_Model.m_Header.boundingBox.min + m_Model.m_Header.boundingBox.max) * .5f + Vector3(
+		modelRadius * .5f, 0.0f, 0.0f);
+	m_Camera.SetEyeAtUp(eye, Vector3(kZero), Vector3(kYUnitVector));
 
-    // View of columns
-    m_CameraPosArray[1].position = Vector3(299.0f, 208.0f, -202.0f);
-    m_CameraPosArray[1].heading = -3.1111f;
-    m_CameraPosArray[1].pitch = 0.5953f;
+	m_CameraPosArrayCurrentPosition = 0;
 
-    // Bottom-up view from the floor
-    m_CameraPosArray[2].position = Vector3(-1237.61f, 80.60f, -26.02f);
-    m_CameraPosArray[2].heading = -1.5707f;
-    m_CameraPosArray[2].pitch = 0.268f;
+	// Lion's head
+	m_CameraPosArray[0].position = Vector3(-1100.0f, 170.0f, -30.0f);
+	m_CameraPosArray[0].heading = 1.5707f;
+	m_CameraPosArray[0].pitch = 0.0f;
 
-    // Top-down view from the second floor
-    m_CameraPosArray[3].position = Vector3(-977.90f, 595.05f, -194.97f);
-    m_CameraPosArray[3].heading = -2.077f;
-    m_CameraPosArray[3].pitch =  - 0.450f;
+	// View of columns
+	m_CameraPosArray[1].position = Vector3(299.0f, 208.0f, -202.0f);
+	m_CameraPosArray[1].heading = -3.1111f;
+	m_CameraPosArray[1].pitch = 0.5953f;
 
-    // View of corridors on the second floor
-    m_CameraPosArray[4].position = Vector3(-1463.0f, 600.0f, 394.52f);
-    m_CameraPosArray[4].heading = -1.236f;
-    m_CameraPosArray[4].pitch = 0.0f;
+	// Bottom-up view from the floor
+	m_CameraPosArray[2].position = Vector3(-1237.61f, 80.60f, -26.02f);
+	m_CameraPosArray[2].heading = -1.5707f;
+	m_CameraPosArray[2].pitch = 0.268f;
 
-	m_Camera.Setup(1.0f, 500.0f, 3000.0f, false);
-    //m_Camera.SetZRange(1.0f, 10000.0f);
+	// Top-down view from the second floor
+	m_CameraPosArray[3].position = Vector3(-977.90f, 595.05f, -194.97f);
+	m_CameraPosArray[3].heading = -2.077f;
+	m_CameraPosArray[3].pitch = - 0.450f;
 
-    m_CameraController.reset(new VRCameraController(m_Camera, Vector3(kYUnitVector)));
-    
-    MotionBlur::Enable = false;//true;
-    TemporalEffects::EnableTAA = false;//true;
-    FXAA::Enable = false;
-    PostEffects::EnableHDR = false;//true;
-    PostEffects::EnableAdaptation = false;//true;
-    SSAO::Enable = true;
+	// View of corridors on the second floor
+	m_CameraPosArray[4].position = Vector3(-1463.0f, 600.0f, 394.52f);
+	m_CameraPosArray[4].heading = -1.236f;
+	m_CameraPosArray[4].pitch = 0.0f;
 
-    Lighting::CreateRandomLights(m_Model.GetBoundingBox().min, m_Model.GetBoundingBox().max);
+	m_Camera.Setup(1.0f, 500.0f, 3000.0f, false, m_screenTextureData.m_Quad);
+	//m_Camera.SetZRange(1.0f, 10000.0f);
 
-    m_ExtraTextures[2] = Lighting::m_LightBuffer.GetSRV();
-    m_ExtraTextures[3] = Lighting::m_LightShadowArray.GetSRV();
-    m_ExtraTextures[4] = Lighting::m_LightGrid.GetSRV();
-    m_ExtraTextures[5] = Lighting::m_LightGridBitMask.GetSRV();
+	m_CameraController.reset(new VRCameraController(m_Camera, Vector3(kYUnitVector)));
+
+	MotionBlur::Enable = false;         //true;
+	TemporalEffects::EnableTAA = false; //true;
+	FXAA::Enable = false;
+	PostEffects::EnableHDR = false;        //true;
+	PostEffects::EnableAdaptation = false; //true;
+	SSAO::Enable = true;
+
+	Lighting::CreateRandomLights(m_Model.GetBoundingBox().min, m_Model.GetBoundingBox().max);
+
+	m_ExtraTextures[2] = Lighting::m_LightBuffer.GetSRV();
+	m_ExtraTextures[3] = Lighting::m_LightShadowArray.GetSRV();
+	m_ExtraTextures[4] = Lighting::m_LightGrid.GetSRV();
+	m_ExtraTextures[5] = Lighting::m_LightGridBitMask.GetSRV();
 
 	CreateQuadVerts();
 }
@@ -1193,95 +1286,40 @@ void D3D12RaytracingMiniEngineSample::Update(float deltaT)
 
 void D3D12RaytracingMiniEngineSample::CreateQuadVerts()
 {
+	auto makeQuad = [](QuadPos& Quad, StructuredBuffer& Buffer, LPCWSTR Name)
 	{
 		__declspec(align(16)) const float vertices[] =
 		{
-			g_qL.topLeft.GetX(), g_qL.topLeft.GetY(), g_qL.topLeft.GetZ(), // Position // TODO: Does the quad need to be divided by w?
+			Quad.topLeft.GetX(), Quad.topLeft.GetY(), Quad.topLeft.GetZ(),
+			// Position // TODO: Does the Quad need to be divided by w?
 			0, 0, // UV
-			0, 0, 0, // Normal (unused)
-			0, 0, 0, // Tangent (unused)
-			0, 0, 0, // Bitangent (unused)
 
-			g_qL.bottomLeft.GetX(), g_qL.bottomLeft.GetY(), g_qL.bottomLeft.GetZ(), // Position
-			0, 1, // UV
-			0, 0, 0, // Normal (unused)
-			0, 0, 0, // Tangent (unused)
-			0, 0, 0, // Bitangent (unused)
+			Quad.bottomLeft.GetX(), Quad.bottomLeft.GetY(), Quad.bottomLeft.GetZ(), // Position
+			0, 1,                                                                   // UV
 
-			g_qL.topRight.GetX(), g_qL.topRight.GetY(), g_qL.topRight.GetZ(), // Position
-			1, 0, // UV
-			0, 0, 0, // Normal (unused)
-			0, 0, 0, // Tangent (unused)
-			0, 0, 0, // Bitangent (unused)
+			Quad.topRight.GetX(), Quad.topRight.GetY(), Quad.topRight.GetZ(), // Position
+			1, 0,                                                             // UV
 
-			g_qL.topRight.GetX(), g_qL.topRight.GetY(), g_qL.topRight.GetZ(), // Position
-			1, 0, // UV
-			0, 0, 0, // Normal (unused)
-			0, 0, 0, // Tangent (unused)
-			0, 0, 0, // Bitangent (unused)
+			Quad.topRight.GetX(), Quad.topRight.GetY(), Quad.topRight.GetZ(), // Position
+			1, 0,                                                             // UV
 
-			g_qL.bottomLeft.GetX(), g_qL.bottomLeft.GetY(), g_qL.bottomLeft.GetZ(), // Position
-			0, 1, // UV
-			0, 0, 0, // Normal (unused)
-			0, 0, 0, // Tangent (unused)
-			0, 0, 0, // Bitangent (unused)
+			Quad.bottomLeft.GetX(), Quad.bottomLeft.GetY(), Quad.bottomLeft.GetZ(), // Position
+			0, 1,                                                                   // UV
 
-			g_qL.bottomRight.GetX(), g_qL.bottomRight.GetY(), g_qL.bottomRight.GetZ(), // Position
-			1, 1, // UV
-			0, 0, 0, // Normal (unused)
-			0, 0, 0, // Tangent (unused)
-			0, 0, 0, // Bitangent (unused)
+			Quad.bottomRight.GetX(), Quad.bottomRight.GetY(), Quad.bottomRight.GetZ(), // Position
+			1, 1,                                                                      // UV
 		};
 
-		m_leftQuadVertBuf.Create(L"Left Quad Vertex Buffer", 6, sizeof(float) * 14, vertices);
-	}
-
-	{
-		__declspec(align(16)) const float vertices[] =
-		{
-			g_qR.topLeft.GetX(), g_qR.topLeft.GetY(), g_qR.topLeft.GetZ(), // Position // TODO: Does the quad need to be divided by w?
-			0, 0, // UV
-			0, 0, 0, // Normal (unused)
-			0, 0, 0, // Tangent (unused)
-			0, 0, 0, // Bitangent (unused)
-
-			g_qR.bottomLeft.GetX(), g_qR.bottomLeft.GetY(), g_qR.bottomLeft.GetZ(), // Position
-			0, 1, // UV
-			0, 0, 0, // Normal (unused)
-			0, 0, 0, // Tangent (unused)
-			0, 0, 0, // Bitangent (unused)
-
-			g_qR.topRight.GetX(), g_qR.topRight.GetY(), g_qR.topRight.GetZ(), // Position
-			1, 0, // UV
-			0, 0, 0, // Normal (unused)
-			0, 0, 0, // Tangent (unused)
-			0, 0, 0, // Bitangent (unused)
-
-			g_qR.topRight.GetX(), g_qR.topRight.GetY(), g_qR.topRight.GetZ(), // Position
-			1, 0, // UV
-			0, 0, 0, // Normal (unused)
-			0, 0, 0, // Tangent (unused)
-			0, 0, 0, // Bitangent (unused)
-
-			g_qR.bottomLeft.GetX(), g_qR.bottomLeft.GetY(), g_qR.bottomLeft.GetZ(), // Position
-			0, 1, // UV
-			0, 0, 0, // Normal (unused)
-			0, 0, 0, // Tangent (unused)
-			0, 0, 0, // Bitangent (unused)
-
-			g_qR.bottomRight.GetX(), g_qR.bottomRight.GetY(), g_qR.bottomRight.GetZ(), // Position
-			1, 1, // UV
-			0, 0, 0, // Normal (unused)
-			0, 0, 0, // Tangent (unused)
-			0, 0, 0, // Bitangent (unused)
-		};
-
-		m_rightQuadVertBuf.Create(L"Right Quad Vertex Buffer", 6, sizeof(float) * 14, vertices);
-	}
+		Buffer.Create(Name, 6, sizeof(float) * 14, vertices);
+	};
+	ScreenTextureData& data = m_screenTextureData;
+	makeQuad(data.m_Quad, data.m_Buffer, L"Quad Vertex Buffer");
 }
 
-void D3D12RaytracingMiniEngineSample::RenderObjects(GraphicsContext& gfxContext, const Matrix4& ViewProjMat,
-                                                    UINT curCam, eObjectFilter Filter)
+void D3D12RaytracingMiniEngineSample::RenderObjects(
+	GraphicsContext& gfxContext,
+	const Matrix4& ViewProjMat,
+	UINT curCam, eObjectFilter Filter)
 {
 	struct VSConstants
 	{
@@ -1327,14 +1365,18 @@ void D3D12RaytracingMiniEngineSample::RenderObjects(GraphicsContext& gfxContext,
 	}
 
 	vsConstants.modelToProjection = Matrix4(XMMatrixScaling(2000, 2000, 1));
-	
-	gfxContext.SetDynamicDescriptor(2, 0, g_SceneColorBuffer.GetSRV());
-	gfxContext.SetVertexBuffer(0, m_leftQuadVertBuf.VertexBufferView());
-	gfxContext.Draw(6);
-
-	gfxContext.SetVertexBuffer(0, m_Model.m_VertexBuffer.VertexBufferView());
 }
 
+void D3D12RaytracingMiniEngineSample::RenderCenterViewToEye(GraphicsContext& Ctx, UINT CurCam)
+{
+	// Render Quad
+	Ctx.SetPipelineState(m_screenTextureData.m_PSO);
+	Ctx.SetRootSignature(m_screenTextureData.m_RootSignature);
+	Ctx.SetRenderTarget(g_SceneColorBuffer.GetSubRTV(CurCam));
+	Ctx.SetVertexBuffer(0, m_screenTextureData.m_Buffer.VertexBufferView());
+	Ctx.SetDynamicDescriptor(RS_ScreenTexture::kTextureToRender, 0, g_SceneColorBuffer.GetSubSRV(2));
+	Ctx.Draw(6);
+}
 
 void D3D12RaytracingMiniEngineSample::SetCameraToPredefinedPosition(int cameraPosition)
 {
@@ -1469,7 +1511,7 @@ void D3D12RaytracingMiniEngineSample::CreateRayTraceAccelerationStructures(UINT 
 	}
 
 	ByteAddressBuffer instanceDataBuffer;
-	instanceDataBuffer.Create(L"Instance Data Buffer", numBottomLevels, sizeof(D3D12_RAYTRACING_INSTANCE_DESC),
+	instanceDataBuffer.Create(L"Instance m_Quads Buffer", numBottomLevels, sizeof(D3D12_RAYTRACING_INSTANCE_DESC),
 	                          instanceDescs.data());
 
 	topLevelInputs.InstanceDescs = instanceDataBuffer.GetGpuVirtualAddress();
@@ -1529,94 +1571,94 @@ void D3D12RaytracingMiniEngineSample::RenderLightShadows(GraphicsContext& gfxCon
 
 void D3D12RaytracingMiniEngineSample::RenderScene()
 {
-	const bool skipDiffusePass = 
-        rayTracingMode == RTM_DIFFUSE_WITH_SHADOWMAPS ||
-        rayTracingMode == RTM_DIFFUSE_WITH_SHADOWRAYS ||
-        rayTracingMode == RTM_TRAVERSAL;
-        
-    const bool skipShadowMap = 
-        rayTracingMode == RTM_DIFFUSE_WITH_SHADOWRAYS ||
-        rayTracingMode == RTM_TRAVERSAL ||
-        rayTracingMode == RTM_SSR;
+	const bool skipDiffusePass =
+		rayTracingMode == RTM_DIFFUSE_WITH_SHADOWMAPS ||
+		rayTracingMode == RTM_DIFFUSE_WITH_SHADOWRAYS ||
+		rayTracingMode == RTM_TRAVERSAL;
 
-    static bool s_ShowLightCounts = false;
-    if (ShowWaveTileCounts != s_ShowLightCounts)
-    {
-        static bool EnableHDR;
-        if (ShowWaveTileCounts)
-        {
-            EnableHDR = PostEffects::EnableHDR;
-            PostEffects::EnableHDR = false;
-        }
-        else
-        {
-            PostEffects::EnableHDR = EnableHDR;
-        }
-        s_ShowLightCounts = ShowWaveTileCounts;
-    }
-    
+	const bool skipShadowMap =
+		rayTracingMode == RTM_DIFFUSE_WITH_SHADOWRAYS ||
+		rayTracingMode == RTM_TRAVERSAL ||
+		rayTracingMode == RTM_SSR;
+
+	static bool s_ShowLightCounts = false;
+	if (ShowWaveTileCounts != s_ShowLightCounts)
+	{
+		static bool EnableHDR;
+		if (ShowWaveTileCounts)
+		{
+			EnableHDR = PostEffects::EnableHDR;
+			PostEffects::EnableHDR = false;
+		}
+		else
+		{
+			PostEffects::EnableHDR = EnableHDR;
+		}
+		s_ShowLightCounts = ShowWaveTileCounts;
+	}
+
 	GraphicsContext& leftGfxContext = GraphicsContext::Begin(L"Scene Render Left");
 	GraphicsContext& rightGfxContext = GraphicsContext::Begin(L"Scene Render Right");
 	GraphicsContext& centerGfxContext = GraphicsContext::Begin(L"Scene Render Center");
 
-    ParticleEffects::Update(leftGfxContext.GetComputeContext(), Graphics::GetFrameTime());
-    ParticleEffects::Update(rightGfxContext.GetComputeContext(), Graphics::GetFrameTime());
-    ParticleEffects::Update(centerGfxContext.GetComputeContext(), Graphics::GetFrameTime());
+	ParticleEffects::Update(leftGfxContext.GetComputeContext(), Graphics::GetFrameTime());
+	ParticleEffects::Update(rightGfxContext.GetComputeContext(), Graphics::GetFrameTime());
+	ParticleEffects::Update(centerGfxContext.GetComputeContext(), Graphics::GetFrameTime());
 
-    uint32_t FrameIndex = TemporalEffects::GetFrameIndexMod2();
+	uint32_t FrameIndex = TemporalEffects::GetFrameIndexMod2();
 
-    __declspec(align(16)) struct
-    {
-        Vector3 sunDirection;
-        Vector3 sunLight;
-        Vector3 ambientLight;
-        float ShadowTexelSize[4];
+	__declspec(align(16)) struct
+	{
+		Vector3 sunDirection;
+		Vector3 sunLight;
+		Vector3 ambientLight;
+		float ShadowTexelSize[4];
 
-        float InvTileDim[4];
-        uint32_t TileCount[4];
-        uint32_t FirstLightIndex[4];
-        uint32_t FrameIndexMod2;
-    } psConstants;
+		float InvTileDim[4];
+		uint32_t TileCount[4];
+		uint32_t FirstLightIndex[4];
+		uint32_t FrameIndexMod2;
+	} psConstants;
 
-    psConstants.sunDirection = m_SunDirection;
-    psConstants.sunLight = Vector3(1.0f, 1.0f, 1.0f) * m_SunLightIntensity;
-    psConstants.ambientLight = Vector3(1.0f, 1.0f, 1.0f) * m_AmbientIntensity;
-    psConstants.ShadowTexelSize[0] = 1.0f / g_ShadowBuffer.GetWidth();
-    psConstants.InvTileDim[0] = 1.0f / Lighting::LightGridDim;
-    psConstants.InvTileDim[1] = 1.0f / Lighting::LightGridDim;
-    psConstants.TileCount[0] = Math::DivideByMultiple(g_SceneColorBuffer.GetWidth(), Lighting::LightGridDim);
-    psConstants.TileCount[1] = Math::DivideByMultiple(g_SceneColorBuffer.GetHeight(), Lighting::LightGridDim);
-    psConstants.FirstLightIndex[0] = Lighting::m_FirstConeLight;
-    psConstants.FirstLightIndex[1] = Lighting::m_FirstConeShadowedLight;
-    psConstants.FrameIndexMod2 = FrameIndex;
+	psConstants.sunDirection = m_SunDirection;
+	psConstants.sunLight = Vector3(1.0f, 1.0f, 1.0f) * m_SunLightIntensity;
+	psConstants.ambientLight = Vector3(1.0f, 1.0f, 1.0f) * m_AmbientIntensity;
+	psConstants.ShadowTexelSize[0] = 1.0f / g_ShadowBuffer.GetWidth();
+	psConstants.InvTileDim[0] = 1.0f / Lighting::LightGridDim;
+	psConstants.InvTileDim[1] = 1.0f / Lighting::LightGridDim;
+	psConstants.TileCount[0] = Math::DivideByMultiple(g_SceneColorBuffer.GetWidth(), Lighting::LightGridDim);
+	psConstants.TileCount[1] = Math::DivideByMultiple(g_SceneColorBuffer.GetHeight(), Lighting::LightGridDim);
+	psConstants.FirstLightIndex[0] = Lighting::m_FirstConeLight;
+	psConstants.FirstLightIndex[1] = Lighting::m_FirstConeShadowedLight;
+	psConstants.FrameIndexMod2 = FrameIndex;
 
-    // Set the default state for command lists
-    auto& pfnSetupGraphicsState = [&](GraphicsContext* gfxContext)
-    {
-        gfxContext->SetRootSignature(m_RootSig);
-        gfxContext->SetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-        gfxContext->SetIndexBuffer(m_Model.m_IndexBuffer.IndexBufferView());
-        gfxContext->SetVertexBuffer(0, m_Model.m_VertexBuffer.VertexBufferView());
-    };
+	// Set the default state for command lists
+	auto& pfnSetupGraphicsState = [&](GraphicsContext* gfxContext)
+	{
+		gfxContext->SetRootSignature(m_RootSig);
+		gfxContext->SetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+		gfxContext->SetIndexBuffer(m_Model.m_IndexBuffer.IndexBufferView());
+		gfxContext->SetVertexBuffer(0, m_Model.m_VertexBuffer.VertexBufferView());
+	};
 
-    pfnSetupGraphicsState(&leftGfxContext);
-    pfnSetupGraphicsState(&rightGfxContext);
-    pfnSetupGraphicsState(&centerGfxContext);
+	pfnSetupGraphicsState(&leftGfxContext);
+	pfnSetupGraphicsState(&rightGfxContext);
+	pfnSetupGraphicsState(&centerGfxContext);
 
-    RenderLightShadows(leftGfxContext, 0);
-    RenderLightShadows(rightGfxContext, 1);
-    RenderLightShadows(centerGfxContext, 2);
+	RenderLightShadows(leftGfxContext, 0);
+	RenderLightShadows(rightGfxContext, 1);
+	RenderLightShadows(centerGfxContext, 2);
 
-    {
-        ScopedTimer _prof(L"Z PrePass", leftGfxContext);
+	{
+		ScopedTimer _prof(L"Z PrePass", leftGfxContext);
 
 		leftGfxContext.SetDynamicConstantBufferView(1, sizeof(psConstants), &psConstants);
 		rightGfxContext.SetDynamicConstantBufferView(1, sizeof(psConstants), &psConstants);
 		centerGfxContext.SetDynamicConstantBufferView(1, sizeof(psConstants), &psConstants);
 
-        {
-            ScopedTimer _prof(L"Opaque", leftGfxContext);
-            {
+		{
+			ScopedTimer _prof(L"Opaque", leftGfxContext);
+			{
 				leftGfxContext.TransitionResource(g_SceneLeftDepthBuffer, D3D12_RESOURCE_STATE_DEPTH_WRITE, true);
 				rightGfxContext.TransitionResource(g_SceneRightDepthBuffer, D3D12_RESOURCE_STATE_DEPTH_WRITE, true);
 				centerGfxContext.TransitionResource(g_SceneCenterDepthBuffer, D3D12_RESOURCE_STATE_DEPTH_WRITE, true);
@@ -1624,50 +1666,50 @@ void D3D12RaytracingMiniEngineSample::RenderScene()
 				rightGfxContext.ClearDepth(g_SceneRightDepthBuffer);
 				centerGfxContext.ClearDepth(g_SceneCenterDepthBuffer);
 
-				leftGfxContext.SetPipelineState(m_DepthPSO[0]);
-				rightGfxContext.SetPipelineState(m_DepthPSO[0]);
-				centerGfxContext.SetPipelineState(m_DepthPSO[0]);
+				leftGfxContext.SetPipelineState(m_DepthPSO);
+				rightGfxContext.SetPipelineState(m_DepthPSO);
+				centerGfxContext.SetPipelineState(m_DepthPSO);
 
 				leftGfxContext.SetViewportAndScissor(m_MainViewport, m_MainScissor);
 				rightGfxContext.SetViewportAndScissor(m_MainViewport, m_MainScissor);
 				centerGfxContext.SetViewportAndScissor(m_MainViewport, m_MainScissor);
-            }
+			}
 
 			leftGfxContext.SetDepthStencilTarget(g_SceneLeftDepthBuffer.GetDSV());
-            RenderObjects(leftGfxContext, m_Camera[0]->GetViewProjMatrix(), 0, kOpaque);
+			RenderObjects(leftGfxContext, m_Camera[0]->GetViewProjMatrix(), 0, kOpaque);
 
 			rightGfxContext.SetDepthStencilTarget(g_SceneRightDepthBuffer.GetDSV());
 			RenderObjects(rightGfxContext, m_Camera[1]->GetViewProjMatrix(), 1, kOpaque);
 
 			centerGfxContext.SetDepthStencilTarget(g_SceneCenterDepthBuffer.GetDSV());
 			RenderObjects(centerGfxContext, m_Camera[2]->GetViewProjMatrix(), 2, kOpaque);
-        }
+		}
 
-        {
-            ScopedTimer _prof(L"Cutout", leftGfxContext);
-            {
-				leftGfxContext.SetPipelineState(m_CutoutDepthPSO[0]);
-				rightGfxContext.SetPipelineState(m_CutoutDepthPSO[0]);
-				centerGfxContext.SetPipelineState(m_CutoutDepthPSO[0]);
-            }
-            RenderObjects(leftGfxContext, m_Camera[0]->GetViewProjMatrix(), 0, kCutout);
-            RenderObjects(rightGfxContext, m_Camera[1]->GetViewProjMatrix(), 1, kCutout);
-            RenderObjects(centerGfxContext, m_Camera[2]->GetViewProjMatrix(), 2, kCutout);
-        }
-    }
+		{
+			ScopedTimer _prof(L"Cutout", leftGfxContext);
+			{
+				leftGfxContext.SetPipelineState(m_CutoutDepthPSO);
+				rightGfxContext.SetPipelineState(m_CutoutDepthPSO);
+				centerGfxContext.SetPipelineState(m_CutoutDepthPSO);
+			}
+			RenderObjects(leftGfxContext, m_Camera[0]->GetViewProjMatrix(), 0, kCutout);
+			RenderObjects(rightGfxContext, m_Camera[1]->GetViewProjMatrix(), 1, kCutout);
+			RenderObjects(centerGfxContext, m_Camera[2]->GetViewProjMatrix(), 2, kCutout);
+		}
+	}
 
 	leftGfxContext.TransitionResource(g_SceneLeftDepthBuffer,
-		D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+	                                  D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 	rightGfxContext.TransitionResource(g_SceneRightDepthBuffer,
-		D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+	                                   D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 	centerGfxContext.TransitionResource(g_SceneCenterDepthBuffer,
-		D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+	                                    D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 	centerGfxContext.TransitionResource(g_SceneCenterColourDepthBuffer,
-		D3D12_RESOURCE_STATE_UNORDERED_ACCESS, true);
+	                                    D3D12_RESOURCE_STATE_UNORDERED_ACCESS, true);
 
 	{
 		ComputeContext& cmpContext =
-			ComputeContext::Begin(L"Combine Depth Buffers", true);
+			ComputeContext::Begin(L"Combine Depth m_Buffers", true);
 
 		cmpContext.SetRootSignature(m_ComputeRootSig);
 		cmpContext.SetPipelineState(m_CombineDepthPSO);
@@ -1687,73 +1729,74 @@ void D3D12RaytracingMiniEngineSample::RenderScene()
 			2, 0, g_SceneCenterColourDepthBuffer.GetUAV());
 
 		cmpContext.Dispatch2D(g_SceneLeftDepthBuffer.GetWidth(),
-			g_SceneLeftDepthBuffer.GetHeight());
+		                      g_SceneLeftDepthBuffer.GetHeight());
 
 		cmpContext.Finish();
 	}
 
-    SSAO::Render(leftGfxContext, *m_Camera[0], &g_SceneLeftDepthBuffer);
-    SSAO::Render(rightGfxContext, *m_Camera[1], &g_SceneRightDepthBuffer);
-    SSAO::Render(centerGfxContext, *m_Camera[2], &g_SceneCenterDepthBuffer);
+	SSAO::Render(leftGfxContext, *m_Camera[0], &g_SceneLeftDepthBuffer);
+	SSAO::Render(rightGfxContext, *m_Camera[1], &g_SceneRightDepthBuffer);
+	SSAO::Render(centerGfxContext, *m_Camera[2], &g_SceneCenterDepthBuffer);
 
-    if (!skipDiffusePass)
-    {
-        Lighting::FillLightGrid(leftGfxContext, *m_Camera[0], &g_SceneLeftDepthBuffer);
-        Lighting::FillLightGrid(rightGfxContext, *m_Camera[1], &g_SceneRightDepthBuffer);
-        Lighting::FillLightGrid(centerGfxContext, *m_Camera[2], &g_SceneCenterDepthBuffer);
+	if (!skipDiffusePass)
+	{
+		Lighting::FillLightGrid(leftGfxContext, *m_Camera[0], &g_SceneLeftDepthBuffer);
+		Lighting::FillLightGrid(rightGfxContext, *m_Camera[1], &g_SceneRightDepthBuffer);
+		Lighting::FillLightGrid(centerGfxContext, *m_Camera[2], &g_SceneCenterDepthBuffer);
 
-        if (!SSAO::DebugDraw)
-        {
-            ScopedTimer _prof(L"Main Render", leftGfxContext);
-            {
+		if (!SSAO::DebugDraw)
+		{
+			ScopedTimer _prof(L"Main Render", leftGfxContext);
+			{
 				leftGfxContext.TransitionResource(g_SceneColorBuffer, D3D12_RESOURCE_STATE_RENDER_TARGET, true);
 				leftGfxContext.TransitionResource(g_SceneNormalBuffer, D3D12_RESOURCE_STATE_RENDER_TARGET, true);
 				leftGfxContext.ClearColor(g_SceneColorBuffer);
-            }
-        }
-    }
+			}
+		}
+	}
 
-    if (!skipShadowMap)
-    {
-        if (!SSAO::DebugDraw)
-        {
-            pfnSetupGraphicsState(&leftGfxContext);
-            pfnSetupGraphicsState(&rightGfxContext);
-            pfnSetupGraphicsState(&centerGfxContext);
-            {
-                ScopedTimer _prof(L"Render Shadow Map", leftGfxContext);
+	if (!skipShadowMap)
+	{
+		if (!SSAO::DebugDraw)
+		{
+			pfnSetupGraphicsState(&leftGfxContext);
+			pfnSetupGraphicsState(&rightGfxContext);
+			pfnSetupGraphicsState(&centerGfxContext);
+			{
+				ScopedTimer _prof(L"Render Shadow Map", leftGfxContext);
 
-                m_SunShadow.UpdateMatrix(-m_SunDirection, Vector3(0, -500.0f, 0), Vector3(ShadowDimX, ShadowDimY, ShadowDimZ),
-                    (uint32_t)g_ShadowBuffer.GetWidth(), (uint32_t)g_ShadowBuffer.GetHeight(), 16);
+				m_SunShadow.UpdateMatrix(-m_SunDirection, Vector3(0, -500.0f, 0),
+				                         Vector3(ShadowDimX, ShadowDimY, ShadowDimZ),
+				                         (uint32_t)g_ShadowBuffer.GetWidth(), (uint32_t)g_ShadowBuffer.GetHeight(), 16);
 
-                g_ShadowBuffer.BeginRendering(leftGfxContext);
-                g_ShadowBuffer.BeginRendering(rightGfxContext);
-                g_ShadowBuffer.BeginRendering(centerGfxContext);
+				g_ShadowBuffer.BeginRendering(leftGfxContext);
+				g_ShadowBuffer.BeginRendering(rightGfxContext);
+				g_ShadowBuffer.BeginRendering(centerGfxContext);
 				leftGfxContext.SetPipelineState(m_ShadowPSO);
 				rightGfxContext.SetPipelineState(m_ShadowPSO);
 				centerGfxContext.SetPipelineState(m_ShadowPSO);
-                RenderObjects(leftGfxContext, m_SunShadow.GetViewProjMatrix(), 0, kOpaque);
-                RenderObjects(rightGfxContext, m_SunShadow.GetViewProjMatrix(), 1, kOpaque);
-                RenderObjects(centerGfxContext, m_SunShadow.GetViewProjMatrix(), 2, kOpaque);
+				RenderObjects(leftGfxContext, m_SunShadow.GetViewProjMatrix(), 0, kOpaque);
+				RenderObjects(rightGfxContext, m_SunShadow.GetViewProjMatrix(), 1, kOpaque);
+				RenderObjects(centerGfxContext, m_SunShadow.GetViewProjMatrix(), 2, kOpaque);
 				leftGfxContext.SetPipelineState(m_CutoutShadowPSO);
 				rightGfxContext.SetPipelineState(m_CutoutShadowPSO);
 				centerGfxContext.SetPipelineState(m_CutoutShadowPSO);
-                RenderObjects(leftGfxContext, m_SunShadow.GetViewProjMatrix(), 0, kCutout);
-                RenderObjects(rightGfxContext, m_SunShadow.GetViewProjMatrix(), 1, kCutout);
-                RenderObjects(centerGfxContext, m_SunShadow.GetViewProjMatrix(), 2, kCutout);
+				RenderObjects(leftGfxContext, m_SunShadow.GetViewProjMatrix(), 0, kCutout);
+				RenderObjects(rightGfxContext, m_SunShadow.GetViewProjMatrix(), 1, kCutout);
+				RenderObjects(centerGfxContext, m_SunShadow.GetViewProjMatrix(), 2, kCutout);
 				g_ShadowBuffer.EndRendering(leftGfxContext);
 				g_ShadowBuffer.EndRendering(rightGfxContext);
 				g_ShadowBuffer.EndRendering(centerGfxContext);
-            }
-        }
-    }
+			}
+		}
+	}
 
-    if (!skipDiffusePass)
-    {
-        if (!SSAO::DebugDraw)
-        {
-            if (SSAO::AsyncCompute)
-            {
+	if (!skipDiffusePass)
+	{
+		if (!SSAO::DebugDraw)
+		{
+			if (SSAO::AsyncCompute)
+			{
 				leftGfxContext.Flush();
 				rightGfxContext.Flush();
 				centerGfxContext.Flush();
@@ -1761,9 +1804,9 @@ void D3D12RaytracingMiniEngineSample::RenderScene()
 				pfnSetupGraphicsState(&rightGfxContext);
 				pfnSetupGraphicsState(&centerGfxContext);
 
-                // Make the 3D queue wait for the Compute queue to finish SSAO
-                g_CommandManager.GetGraphicsQueue().StallForProducer(g_CommandManager.GetComputeQueue());
-            }
+				// Make the 3D queue wait for the Compute queue to finish SSAO
+				g_CommandManager.GetGraphicsQueue().StallForProducer(g_CommandManager.GetComputeQueue());
+			}
 
 			auto renderColour = [=](GraphicsContext* gfxContext, int cam, DepthBuffer* curDepthBuf)
 			{
@@ -1777,9 +1820,9 @@ void D3D12RaytracingMiniEngineSample::RenderScene()
 					3, 0, ARRAYSIZE(m_ExtraTextures), m_ExtraTextures);
 
 				gfxContext->TransitionResource(g_SceneCenterColourDepthBuffer,
-					D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, true);
+				                               D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, true);
 				gfxContext->SetDynamicDescriptor(6, 0,
-					g_SceneCenterColourDepthBuffer.GetSRV());
+				                                 g_SceneCenterColourDepthBuffer.GetSRV());
 
 				/*gfxContext->TransitionResource(g_SceneColorBuffer,
 					D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, true);
@@ -1790,18 +1833,17 @@ void D3D12RaytracingMiniEngineSample::RenderScene()
 
 
 				{
-					gfxContext->SetPipelineState(ShowWaveTileCounts ?
-						m_WaveTileCountPSO : m_ModelPSO[0]);
+					gfxContext->SetPipelineState(ShowWaveTileCounts ? m_WaveTileCountPSO : m_ModelPSO);
 
 					gfxContext->TransitionResource(*curDepthBuf,
-						D3D12_RESOURCE_STATE_DEPTH_READ);
+					                               D3D12_RESOURCE_STATE_DEPTH_READ);
 
 					D3D12_CPU_DESCRIPTOR_HANDLE rtvs[2];
 					rtvs[0] = g_SceneColorBuffer.GetSubRTV(cam);
 					rtvs[1] = g_SceneNormalBuffer.GetRTV();
 
 					gfxContext->SetRenderTargets(ARRAYSIZE(rtvs), rtvs,
-						curDepthBuf->GetDSV_DepthReadOnly());
+					                             curDepthBuf->GetDSV_DepthReadOnly());
 
 					gfxContext->SetViewportAndScissor(
 						m_MainViewport, m_MainScissor);
@@ -1812,7 +1854,7 @@ void D3D12RaytracingMiniEngineSample::RenderScene()
 
 				if (!ShowWaveTileCounts)
 				{
-					gfxContext->SetPipelineState(m_CutoutModelPSO[0]);
+					gfxContext->SetPipelineState(m_CutoutModelPSO);
 					RenderObjects(*gfxContext, m_Camera[0]->GetViewProjMatrix(), 0, kCutout);
 					RenderObjects(*gfxContext, m_Camera[1]->GetViewProjMatrix(), 1, kCutout);
 					RenderObjects(*gfxContext, m_Camera[2]->GetViewProjMatrix(), 2, kCutout);
@@ -1837,9 +1879,9 @@ void D3D12RaytracingMiniEngineSample::RenderScene()
 		ParticleEffects::Render(leftGfxContext, *m_Camera[0], g_SceneColorBuffer, g_SceneLeftDepthBuffer,
 		                        g_LinearDepth[FrameIndex]);
 		ParticleEffects::Render(rightGfxContext, *m_Camera[1], g_SceneColorBuffer, g_SceneRightDepthBuffer,
-			g_LinearDepth[FrameIndex]);
+		                        g_LinearDepth[FrameIndex]);
 		ParticleEffects::Render(centerGfxContext, *m_Camera[2], g_SceneColorBuffer, g_SceneCenterDepthBuffer,
-			g_LinearDepth[FrameIndex]);
+		                        g_LinearDepth[FrameIndex]);
 
 		// Until I work out how to couple these two, it's "either-or".
 		if (DepthOfField::Enable)
@@ -1856,33 +1898,16 @@ void D3D12RaytracingMiniEngineSample::RenderScene()
 		}
 	}
 
-	if(g_RayTraceSupport && rayTracingMode != RTM_OFF)
+	if (g_RayTraceSupport && rayTracingMode != RTM_OFF)
 	{
 		Raytrace(leftGfxContext, 0, &g_SceneLeftDepthBuffer);
 		Raytrace(rightGfxContext, 1, &g_SceneRightDepthBuffer);
 		Raytrace(centerGfxContext, 2, &g_SceneCenterDepthBuffer);
 	}
 
-	/*if (cam == 2)
-	{
-		gfxContext.SetRootSignature(m_CombineColourSig);
-		gfxContext.SetPipelineState(m_CombineColourPSO);
-
-		gfxContext.SetDynamicConstantBufferView(0, sizeof(g_qL), &g_qL);
-		gfxContext.SetDynamicDescriptor(1, 0, g_SceneColorBuffer.GetSRV());
-
-		gfxContext.TransitionResource(g_SceneColorBuffer, D3D12_RESOURCE_STATE_RENDER_TARGET);
-
-		gfxContext.SetRenderTarget(g_SceneColorBuffer.GetSubRTV(0));
-		gfxContext.SetViewportAndScissor(
-			m_MainViewport, m_MainScissor);
-		gfxContext.Draw(6);
-
-		gfxContext.SetDynamicConstantBufferView(0, sizeof(g_qR), &g_qR);
-
-		gfxContext.SetRenderTarget(g_SceneColorBuffer.GetSubRTV(2));
-		gfxContext.Draw(6);
-	}*/
+	// Albert
+	//RenderCenterViewToEye(leftGfxContext, 0);
+	//RenderCenterViewToEye(rightGfxContext, 1);
 
 	leftGfxContext.Finish();
 	rightGfxContext.Finish();
@@ -2198,7 +2223,6 @@ void D3D12RaytracingMiniEngineSample::Raytrace(
 	g_dynamicCb.curCam = cam;
 
 	gfxContext.TransitionResource(g_SSAOFullScreen, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-
 	uint32_t FrameIndex = TemporalEffects::GetFrameIndexMod2();
 
 	switch (rayTracingMode)

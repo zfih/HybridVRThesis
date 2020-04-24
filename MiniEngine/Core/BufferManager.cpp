@@ -85,9 +85,6 @@ namespace Graphics
 
     //DXGI_FORMAT DefaultHdrColorFormat = DXGI_FORMAT_R11G11B10_FLOAT;
     DXGI_FORMAT DefaultHdrColorFormat = DXGI_FORMAT_R8G8B8A8_UNORM;
-
-	QuadPos g_qL{};
-	QuadPos g_qR{};
 }
 
 #define T2X_COLOR_FORMAT DXGI_FORMAT_R10G10B10A2_UNORM
@@ -114,8 +111,9 @@ void Graphics::InitializeRenderingBuffers( uint32_t bufferWidth, uint32_t buffer
     EsramAllocator esram;
 
     esram.PushStack();
+    {
 
-        g_SceneColorBuffer.CreateArray( L"Main Color Buffers", bufferWidth, bufferHeight, 3, DefaultHdrColorFormat, esram );
+        g_SceneColorBuffer.CreateArray( L"Main Color Buffers", bufferWidth, bufferHeight, 3, DefaultHdrColorFormat, esram);
         g_VelocityBuffer.Create( L"Motion Vectors", bufferWidth, bufferHeight, 1, DXGI_FORMAT_R32_UINT );
         g_PostEffectsBuffer.Create( L"Post Effects Buffer", bufferWidth, bufferHeight, 1, DXGI_FORMAT_R32_UINT );
 
@@ -238,6 +236,7 @@ void Graphics::InitializeRenderingBuffers( uint32_t bufferWidth, uint32_t buffer
     esram.PopStack(); // End final image
 
     InitContext.Finish();
+    }
 }
 
 void Graphics::ResizeDisplayDependentBuffers(uint32_t /*NativeWidth*/, uint32_t NativeHeight)

@@ -202,7 +202,7 @@ void TextRenderer::Initialize( void )
         { "POSITION", 0, DXGI_FORMAT_R32G32_FLOAT     , 0, 0, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 },
         { "TEXCOORD", 0, DXGI_FORMAT_R16G16B16A16_UINT, 0, 8, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 }
     };
-
+    auto notFuckingGlobal = g_OverlayBuffer.GetFormat();
     s_TextPSO[0].SetRootSignature(s_RootSignature);
     s_TextPSO[0].SetRasterizerState( Graphics::RasterizerTwoSided );
     s_TextPSO[0].SetBlendState( Graphics::BlendPreMultiplied );

@@ -90,8 +90,6 @@ namespace Graphics
         Math::Vector4 bottomRight;
 	};
 
-	extern QuadPos g_qL;
-	extern QuadPos g_qR;
 
     void InitializeRenderingBuffers(uint32_t NativeWidth, uint32_t NativeHeight );
     void ResizeDisplayDependentBuffers(uint32_t NativeWidth, uint32_t NativeHeight);

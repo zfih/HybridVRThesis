@@ -327,9 +327,8 @@ struct MRT
 MRT main(VSOutput vsOutput)
 {
     MRT mrt;
-	mrt.Color = 0.0;
+	mrt.Color = float4(0,1,0,1);
     mrt.Normal = 0.0;
-
 	if (vsOutput.curCam == 2)
 	{
 		float depth = texCenterDepth[vsOutput.position.xy];

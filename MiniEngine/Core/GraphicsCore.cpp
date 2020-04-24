@@ -560,12 +560,6 @@ void Graphics::Initialize(void)
     g_PreDisplayBuffer.Create(L"PreDisplay Buffer", g_DisplayWidth, g_DisplayHeight, 1, SwapChainFormat);
 
     GpuTimeManager::Initialize(4096);
-    TemporalEffects::Initialize();
-    PostEffects::Initialize();
-    SSAO::Initialize();
-    TextRenderer::Initialize();
-    GraphRenderer::Initialize();
-    ParticleEffects::Initialize(kMaxNativeWidth, kMaxNativeHeight);
 	if (VR::TryInitVR())
 	{
 		uint32_t width, height;
@@ -576,6 +570,12 @@ void Graphics::Initialize(void)
 	{
 		SetNativeResolution(1280, 720);
 	}
+    TemporalEffects::Initialize();
+    PostEffects::Initialize();
+    SSAO::Initialize();
+    GraphRenderer::Initialize();
+    ParticleEffects::Initialize(kMaxNativeWidth, kMaxNativeHeight);
+    TextRenderer::Initialize();
 }
 
 void Graphics::Terminate( void )

@@ -252,7 +252,7 @@ float calcIPD(XMMATRIX leftEyeToHead, XMMATRIX rightEyeToHead)
 }
 
 void VRCamera::Setup(float nearPlane, float midPlane, 
-					 float farPlane, bool reverseZ)
+					 float farPlane, bool reverseZ, Graphics::QuadPos &quad)
 {
 	if (VR::GetHMD()) // TODO: Have setting for this we can check
 	{
@@ -294,13 +294,8 @@ void VRCamera::Setup(float nearPlane, float midPlane,
 		Matrix4(XMMatrixInverse(nullptr, m_cameras[CENTER].GetViewMatrix())) *
 		Matrix4(XMMatrixInverse(nullptr, m_cameras[CENTER].GetProjMatrix()));
 	
-	Graphics::g_qL.topLeft = CtoL * Vector4(-1, -1, 0, 1);
-	Graphics::g_qL.topRight = CtoL * Vector4(1, -1, 0, 1);
-	Graphics::g_qL.bottomLeft = CtoL * Vector4(-1, 1, 0, 1);
-	Graphics::g_qL.bottomRight = CtoL * Vector4(1, 1, 0, 1);
-
-	Graphics::g_qR.topLeft = CtoR * Vector4(-1, -1, 0, 1);
-	Graphics::g_qR.topRight = CtoR * Vector4(1, -1, 0, 1);
-	Graphics::g_qR.bottomLeft = CtoR * Vector4(-1, 1, 0, 1);
-	Graphics::g_qR.bottomRight = CtoR * Vector4(1, 1, 0, 1);
+	quad.topLeft = Vector4(-1, -1, 0, 1);
+	quad.topRight = Vector4(1, -1, 0, 1);
+	quad.bottomLeft = Vector4(-1, 1, 0, 1);
+	quad.bottomRight = Vector4(1, 1, 0, 1);
 }
