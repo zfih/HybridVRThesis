@@ -60,7 +60,12 @@ void LowResPass(uint3 DTid, uint cam)
 	HighResImage.GetDimensions(nTextureWidth, nTextureHeight, elements);
 	float3 uv = float3(DTid.x / nTextureWidth, DTid.y / nTextureHeight, cam);
 
-	HighResImage[uint3(DTid.xy, cam)] = ApplySRGBCurve(RemoveSRGBCurve(LowResImage.SampleLevel(Sampler, uv, 0)) + Residuals[uint3(DTid.xy, cam)]);
+	float3 sampledColour = RemoveSRGBCurve(LowResImage.SampleLevel(Sampler, uv, 0));
+	float3 contrast = abs(HighResImage[uint3(DTid.xy, cam)] - sampledColour) / (HighResImage[uint3(DTid.xy, cam)] + sampledColour);
+	float3 s = float3(1, 1, 1);
+	float3 weight = exp(-s * contrast);
+
+	HighResImage[uint3(DTid.xy, cam)] = ApplySRGBCurve(weight * sampledColour + Residuals[uint3(DTid.xy, cam)]);
 }
 
 [numthreads(8, 8, 1)]
