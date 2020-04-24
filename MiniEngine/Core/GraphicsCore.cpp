@@ -49,6 +49,8 @@
 #endif
 #include <winreg.h>        // To read the registry
 
+
+#include "../../HybridVR/stdafx.h"
 #include "CompiledShaders/ScreenQuadVS.h"
 #include "CompiledShaders/BufferCopyPS.h"
 #include "CompiledShaders/PresentSDRPS.h"

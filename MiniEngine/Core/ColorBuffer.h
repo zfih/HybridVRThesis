@@ -53,13 +53,13 @@ public:
     // this functions the same as Create() without a video address.
     void CreateArray(const std::wstring& Name, uint32_t Width, uint32_t Height, uint32_t ArrayCount,
         DXGI_FORMAT Format, EsramAllocator& Allocator);
+	const D3D12_CPU_DESCRIPTOR_HANDLE& GetSubRTV(int i) const { return m_RTVSubHandles[i]; }
 
     // Get pre-created CPU-visible descriptor handles
     const D3D12_CPU_DESCRIPTOR_HANDLE& GetSRV(void) const { return m_SRVHandle; }
     const D3D12_CPU_DESCRIPTOR_HANDLE& GetRTV(void) const { return m_RTVHandle; }
     const D3D12_CPU_DESCRIPTOR_HANDLE& GetUAV(void) const { return m_UAVHandle[0]; }
 
-	const D3D12_CPU_DESCRIPTOR_HANDLE& GetSubRTV(int i) const { return m_RTVSubHandles[i]; }
 	D3D12_CPU_DESCRIPTOR_HANDLE& GetSubSRV(int i) { return m_SRVSubHandles[i]; }
 
     void SetClearColor( Color ClearColor ) { m_ClearColor = ClearColor; }

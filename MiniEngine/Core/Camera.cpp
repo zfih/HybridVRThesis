@@ -154,17 +154,17 @@ VRCamera::VRCamera()
 
 void VRCamera::Update()
 {
-    if (VR::GetHMD()) // TODO: Have setting for this we can check
-    {
-        m_HMDPoseMat = VR::GetHMDPos();
+	if (VR::GetHMD()) // TODO: Have setting for this we can check
+	{
+		m_HMDPoseMat = VR::GetHMDPos();
 
-        for (int i = 0; i < VRCamera::COUNT; ++i)
-        {
+		for (int i = 0; i < VRCamera::COUNT; ++i)
+		{
 			m_cameras[i].SetVRViewProjMatrices(m_eyeToHead[i] * m_HMDPoseMat, m_eyeProj[i]);
 			m_cameras[i].SetTransform(AffineTransform(m_eyeToHead[i] * m_HMDPoseMat));
-            m_cameras[i].Update();
-        }
-    }
+			m_cameras[i].Update();
+		}
+	}
 	else
 	{
 		for (int i = 0; i < VRCamera::COUNT; ++i)
@@ -172,6 +172,7 @@ void VRCamera::Update()
 			m_cameras[i].Update();
 		}
 	}
+
 }
 
 void VRCamera::GetHMDProjVals(vr::EVREye eye)
