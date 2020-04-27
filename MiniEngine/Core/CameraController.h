@@ -16,78 +16,80 @@
 #include "GameCore.h"
 #include "VectorMath.h"
 
+
 namespace Math
 {
-    class Camera;
-    class VRCamera;
+class Camera;
+class VRCamera;
 }
+
 
 namespace GameCore
 {
-    using namespace Math;
+using namespace Math;
 
-    class CameraController
-    {
-    public:
-        // Assumes worldUp is not the X basis vector
-        CameraController( Camera& camera, Vector3 worldUp );
+class CameraController
+{
+public:
+	// Assumes worldUp is not the X basis vector
+	CameraController(Camera& camera, Vector3 worldUp);
 
-        void Update( float dt );
+	void Update(float dt);
 
-        void SlowMovement( bool enable ) { m_FineMovement = enable; }
-        void SlowRotation( bool enable ) { m_FineRotation = enable; }
+	void SlowMovement(bool enable) { m_FineMovement = enable; }
+	void SlowRotation(bool enable) { m_FineRotation = enable; }
 
-        void EnableMomentum( bool enable ) { m_Momentum = enable; }
+	void EnableMomentum(bool enable) { m_Momentum = enable; }
 
-        Vector3 GetWorldEast() { return m_WorldEast; }
-        Vector3 GetWorldUp() { return m_WorldUp; }
-        Vector3 GetWorldNorth() { return m_WorldNorth; }
-        float GetCurrentHeading() { return m_CurrentHeading; }
-        float GetCurrentPitch() { return m_CurrentPitch; }
+	Vector3 GetWorldEast() { return m_WorldEast; }
+	Vector3 GetWorldUp() { return m_WorldUp; }
+	Vector3 GetWorldNorth() { return m_WorldNorth; }
+	float GetCurrentHeading() { return m_CurrentHeading; }
+	float GetCurrentPitch() { return m_CurrentPitch; }
 
-        void SetCurrentHeading(float heading) { m_CurrentHeading = heading; }
-        void SetCurrentPitch(float pitch) { m_CurrentPitch = pitch; }
+	void SetCurrentHeading(float heading) { m_CurrentHeading = heading; }
+	void SetCurrentPitch(float pitch) { m_CurrentPitch = pitch; }
 
 
-    protected:
-        CameraController& operator=( const CameraController& ) {return *this;}
+protected:
+	CameraController& operator=(const CameraController&) { return *this; }
 
-        void ApplyMomentum( float& oldValue, float& newValue, float deltaTime );
+	void ApplyMomentum(float& oldValue, float& newValue, float deltaTime);
 
-        Vector3 m_WorldUp;
-        Vector3 m_WorldNorth;
-        Vector3 m_WorldEast;
-        Camera& m_TargetCamera;
-        float m_HorizontalLookSensitivity;
-        float m_VerticalLookSensitivity;
-        float m_MoveSpeed;
-        float m_StrafeSpeed;
-        float m_MouseSensitivityX;
-        float m_MouseSensitivityY;
+	Vector3 m_WorldUp;
+	Vector3 m_WorldNorth;
+	Vector3 m_WorldEast;
+	Camera& m_TargetCamera;
+	float m_HorizontalLookSensitivity;
+	float m_VerticalLookSensitivity;
+	float m_MoveSpeed;
+	float m_StrafeSpeed;
+	float m_MouseSensitivityX;
+	float m_MouseSensitivityY;
 
-        float m_CurrentHeading;
-        float m_CurrentPitch;
+	float m_CurrentHeading;
+	float m_CurrentPitch;
 
-        bool m_FineMovement;
-        bool m_FineRotation;
-        bool m_Momentum;
+	bool m_FineMovement;
+	bool m_FineRotation;
+	bool m_Momentum;
 
-        float m_LastYaw;
-        float m_LastPitch;
-        float m_LastForward;
-        float m_LastStrafe;
-        float m_LastAscent;
+	float m_LastYaw;
+	float m_LastPitch;
+	float m_LastForward;
+	float m_LastStrafe;
+	float m_LastAscent;
 
-        AffineTransform m_affine;
-    };
+	AffineTransform m_affine;
+};
 
-    class VRCameraController : public CameraController
-    {
-    public:
-        VRCameraController(VRCamera& camera, Vector3 worldUp);
+class VRCameraController : public CameraController
+{
+public:
+	VRCameraController(VRCamera& camera, Vector3 worldUp);
 
-        VRCamera& m_VRCam;
+	VRCamera& m_VRCam;
 
-        void Update(float dt);
-    };
+	void Update(float dt);
+};
 }

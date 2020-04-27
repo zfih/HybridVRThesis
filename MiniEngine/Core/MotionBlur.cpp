@@ -105,7 +105,7 @@ void MotionBlur::GenerateCameraVelocityBuffer( CommandContext& BaseContext, cons
 
 void MotionBlur::GenerateCameraVelocityBuffer( CommandContext& BaseContext, const Matrix4& reprojectionMatrix, float nearClip, float farClip, bool UseLinearZ)
 {
-    ScopedTimer _prof(L"Generate Camera Velocity", BaseContext);
+    ScopedTimer _prof(L"Generate CameraType Velocity", BaseContext);
 
     ComputeContext& Context = BaseContext.GetComputeContext();
 

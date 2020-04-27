@@ -22,7 +22,6 @@
 namespace Graphics
 {
     DepthBuffer g_SceneDepthBuffer;
-    DepthBuffer g_SceneCenterDepthBuffer;
 	ColorBuffer g_SceneCenterColourDepthBuffer;
     ColorBuffer g_SceneColorBuffer;
     ColorBuffer g_PostEffectsBuffer;
@@ -124,9 +123,8 @@ void Graphics::InitializeRenderingBuffers( uint32_t bufferWidth, uint32_t buffer
             g_MinMaxDepth16.Create(L"MinMaxDepth 16x16", bufferWidth4, bufferHeight4, 1, DXGI_FORMAT_R32_UINT, esram );
             g_MinMaxDepth32.Create(L"MinMaxDepth 32x32", bufferWidth5, bufferHeight5, 1, DXGI_FORMAT_R32_UINT, esram );
 
-            g_SceneDepthBuffer.CreateArray( L"Scene Depth Buffer", bufferWidth, bufferHeight, 2, DSV_FORMAT);
-			g_SceneCenterDepthBuffer.Create(L"Scene Center Depth Buffer", bufferWidth, bufferHeight, DSV_FORMAT, esram);
-			g_SceneCenterColourDepthBuffer.Create( L"Scene Center Colour Depth Buffer", bufferWidth, bufferHeight, 1, DXGI_FORMAT_R32_FLOAT, esram );
+            g_SceneDepthBuffer.CreateArray( L"Scene Depth Buffer", bufferWidth, bufferHeight, 3, DSV_FORMAT);
+            g_SceneCenterColourDepthBuffer.Create( L"Scene Center Colour Depth Buffer", bufferWidth, bufferHeight, 1, DXGI_FORMAT_R32_FLOAT, esram );
 
             esram.PushStack(); // Begin opaque geometry
 

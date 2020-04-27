@@ -298,6 +298,11 @@ void GraphicsContext::ClearDepth( DepthBuffer& Target )
 {
     m_CommandList->ClearDepthStencilView(Target.GetDSV(), D3D12_CLEAR_FLAG_DEPTH, Target.GetClearDepth(), Target.GetClearStencil(), 0, nullptr );
 }
+void GraphicsContext::ClearDepth( DepthBuffer& Target, int subDSV )
+{
+	// TODO(freemedude 11:04 27-04): Readonly?
+    m_CommandList->ClearDepthStencilView(Target.GetSubDSV(subDSV), D3D12_CLEAR_FLAG_DEPTH, Target.GetClearDepth(), Target.GetClearStencil(), 0, nullptr );
+}
 
 void GraphicsContext::ClearStencil( DepthBuffer& Target )
 {

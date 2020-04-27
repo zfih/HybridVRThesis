@@ -198,6 +198,7 @@ public:
     void ClearColor( ColorBuffer& Target );
 	void ClearColor(ColorBuffer& Target, int subRTV);
     void ClearDepth( DepthBuffer& Target );
+    void ClearDepth( DepthBuffer& Target, int subDSV );
     void ClearStencil( DepthBuffer& Target );
     void ClearDepthAndStencil( DepthBuffer& Target );
 

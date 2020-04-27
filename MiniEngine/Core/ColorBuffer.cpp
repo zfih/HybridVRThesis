@@ -110,7 +110,8 @@ void ColorBuffer::CreateDerivedViews(ID3D12Device* Device, DXGI_FORMAT Format, u
 				RTVDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2DARRAY;
 				RTVDesc.Texture2DArray.MipSlice = 0;
 				RTVDesc.Texture2DArray.FirstArraySlice = i; //D3D12CalcSubresource(0, i, 0, 0, ArraySize);
-				RTVDesc.Texture2DArray.ArraySize = (UINT)(ArraySize - i);
+				RTVDesc.Texture2DArray.ArraySize = 1;
+				//RTVDesc.Texture2DArray.ArraySize = (UINT)(ArraySize - i);
 				RTVDesc.Format = Format;
 				D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle{};
 				rtvHandle = Graphics::AllocateDescriptor(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
@@ -122,7 +123,8 @@ void ColorBuffer::CreateDerivedViews(ID3D12Device* Device, DXGI_FORMAT Format, u
 				D3D12_SHADER_RESOURCE_VIEW_DESC SRVDesc = {};
 				SRVDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2DARRAY;
 				SRVDesc.Texture2DArray.FirstArraySlice = i; //D3D12CalcSubresource(0, i, 0, 0, ArraySize);
-				SRVDesc.Texture2DArray.ArraySize = (UINT)(ArraySize - i);
+				//SRVDesc.Texture2DArray.ArraySize = (UINT)(ArraySize - i);
+				SRVDesc.Texture2DArray.ArraySize = 1;
 				SRVDesc.Texture2DArray.MipLevels = NumMips;
 				SRVDesc.Texture2DArray.PlaneSlice = 0;
 				SRVDesc.Texture2DArray.MostDetailedMip = 0;
@@ -160,13 +162,8 @@ void ColorBuffer::Create(const std::wstring& Name, uint32_t Width, uint32_t Heig
 	ResourceDesc.SampleDesc.Quality = 0;
 
 	D3D12_CLEAR_VALUE ClearValue = {};
+	memcpy(ClearValue.Color, m_ClearColor.GetPtr(), sizeof(ClearValue.Color));
 	ClearValue.Format = Format;
-	ClearValue.Color[0] = 0.0f; //m_ClearColor.R();
-	ClearValue.Color[1] = 0.0f; //m_ClearColor.G();
-	ClearValue.Color[2] = 0.0f; //m_ClearColor.B();
-	ClearValue.Color[3] = 0.0f; //m_ClearColor.A();
-	//m_ClearColor = { ClearValue.Color[0], ClearValue.Color[1], ClearValue.Color[2], ClearValue.Color[3] };
-
 	CreateTextureResource(Graphics::g_Device, Name, ResourceDesc, ClearValue, VidMem);
 	CreateDerivedViews(Graphics::g_Device, Format, 1, NumMips);
 }
@@ -182,14 +179,10 @@ void ColorBuffer::CreateArray(const std::wstring& Name, uint32_t Width, uint32_t
 {
 	D3D12_RESOURCE_FLAGS Flags = CombineResourceFlags();
 	D3D12_RESOURCE_DESC ResourceDesc = DescribeTex2D(Width, Height, ArrayCount, 1, Format, Flags);
-
+	
 	D3D12_CLEAR_VALUE ClearValue = {};
 	ClearValue.Format = Format;
-	ClearValue.Color[0] = 1.0f; //m_ClearColor.R();
-	ClearValue.Color[1] = 0.0f; //m_ClearColor.G();
-	ClearValue.Color[2] = 0.0f; //m_ClearColor.B();
-	ClearValue.Color[3] = 0.0f; //m_ClearColor.A();
-	//m_ClearColor = { ClearValue.Color[0], ClearValue.Color[1], ClearValue.Color[2], ClearValue.Color[3] };
+	memcpy(ClearValue.Color, m_ClearColor.GetPtr(), sizeof(ClearValue.Color));
 
 	CreateTextureResource(Graphics::g_Device, Name, ResourceDesc, ClearValue, VidMem);
 	CreateDerivedViews(Graphics::g_Device, Format, ArrayCount, 1);
