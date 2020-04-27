@@ -1764,46 +1764,61 @@ void D3D12RaytracingMiniEngineSample::FrameIntegration()
 {
 	ComputeContext& cmpContext = ComputeContext::Begin(L"Frame Integration");
 
-	if (Graphics::GetFrameCount() % 2 == 0)
+	if (g_TMPMode != 1 && g_TMPMode != 2)
 	{
-		cmpContext.SetRootSignature(m_LowPassSig);
-		cmpContext.SetPipelineState(m_LowPassPSO);
+		if ((Graphics::GetFrameCount() % 2 == 0 && g_TMPMode == 0) 
+			|| g_TMPMode == 3)
+		{
+			cmpContext.SetRootSignature(m_LowPassSig);
+			cmpContext.SetPipelineState(m_LowPassPSO);
 
-		cmpContext.TransitionResource(g_SceneColorBufferFullRes, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, true);
-		cmpContext.TransitionResource(g_SceneColorBufferLowPassed, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, true);
+			cmpContext.TransitionResource(g_SceneColorBufferFullRes, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, true);
+			cmpContext.TransitionResource(g_SceneColorBufferLowPassed, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, true);
 
-		cmpContext.SetDynamicDescriptor(0, 0, g_SceneColorBufferFullRes.GetSRV());
-		cmpContext.SetDynamicDescriptor(1, 0, g_SceneColorBufferLowPassed.GetUAV());
+			cmpContext.SetDynamicDescriptor(0, 0, g_SceneColorBufferFullRes.GetSRV());
+			cmpContext.SetDynamicDescriptor(1, 0, g_SceneColorBufferLowPassed.GetUAV());
 
-		cmpContext.Dispatch2D(g_SceneColorBufferLowPassed.GetWidth(), g_SceneColorBufferLowPassed.GetHeight());
+			cmpContext.Dispatch2D(g_SceneColorBufferLowPassed.GetWidth(), g_SceneColorBufferLowPassed.GetHeight());
 
-		// Reuses root signature m_LowPassSig
-		cmpContext.SetPipelineState(m_DownsamplePSO);
+			// Reuses root signature m_LowPassSig
+			cmpContext.SetPipelineState(m_DownsamplePSO);
 
-		cmpContext.TransitionResource(g_SceneColorBufferLowPassed, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, true);
-		cmpContext.TransitionResource(g_SceneColorBufferLowRes, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, true);
+			cmpContext.TransitionResource(g_SceneColorBufferLowPassed, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, true);
+			cmpContext.TransitionResource(g_SceneColorBufferLowRes, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, true);
 
-		cmpContext.SetDynamicDescriptor(0, 0, g_SceneColorBufferLowPassed.GetSRV());
-		cmpContext.SetDynamicDescriptor(1, 0, g_SceneColorBufferLowRes.GetUAV());
+			cmpContext.SetDynamicDescriptor(0, 0, g_SceneColorBufferLowPassed.GetSRV());
+			cmpContext.SetDynamicDescriptor(1, 0, g_SceneColorBufferLowRes.GetUAV());
 
-		cmpContext.Dispatch2D(g_SceneColorBufferLowRes.GetWidth(), g_SceneColorBufferLowRes.GetHeight());
+			cmpContext.Dispatch2D(g_SceneColorBufferLowRes.GetWidth(), g_SceneColorBufferLowRes.GetHeight());
 
-		cmpContext.TransitionResource(g_SceneColorBufferResidules, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, true);
-		cmpContext.ClearUAV(g_SceneColorBufferResidules);
+			cmpContext.TransitionResource(g_SceneColorBufferResidules, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, true);
+			cmpContext.ClearUAV(g_SceneColorBufferResidules);
+		}
+
+		cmpContext.SetRootSignature(m_FrameIntegrationSig);
+		cmpContext.SetPipelineState(m_FrameIntegrationPSO);
+
+		cmpContext.TransitionResource(g_SceneColorBufferLowRes, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, true);
+		cmpContext.TransitionResource(g_SceneColorBufferFullRes, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, true);
+
+		if (g_TMPMode == 0)
+		{
+			cmpContext.SetConstant(0, Graphics::GetFrameCount() % 2 == 0);
+		}
+		else if (g_TMPMode == 3)
+		{
+			cmpContext.SetConstant(0, 1);
+		}
+		else
+		{
+			cmpContext.SetConstant(0, 0);
+		}
+		cmpContext.SetDynamicDescriptor(1, 0, g_SceneColorBufferLowRes.GetSRV());
+		cmpContext.SetDynamicDescriptor(2, 0, g_SceneColorBufferFullRes.GetUAV());
+		cmpContext.SetDynamicDescriptor(3, 0, g_SceneColorBufferResidules.GetUAV());
+
+		cmpContext.Dispatch2D(g_SceneColorBufferFullRes.GetWidth(), g_SceneColorBufferFullRes.GetHeight());
 	}
-
-	cmpContext.SetRootSignature(m_FrameIntegrationSig);
-	cmpContext.SetPipelineState(m_FrameIntegrationPSO);
-
-	cmpContext.TransitionResource(g_SceneColorBufferLowRes, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, true);
-	cmpContext.TransitionResource(g_SceneColorBufferFullRes, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, true);
-
-	cmpContext.SetConstant(0, Graphics::GetFrameCount() % 2 == 0);
-	cmpContext.SetDynamicDescriptor(1, 0, g_SceneColorBufferLowRes.GetSRV());
-	cmpContext.SetDynamicDescriptor(2, 0, g_SceneColorBufferFullRes.GetUAV());
-	cmpContext.SetDynamicDescriptor(3, 0, g_SceneColorBufferResidules.GetUAV());
-
-	cmpContext.Dispatch2D(g_SceneColorBufferFullRes.GetWidth(), g_SceneColorBufferFullRes.GetHeight());
 
 	cmpContext.Finish();
 }

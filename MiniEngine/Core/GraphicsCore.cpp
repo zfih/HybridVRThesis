@@ -125,6 +125,8 @@ namespace Graphics
     const char* HDRModeLabels[] = { "HDR", "SDR", "Side-by-Side" };
     EnumVar HDRDebugMode("Graphics/Display/HDR Debug Mode", 0, 3, HDRModeLabels);
 
+    IntVar g_TMPMode = IntVar("Graphics/TMP Mode", 0, 0, 5);
+
     uint32_t g_NativeWidth = 0;
     uint32_t g_NativeHeight = 0;
     uint32_t g_DisplayWidth = 1920;
@@ -704,11 +706,19 @@ void Graphics::PreparePresentLDR(void)
     Context.SetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
     // Copy (and convert) the LDR buffer to the back buffer
-
-    Context.SetDynamicDescriptor(0, 0, g_SceneColorBufferFullRes.GetSRV());
-    //Context.SetDynamicDescriptor(0, 0, g_SceneColorBufferLowRes.GetSRV());
+    if (g_TMPMode == 2)
+    {
+        Context.SetDynamicDescriptor(0, 0, g_SceneColorBufferLowRes.GetSRV());
+    }
+    else if (g_TMPMode == 5)
+    {
+        Context.SetDynamicDescriptor(0, 0, g_SceneColorBufferResidules.GetSRV());
+    }
+    else
+    {
+        Context.SetDynamicDescriptor(0, 0, g_SceneColorBufferFullRes.GetSRV());
+    }
     //Context.SetDynamicDescriptor(0, 1, g_SceneColorBufferLowPassed.GetSRV());
-    //Context.SetDynamicDescriptor(0, 0, g_SceneColorBufferResidules.GetSRV());
 
     ColorBuffer& UpsampleDest = (DebugZoom == kDebugZoomOff ? g_DisplayPlane[g_CurrentBuffer] : g_PreDisplayBuffer);
 
