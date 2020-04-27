@@ -316,7 +316,7 @@ int wmain(int argc, wchar_t** argv)
 		pAdapter = nullptr;
 	}
 
-	s_EnableVSync.Decrement();
+	//s_EnableVSync.Decrement();
 	g_DisplayWidth = 1280;
 	g_DisplayHeight = 720;
 	GameCore::RunApplication(D3D12RaytracingMiniEngineSample(validDeviceFound), L"D3D12RaytracingMiniEngineSample");
