@@ -125,7 +125,8 @@ namespace Graphics
     const char* HDRModeLabels[] = { "HDR", "SDR", "Side-by-Side" };
     EnumVar HDRDebugMode("Graphics/Display/HDR Debug Mode", 0, 3, HDRModeLabels);
 
-    IntVar g_TMPMode = IntVar("Graphics/TMP Mode", 0, 0, 5);
+    const char* TMPDebugLabels[] = { "On", "Off - Full Res", "Off - Low Res", "On - Full Res", "On - Low Res", "Residules" };
+    EnumVar g_TMPMode = EnumVar("Graphics/TMP Mode", 0, 6, TMPDebugLabels);
 
     uint32_t g_NativeWidth = 0;
     uint32_t g_NativeHeight = 0;
@@ -725,8 +726,8 @@ void Graphics::PreparePresentLDR(void)
 	UINT32 vertCount = 12;
 
     //if (g_NativeWidth == g_DisplayWidth && g_NativeHeight == g_DisplayHeight)
-    if (!(g_TMPMode == 3 && (Graphics::GetFrameCount() % 2))
-        && !(g_TMPMode == 4 && !(Graphics::GetFrameCount() % 2)))
+    if (!(g_TMPMode == TMPDebug::kOnFullRes && (Graphics::GetFrameCount() % 2))
+        && !(g_TMPMode == TMPDebug::kOnLowRes && !(Graphics::GetFrameCount() % 2)))
     {
         Context.SetPipelineState(PresentSDRPS);
         Context.TransitionResource(UpsampleDest, D3D12_RESOURCE_STATE_RENDER_TARGET);

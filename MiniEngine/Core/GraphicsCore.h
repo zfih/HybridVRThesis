@@ -80,5 +80,9 @@ namespace Graphics
     extern uint32_t g_DisplayWidth;
     extern uint32_t g_DisplayHeight;
 
-    extern IntVar g_TMPMode;
+    namespace TMPDebug
+    {
+        enum { kOn, kOffFullRes, kOffLowRes, kOnFullRes, kOnLowRes, kResidules };
+    }
+    extern EnumVar g_TMPMode;
 }
