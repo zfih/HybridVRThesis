@@ -725,6 +725,8 @@ void Graphics::PreparePresentLDR(void)
 	UINT32 vertCount = 12;
 
     //if (g_NativeWidth == g_DisplayWidth && g_NativeHeight == g_DisplayHeight)
+    if (!(g_TMPMode == 3 && (Graphics::GetFrameCount() % 2))
+        && !(g_TMPMode == 4 && !(Graphics::GetFrameCount() % 2)))
     {
         Context.SetPipelineState(PresentSDRPS);
         Context.TransitionResource(UpsampleDest, D3D12_RESOURCE_STATE_RENDER_TARGET);

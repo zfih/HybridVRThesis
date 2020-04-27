@@ -1766,8 +1766,7 @@ void D3D12RaytracingMiniEngineSample::FrameIntegration()
 
 	if (g_TMPMode != 1 && g_TMPMode != 2)
 	{
-		if ((Graphics::GetFrameCount() % 2 == 0 && g_TMPMode == 0) 
-			|| g_TMPMode == 3)
+		if (Graphics::GetFrameCount() % 2 == 0)
 		{
 			cmpContext.SetRootSignature(m_LowPassSig);
 			cmpContext.SetPipelineState(m_LowPassPSO);
@@ -1801,18 +1800,7 @@ void D3D12RaytracingMiniEngineSample::FrameIntegration()
 		cmpContext.TransitionResource(g_SceneColorBufferLowRes, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, true);
 		cmpContext.TransitionResource(g_SceneColorBufferFullRes, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, true);
 
-		if (g_TMPMode == 0)
-		{
-			cmpContext.SetConstant(0, Graphics::GetFrameCount() % 2 == 0);
-		}
-		else if (g_TMPMode == 3)
-		{
-			cmpContext.SetConstant(0, 1);
-		}
-		else
-		{
-			cmpContext.SetConstant(0, 0);
-		}
+		cmpContext.SetConstant(0, Graphics::GetFrameCount() % 2 == 0);
 		cmpContext.SetDynamicDescriptor(1, 0, g_SceneColorBufferLowRes.GetSRV());
 		cmpContext.SetDynamicDescriptor(2, 0, g_SceneColorBufferFullRes.GetUAV());
 		cmpContext.SetDynamicDescriptor(3, 0, g_SceneColorBufferResidules.GetUAV());
