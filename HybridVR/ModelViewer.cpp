@@ -60,9 +60,10 @@
 #include "CompiledShaders/CombineColourPS.h"
 
 // Screen texture
-// Albert
 #include "CompiledShaders/ScreenTextureVS.h"
 #include "CompiledShaders/ScreenTexturePS.h"
+
+#include "CameraType.h"
 
 
 #include "RaytracingHlslCompat.h"
@@ -211,24 +212,6 @@ struct MaterialRootConstant
 {
 	UINT MaterialID;
 };
-
-
-/*
- * PURPOSE:
- *  - Allow us to talk about Cameras in better way than as a number.
- */
-namespace Cam
-{
-enum CameraType
-{
-	kLeft = 0,
-	kRight = 1,
-	kCenter = 2,
-	kCount
-};
-const int NUM_EYES = 2;
-}
-
 
 RaytracingDispatchRayInputs g_RaytracingInputs[RaytracingTypes::NumTypes];
 D3D12_CPU_DESCRIPTOR_HANDLE g_bvh_attributeSrvs[34];
@@ -1737,18 +1720,6 @@ void D3D12RaytracingMiniEngineSample::RenderLightShadows(
 	++LightIndex;
 }
 
-
-std::wstring GetNameFromCamera(Cam::CameraType cam)
-{
-	switch (cam)
-	{
-	case Cam::kLeft: return L"Left";
-	case Cam::kRight: return L"Right";
-	case Cam::kCenter: return L"Center";
-	default: throw "Invalid CameraType";
-	}
-}
-
 void D3D12RaytracingMiniEngineSample::RenderColor(
 	GraphicsContext& Ctx,
 	Camera &Camera,
@@ -1844,7 +1815,7 @@ void D3D12RaytracingMiniEngineSample::RenderEye(
 	)
 {
 	GraphicsContext& ctx =
-		GraphicsContext::Begin(L"Scene Render " + GetNameFromCamera(CameraType));
+		GraphicsContext::Begin(L"Scene Render " + CameraTypeToWString(CameraType));
 	Camera& camera = *m_Camera[CameraType];
 
 	// TODO(freemedude 09:41 27-04): Figure out proper placement
@@ -1864,7 +1835,7 @@ void D3D12RaytracingMiniEngineSample::RenderCenter(
 	PSConstants& Constants)
 {
 	GraphicsContext& ctx = GraphicsContext::Begin(
-		L"Scene Render " + GetNameFromCamera(Cam::kCenter));
+		L"Scene Render " + CameraTypeToWString(Cam::kCenter));
 	Camera& camera = *m_Camera[Cam::kCenter];
 
 	// TODO(freemedude 09:41 27-04): Figure out proper placement
@@ -1962,7 +1933,7 @@ void D3D12RaytracingMiniEngineSample::MainRender(
 	bool SkipDiffusePass,
 	bool SkipShadowMap)
 {
-	SSAO::Render(Ctx, Camera, &g_SceneDepthBuffer);
+	SSAO::Render(Ctx, Camera, &g_SceneDepthBuffer, CameraType);
 
 	if (!SkipDiffusePass)
 	{

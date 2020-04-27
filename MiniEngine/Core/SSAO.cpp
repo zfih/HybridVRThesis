@@ -30,6 +30,8 @@
 #include "CompiledShaders/AoBlurUpsampleCS.h"
 #include "CompiledShaders/AoBlurUpsamplePreMinCS.h"
 
+
+
 using namespace Graphics;
 using namespace Math;
 
@@ -110,18 +112,18 @@ void SSAO::Initialize( void )
     CreatePSO( s_BlurUpsampleFinal[0], g_pAoBlurUpsampleCS );
     CreatePSO( s_BlurUpsampleFinal[1], g_pAoBlurUpsamplePreMinCS );
 
-    SampleThickness[ 0] = sqrt(1.0f - 0.2f * 0.2f);
-    SampleThickness[ 1] = sqrt(1.0f - 0.4f * 0.4f);
-    SampleThickness[ 2] = sqrt(1.0f - 0.6f * 0.6f);
-    SampleThickness[ 3] = sqrt(1.0f - 0.8f * 0.8f);
-    SampleThickness[ 4] = sqrt(1.0f - 0.2f * 0.2f - 0.2f * 0.2f);
-    SampleThickness[ 5] = sqrt(1.0f - 0.2f * 0.2f - 0.4f * 0.4f);
-    SampleThickness[ 6] = sqrt(1.0f - 0.2f * 0.2f - 0.6f * 0.6f);
-    SampleThickness[ 7] = sqrt(1.0f - 0.2f * 0.2f - 0.8f * 0.8f);
-    SampleThickness[ 8] = sqrt(1.0f - 0.4f * 0.4f - 0.4f * 0.4f);
-    SampleThickness[ 9] = sqrt(1.0f - 0.4f * 0.4f - 0.6f * 0.6f);
-    SampleThickness[10] = sqrt(1.0f - 0.4f * 0.4f - 0.8f * 0.8f);
-    SampleThickness[11] = sqrt(1.0f - 0.6f * 0.6f - 0.6f * 0.6f);
+    SampleThickness[ 0] = sqrtf(1.0f - 0.2f * 0.2f);
+    SampleThickness[ 1] = sqrtf(1.0f - 0.4f * 0.4f);
+    SampleThickness[ 2] = sqrtf(1.0f - 0.6f * 0.6f);
+    SampleThickness[ 3] = sqrtf(1.0f - 0.8f * 0.8f);
+    SampleThickness[ 4] = sqrtf(1.0f - 0.2f * 0.2f - 0.2f * 0.2f);
+    SampleThickness[ 5] = sqrtf(1.0f - 0.2f * 0.2f - 0.4f * 0.4f);
+    SampleThickness[ 6] = sqrtf(1.0f - 0.2f * 0.2f - 0.6f * 0.6f);
+    SampleThickness[ 7] = sqrtf(1.0f - 0.2f * 0.2f - 0.8f * 0.8f);
+    SampleThickness[ 8] = sqrtf(1.0f - 0.4f * 0.4f - 0.4f * 0.4f);
+    SampleThickness[ 9] = sqrtf(1.0f - 0.4f * 0.4f - 0.6f * 0.6f);
+    SampleThickness[10] = sqrtf(1.0f - 0.4f * 0.4f - 0.8f * 0.8f);
+    SampleThickness[11] = sqrtf(1.0f - 0.6f * 0.6f - 0.6f * 0.6f);
 }
 
 void SSAO::Shutdown(void)
@@ -287,13 +289,14 @@ namespace SSAO
     }
 }
 
-void SSAO::Render( GraphicsContext& GfxContext, const Camera& camera, DepthBuffer* curDepthBuf )
+void SSAO::Render( 
+    GraphicsContext& GfxContext, const Camera& camera, DepthBuffer* curDepthBuf, Cam::CameraType CameraType )
 {
     const float* pProjMat = reinterpret_cast<const float*>(&camera.GetProjMatrix());
-    Render(GfxContext, pProjMat, camera.GetNearClip(), camera.GetFarClip(), curDepthBuf );
+    Render(GfxContext, pProjMat, camera.GetNearClip(), camera.GetFarClip(), curDepthBuf, CameraType );
 }
 
-void SSAO::Render( GraphicsContext& GfxContext, const float* ProjMat, float NearClipDist, float FarClipDist, DepthBuffer* curDepthBuf)
+void SSAO::Render( GraphicsContext& GfxContext, const float* ProjMat, float NearClipDist, float FarClipDist, DepthBuffer* curDepthBuf, Cam::CameraType CameraType)
 {
     uint32_t FrameIndex = TemporalEffects::GetFrameIndexMod2();
 
@@ -317,7 +320,7 @@ void SSAO::Render( GraphicsContext& GfxContext, const float* ProjMat, float Near
 
         Context.TransitionResource(*curDepthBuf, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
         Context.SetConstants(0, zMagic);
-        Context.SetDynamicDescriptor(3, 0, curDepthBuf->GetDepthSRV());
+        Context.SetDynamicDescriptor(3, 0, curDepthBuf->GetSubSRV(CameraType));
 
         Context.TransitionResource(LinearDepth, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
         Context.SetDynamicDescriptors(2, 0, 1, &LinearDepth.GetUAV());
@@ -357,7 +360,7 @@ void SSAO::Render( GraphicsContext& GfxContext, const float* ProjMat, float Near
 
     // Phase 1:  Decompress, linearize, downsample, and deinterleave the depth buffer
     Context.SetConstants(0, zMagic);
-    Context.SetDynamicDescriptor(3, 0, curDepthBuf->GetDepthSRV() );
+    Context.SetDynamicDescriptor(3, 0, curDepthBuf->GetSubSRV(CameraType) );
 
     Context.TransitionResource(LinearDepth, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
     Context.TransitionResource(g_DepthDownsize1, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);

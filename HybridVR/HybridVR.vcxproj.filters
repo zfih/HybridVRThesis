@@ -317,6 +317,7 @@
     </ClInclude>
     <ClInclude Include="DXSampleHelper.h" />
     <ClInclude Include="stdafx.h" />
+    <ClInclude Include="CameraType.h" />
   </ItemGroup>
   <ItemGroup>
     <Image Include="Textures\Models\background.DDS">

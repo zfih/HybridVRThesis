@@ -314,6 +314,7 @@
     </FxCompile>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="CameraType.h" />
     <ClInclude Include="DXSampleHelper.h" />
     <ClInclude Include="ForwardPlusLighting.h" />
     <ClInclude Include="ModelViewerRayTracing.h" />

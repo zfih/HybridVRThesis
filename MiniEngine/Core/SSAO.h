@@ -12,6 +12,7 @@
 //
 
 #pragma once
+#include "../../HybridVR/CameraType.h"
 #include "DepthBuffer.h"
 
 namespace Math { class Camera;  }
@@ -20,8 +21,8 @@ namespace SSAO
 {
     void Initialize( void );
     void Shutdown( void );
-    void Render(GraphicsContext& Context, const float* ProjMat, float NearClipDist, float FarClipDist, DepthBuffer* curDepthBuf );
-    void Render(GraphicsContext& Context, const Math::Camera& camera, DepthBuffer* curDepthBuf);
+    void Render(GraphicsContext& Context, const float* ProjMat, float NearClipDist, float FarClipDist, DepthBuffer* curDepthBuf, Cam::CameraType CameraType);
+    void Render(GraphicsContext& Context, const Math::Camera& camera, DepthBuffer* curDepthBuf, Cam::CameraType CameraType);
 
     extern BoolVar Enable;
     extern BoolVar DebugDraw;
