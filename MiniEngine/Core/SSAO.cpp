@@ -49,7 +49,7 @@ namespace SSAO
     // This is necessary to filter out pixel shimmer due to bilateral upsampling with too much lost resolution.  High
     // frequency detail can sometimes not be reconstructed, and the noise filter fills in the missing pixels with the
     // result of the higher resolution SSAO.
-    NumVar g_NoiseFilterTolerance("Graphics/SSAO/Noise Filter Threshold (log10)", -3.0f, -8.0f, 0.0f, 0.25f);
+    NumVar g_NoiseFilterTolerance("Graphics/SSAO/Noise Filter Threshold (log10)", -0.0f, -8.0f, 0.0f, 0.25f);
     NumVar g_BlurTolerance("Graphics/SSAO/Blur Tolerance (log10)", -5.0f, -8.0f, -1.0f, 0.25f);
     NumVar g_UpsampleTolerance("Graphics/SSAO/Upsample Tolerance (log10)", -7.0f, -12.0f, -1.0f, 0.5f);
 
@@ -287,13 +287,13 @@ namespace SSAO
     }
 }
 
-void SSAO::Render( GraphicsContext& GfxContext, const Camera& camera )
+void SSAO::Render( GraphicsContext& GfxContext, const Camera& camera, UINT cam )
 {
     const float* pProjMat = reinterpret_cast<const float*>(&camera.GetProjMatrix());
-    Render(GfxContext, pProjMat, camera.GetNearClip(), camera.GetFarClip() );
+    Render(GfxContext, pProjMat, camera.GetNearClip(), camera.GetFarClip(), cam );
 }
 
-void SSAO::Render( GraphicsContext& GfxContext, const float* ProjMat, float NearClipDist, float FarClipDist )
+void SSAO::Render( GraphicsContext& GfxContext, const float* ProjMat, float NearClipDist, float FarClipDist, UINT cam )
 {
     uint32_t FrameIndex = TemporalEffects::GetFrameIndexMod2();
 
@@ -317,7 +317,7 @@ void SSAO::Render( GraphicsContext& GfxContext, const float* ProjMat, float Near
 
         Context.TransitionResource(*SceneDepthBuffer(), D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
         Context.SetConstants(0, zMagic);
-        Context.SetDynamicDescriptor(3, 0, SceneDepthBuffer()->GetDepthSRV());
+        Context.SetDynamicDescriptor(3, 0, SceneDepthBuffer()->GetSubSRV(cam));
 
         Context.TransitionResource(LinearDepth, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
         Context.SetDynamicDescriptors(2, 0, 1, &LinearDepth.GetUAV());
@@ -357,7 +357,7 @@ void SSAO::Render( GraphicsContext& GfxContext, const float* ProjMat, float Near
 
     // Phase 1:  Decompress, linearize, downsample, and deinterleave the depth buffer
     Context.SetConstants(0, zMagic);
-    Context.SetDynamicDescriptor(3, 0, SceneDepthBuffer()->GetDepthSRV() );
+    Context.SetDynamicDescriptor(3, 0, SceneDepthBuffer()->GetSubSRV(cam) );
 
     Context.TransitionResource(LinearDepth, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
     Context.TransitionResource(*DepthDownsize1(), D3D12_RESOURCE_STATE_UNORDERED_ACCESS);

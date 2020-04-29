@@ -26,7 +26,12 @@
     <FxCompile Include="RayGenerationShaderLib.hlsl" />
     <FxCompile Include="RayGenerationShaderSSRLib.hlsl" />
     <FxCompile Include="RayGenerationShadowsLib.hlsl" />
-    <FxCompile Include="*Lib.hlsl" />
+    <FxCompile Include="hitShaderLib.hlsl" />
+    <FxCompile Include="missShaderLib.hlsl" />
+    <FxCompile Include="missShadowsLib.hlsl" />
+    <FxCompile Include="RayGenerationShaderLib.hlsl" />
+    <FxCompile Include="RayGenerationShaderSSRLib.hlsl" />
+    <FxCompile Include="RayGenerationShadowsLib.hlsl" />
     <FxCompile Include="Shaders\DepthViewerPS.hlsl">
       <Filter>Shaders</Filter>
     </FxCompile>
@@ -264,6 +269,21 @@
     <FxCompile Include="*Lib.hlsl" />
     <FxCompile Include="*Lib.hlsl" />
     <FxCompile Include="*Lib.hlsl" />
+    <FxCompile Include="..\MiniEngine\ModelViewer\Shaders\FrameIntegrationCS.hlsl">
+      <Filter>Shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="*Lib.hlsl" />
+    <FxCompile Include="*Lib.hlsl" />
+    <FxCompile Include="*Lib.hlsl" />
+    <FxCompile Include="*Lib.hlsl" />
+    <FxCompile Include="*Lib.hlsl" />
+    <FxCompile Include="*Lib.hlsl" />
+    <FxCompile Include="..\MiniEngine\ModelViewer\Shaders\LowPassCS.hlsl">
+      <Filter>Shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="..\MiniEngine\ModelViewer\Shaders\DownsampleCS.hlsl">
+      <Filter>Shaders</Filter>
+    </FxCompile>
     <FxCompile Include="DiffuseHitShaderLib.hlsl" />
     <FxCompile Include="AlphaTransparencyAnyHit.hlsl" />
   </ItemGroup>

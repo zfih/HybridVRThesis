@@ -125,6 +125,9 @@ namespace Graphics
     const char* HDRModeLabels[] = { "HDR", "SDR", "Side-by-Side" };
     EnumVar HDRDebugMode("Graphics/Display/HDR Debug Mode", 0, 3, HDRModeLabels);
 
+    const char* TMPDebugLabels[] = { "On", "Off - Full Res", "Off - Low Res", "On - Full Res", "On - Low Res", "Residules" };
+    EnumVar g_TMPMode = EnumVar("Graphics/TMP Mode", 0, 6, TMPDebugLabels);
+
     uint32_t g_NativeWidth = 0;
     uint32_t g_NativeHeight = 0;
     uint32_t g_DisplayWidth = 1920;
@@ -386,6 +389,10 @@ void Graphics::Initialize(void)
 
             // RESOURCE_BARRIER_DUPLICATE_SUBRESOURCE_TRANSITIONS
             (D3D12_MESSAGE_ID)1008,
+
+            // FIX OF MICROSOFT'S AWFUL CODE (please kill me)
+            // https://github.com/ValveSoftware/openvr/issues/1134#issuecomment-562606742
+            D3D12_MESSAGE_ID_REFLECTSHAREDPROPERTIES_INVALIDOBJECT
         };
 
         D3D12_INFO_QUEUE_FILTER NewFilter = {};
@@ -678,11 +685,11 @@ void Graphics::SubmitToVRHMD(bool isArray)
 	// TODO: Check if g_SceneColorBuffer is the correct one
 	if(isArray)
 	{
-        VR::Submit(*SceneColorBuffer());
+        VR::Submit(g_SceneColorBufferFullRes);
 	}
 	else
 	{
-        VR::Submit(*SceneColorBuffer(), *SceneColorBuffer());
+        VR::Submit(g_SceneColorBufferFullRes, g_SceneColorBufferFullRes);
 	}
 }
 
@@ -690,24 +697,37 @@ void Graphics::PreparePresentLDR(void)
 {
     GraphicsContext& Context = GraphicsContext::Begin(L"Present");
 
+    Context.TransitionResource(g_SceneColorBufferFullRes, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, true);
+    Context.Flush();
 	SubmitToVRHMD(true);
 
     // We're going to be reading these buffers to write to the swap chain buffer(s)
-    Context.TransitionResource(*SceneColorBuffer(), D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 
     Context.SetRootSignature(s_PresentRS);
     Context.SetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
     // Copy (and convert) the LDR buffer to the back buffer
-
-    Context.SetDynamicDescriptor(0, 0, SceneColorBuffer()->GetSRV());
-    //Context.SetDynamicDescriptor(0, 0, g_SceneColorBufferFullRes.GetSRV());
+    if (g_TMPMode == 2)
+    {
+        Context.SetDynamicDescriptor(0, 0, g_SceneColorBufferLowRes.GetSRV());
+    }
+    else if (g_TMPMode == 5)
+    {
+        Context.SetDynamicDescriptor(0, 0, g_SceneColorBufferResidules.GetSRV());
+    }
+    else
+    {
+        Context.SetDynamicDescriptor(0, 0, g_SceneColorBufferFullRes.GetSRV());
+    }
+    //Context.SetDynamicDescriptor(0, 1, g_SceneColorBufferLowPassed.GetSRV());
 
     ColorBuffer& UpsampleDest = (DebugZoom == kDebugZoomOff ? g_DisplayPlane[g_CurrentBuffer] : g_PreDisplayBuffer);
 
 	UINT32 vertCount = 12;
 
     //if (g_NativeWidth == g_DisplayWidth && g_NativeHeight == g_DisplayHeight)
+    if (!(g_TMPMode == TMPDebug::kOnFullRes && (Graphics::GetFrameCount() % 2))
+        && !(g_TMPMode == TMPDebug::kOnLowRes && !(Graphics::GetFrameCount() % 2)))
     {
         Context.SetPipelineState(PresentSDRPS);
         Context.TransitionResource(UpsampleDest, D3D12_RESOURCE_STATE_RENDER_TARGET);

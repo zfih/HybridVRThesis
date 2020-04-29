@@ -25,6 +25,8 @@ namespace Graphics
     DepthBuffer g_SceneDepthBufferLowRes;
     ColorBuffer g_SceneColorBufferFullRes;
     ColorBuffer g_SceneColorBufferLowRes;
+    ColorBuffer g_SceneColorBufferLowPassed;
+    ColorBuffer g_SceneColorBufferResidules;
     ColorBuffer g_PostEffectsBuffer;
     ColorBuffer g_VelocityBuffer;
     ColorBuffer g_OverlayBuffer;
@@ -105,16 +107,18 @@ namespace Graphics
     // For testing GenerateMipMaps()
     ColorBuffer g_GenMipsBuffer;
 
-    DXGI_FORMAT DefaultHdrColorFormat = DXGI_FORMAT_R11G11B10_FLOAT;
+    DXGI_FORMAT DefaultHdrColorFormat = DXGI_FORMAT_R8G8B8A8_UNORM;
+
+    uint32_t divisionHelperFunc(uint32_t val);
+    const uint32_t lowResDivisor = 4;
 }
 
 #define T2X_COLOR_FORMAT DXGI_FORMAT_R10G10B10A2_UNORM
 #define HDR_MOTION_FORMAT DXGI_FORMAT_R16G16B16A16_FLOAT
 #define DSV_FORMAT DXGI_FORMAT_D32_FLOAT
 
-uint32_t divisionHelperFunc(uint32_t val)
+uint32_t Graphics::divisionHelperFunc(uint32_t val)
 {
-    const uint32_t lowResDivisor = 4;
     return (val + (lowResDivisor - 1)) / lowResDivisor;
 }
 
@@ -141,6 +145,8 @@ void Graphics::InitializeRenderingBuffers( uint32_t bufferWidth, uint32_t buffer
 
         g_SceneColorBufferFullRes.CreateArray( L"Main Color Buffers", bufferWidth, bufferHeight, 2, DefaultHdrColorFormat, esram );
         g_SceneColorBufferLowRes.CreateArray( L"Low Resolution Main Color Buffers", divisionHelperFunc(bufferWidth), divisionHelperFunc(bufferHeight), 2, DefaultHdrColorFormat, esram );
+        g_SceneColorBufferLowPassed.CreateArray( L"Low Passed Main Color Buffers", bufferWidth, bufferHeight, 2, DefaultHdrColorFormat, esram );
+        g_SceneColorBufferResidules.CreateArray( L"Residules of Main Color Buffers", bufferWidth, bufferHeight, 2, DefaultHdrColorFormat, esram );
         g_VelocityBuffer.Create( L"Motion Vectors", bufferWidth, bufferHeight, 1, DXGI_FORMAT_R32_UINT );
         g_PostEffectsBuffer.Create( L"Post Effects Buffer", bufferWidth, bufferHeight, 1, DXGI_FORMAT_R32_UINT );
 
@@ -297,6 +303,8 @@ void Graphics::DestroyRenderingBuffers()
     g_SceneDepthBufferLowRes.Destroy();
     g_SceneColorBufferFullRes.Destroy();
     g_SceneColorBufferLowRes.Destroy();
+    g_SceneColorBufferLowPassed.Destroy();
+    g_SceneColorBufferResidules.Destroy();
     g_VelocityBuffer.Destroy();
     g_OverlayBuffer.Destroy();
     g_HorizontalBuffer.Destroy();
