@@ -364,8 +364,8 @@ void GraphicsContext::SetScissor(const D3D12_RECT& rect)
 	m_CommandList->RSSetScissorRects(1, &rect);
 }
 
-constexpr D3D12_RESOURCE_STATES ALL_STATES = static_cast<D3D12_RESOURCE_STATES>(
-	D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES);
+constexpr D3D12_RESOURCE_STATES ALL_STATES =
+	static_cast<D3D12_RESOURCE_STATES>(D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES);
 
 void CommandContext::TransitionResource(
 	GpuResource& Resource,
@@ -373,9 +373,12 @@ void CommandContext::TransitionResource(
 	bool FlushImmediate,
 	UINT Subresource)
 {
-	const bool transitioningSubresource = Subresource != D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+	const bool transitioningSubresource
+		= Subresource != D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
 
-	auto pushTransition = [&](D3D12_RESOURCE_STATES& BeforeState, UINT Subresource)
+	auto pushTransition = [&](
+		D3D12_RESOURCE_STATES& BeforeState,
+		UINT Subresource)
 	{
 		if (BeforeState != NewState)
 		{
@@ -390,9 +393,9 @@ void CommandContext::TransitionResource(
 
 			if (m_Type == D3D12_COMMAND_LIST_TYPE_COMPUTE)
 			{
-				ASSERT((BeforeState & VALID_COMPUTE_QUEUE_RESOURCE_STATES) 
+				ASSERT((BeforeState & VALID_COMPUTE_QUEUE_RESOURCE_STATES)
 					== BeforeState);
-				ASSERT((NewState & VALID_COMPUTE_QUEUE_RESOURCE_STATES) 
+				ASSERT((NewState & VALID_COMPUTE_QUEUE_RESOURCE_STATES)
 					== NewState);
 			}
 
@@ -412,7 +415,7 @@ void CommandContext::TransitionResource(
 	// If we're a subresource fetch subresource usage state
 	if (transitioningSubresource)
 	{
-		D3D12_RESOURCE_STATES& state = 
+		D3D12_RESOURCE_STATES& state =
 			Resource.m_SubresourceUsageStates[Subresource];
 
 		pushTransition(state, Subresource);
@@ -424,7 +427,7 @@ void CommandContext::TransitionResource(
 		     subresourceIndex < Resource.m_SubresourceCount;
 		     subresourceIndex++)
 		{
-			D3D12_RESOURCE_STATES& state = 
+			D3D12_RESOURCE_STATES& state =
 				Resource.m_SubresourceUsageStates[subresourceIndex];
 
 			pushTransition(state, subresourceIndex);

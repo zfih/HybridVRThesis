@@ -1225,12 +1225,13 @@ void D3D12RaytracingMiniEngineSample::Startup(void)
 			D3D12_SHADER_VISIBILITY_PIXEL);
 
 		rs.InitStaticSampler(0, DefaultSamplerDesc, D3D12_SHADER_VISIBILITY_PIXEL);
-		rs.Finalize(L"D3D12RaytracingMiniEngineSample",
+		rs.Finalize(L"Screen Texture Root Signature",
 		            D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
+
 		// SubAlbert
 		GraphicsPSO& pso = m_screenTextureData.m_PSO;
 		pso.SetRootSignature(rs);
-		pso.SetRasterizerState(RasterizerDefault);
+		pso.SetRasterizerState(RasterizerDefaultCw);
 		pso.SetBlendState(BlendTraditional);
 		pso.SetInputLayout(_countof(screenVertElem), screenVertElem);
 		pso.SetPrimitiveTopologyType(D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE);
@@ -1450,27 +1451,54 @@ void D3D12RaytracingMiniEngineSample::CreateQuadVerts()
 	{
 		__declspec(align(16)) const float vertices[] =
 		{
-			Quad.topLeft.GetX(), Quad.topLeft.GetY(), Quad.topLeft.GetZ(),
+			// TL
+			-1, 1,  0, 1, // Position // TODO: Does the Quad need to be divided by w?
+			0, 0,         // UV
+
+			// BL
+			-1, -1,  0, 1, // Position
+			0, 1,        // UV
+
+			// TR
+			1, 1, 0, 1, // Position
+			1, 0,       // UV
+
+			// TR
+			1, 1, 0, 1, // Position
+			1, 0,       // UV
+			
+			// BL
+			-1, -1, 0, 1, // Position
+			0, 1,        // UV
+
+			// BR
+			1, -1, 0, 1, // Position
+			1, 1,       // UV
+		};
+#if 0
+		__declspec(align(16)) const float vertices[] =
+		{
+			Quad.topLeft.GetX(), Quad.topLeft.GetY(), Quad.topLeft.GetZ(), 0,
 			// Position // TODO: Does the Quad need to be divided by w?
 			0, 0, // UV
 
-			Quad.bottomLeft.GetX(), Quad.bottomLeft.GetY(), Quad.bottomLeft.GetZ(), // Position
+			Quad.bottomLeft.GetX(), Quad.bottomLeft.GetY(), Quad.bottomLeft.GetZ(),0, // Position
 			0, 1,                                                                   // UV
 
-			Quad.topRight.GetX(), Quad.topRight.GetY(), Quad.topRight.GetZ(), // Position
+			Quad.topRight.GetX(), Quad.topRight.GetY(), Quad.topRight.GetZ(),0, // Position
 			1, 0,                                                             // UV
 
-			Quad.topRight.GetX(), Quad.topRight.GetY(), Quad.topRight.GetZ(), // Position
+			Quad.topRight.GetX(), Quad.topRight.GetY(), Quad.topRight.GetZ(),0, // Position
 			1, 0,                                                             // UV
 
-			Quad.bottomLeft.GetX(), Quad.bottomLeft.GetY(), Quad.bottomLeft.GetZ(), // Position
+			Quad.bottomLeft.GetX(), Quad.bottomLeft.GetY(), Quad.bottomLeft.GetZ(),0, // Position
 			0, 1,                                                                   // UV
 
-			Quad.bottomRight.GetX(), Quad.bottomRight.GetY(), Quad.bottomRight.GetZ(), // Position
+			Quad.bottomRight.GetX(), Quad.bottomRight.GetY(), Quad.bottomRight.GetZ(),0, // Position
 			1, 1,                                                                      // UV
 		};
-
-		Buffer.Create(Name, 6, sizeof(float) * 14, vertices);
+#endif
+		Buffer.Create(Name, 6, 6 * sizeof(float), vertices);
 	};
 	ScreenTextureData& data = m_screenTextureData;
 	makeQuad(data.m_Quad, data.m_Buffer, L"Quad Vertex Buffer");
@@ -1525,23 +1553,6 @@ void D3D12RaytracingMiniEngineSample::RenderObjects(
 	}
 
 	vsConstants.modelToProjection = Matrix4(XMMatrixScaling(2000, 2000, 1));
-}
-
-void D3D12RaytracingMiniEngineSample::RenderCenterViewToEye(
-	GraphicsContext& Ctx,
-	Cam::CameraType CameraType)
-{
-
-	//Ctx.TransitionResource(g_SceneColorBuffer, D3D12_RESOURCE_STATE_COPY_DEST);
-
-	Ctx.TransitionResource(g_SceneColorBuffer, D3D12_RESOURCE_STATE_RENDER_TARGET, false, CameraType);
-	Ctx.TransitionResource(g_SceneColorBuffer, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, false, Cam::kCenter);
-	Ctx.SetPipelineState(m_screenTextureData.m_PSO);
-	Ctx.SetRootSignature(m_screenTextureData.m_RootSignature);
-	Ctx.SetRenderTarget(g_SceneColorBuffer.GetSubRTV(CameraType));
-	Ctx.SetVertexBuffer(0, m_screenTextureData.m_Buffer.VertexBufferView());
-	Ctx.SetDynamicDescriptor(RS_ScreenTexture::kTextureToRender, 0, g_SceneColorBuffer.GetSubSRV(Cam::kCenter));
-	Ctx.Draw(6);
 }
 
 void D3D12RaytracingMiniEngineSample::SetCameraToPredefinedPosition(int cameraPosition)
@@ -1899,18 +1910,76 @@ void D3D12RaytracingMiniEngineSample::RenderCenter(
 
 	// Albert
 	// TODO(freemedude 09:36 27-04): Where to put this?
-	RenderCenterViewToEye(ctx, Cam::kLeft);
 	//RenderCenterViewToEye(ctx, Cam::kRight);
 
+	ctx.Finish();
+	RenderCenterViewToEye(ctx, Cam::kLeft);
+}
+
+void D3D12RaytracingMiniEngineSample::RenderCenterViewToEye(
+	GraphicsContext& Ctx,
+	Cam::CameraType CameraType)
+{
+	/*
+	 * 1. Let us be able to render to the desired eye
+	 *		Transitioning to Render Target
+	 *		Set as render target
+	 * 2. Let us render FROM the center camera
+	 *		Transition to PSR
+	 *		Set as PSR
+	 *
+	 * 3. Render the Quad
+	 *		Set vertex buffer
+	 *		Draw(6)
+	 */
+
+	wchar_t* name = nullptr;
+
+	if (CameraType == 0)
+	{
+		name = L"RenderCenterViewToEye LEFT";
+	}
+	else
+	{
+		name = L"RenderCenterViewToEye RIGHT";
+	}
+	GraphicsContext& ctx = GraphicsContext::Begin(name);
+
+
+	ctx.TransitionResource(
+		g_SceneColorBuffer, 
+		D3D12_RESOURCE_STATE_RENDER_TARGET, 
+		false, 
+		CameraType);
+	ctx.TransitionResource(
+		g_SceneColorBuffer, 
+		D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, 
+		false, 
+		Cam::kCenter);
+	ctx.SetRenderTarget(g_SceneColorBuffer.GetSubRTV(CameraType));
+
+	ctx.SetPipelineState(m_screenTextureData.m_PSO);
+	ctx.SetRootSignature(m_screenTextureData.m_RootSignature);
+
+	ctx.SetPrimitiveTopology((D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST));
+
+	ctx.SetVertexBuffer(0, m_screenTextureData.m_Buffer.VertexBufferView());
+
+	ctx.SetDynamicDescriptor(
+		RS_ScreenTexture::kTextureToRender,
+		0, 
+		g_SceneColorBuffer.GetSubSRV(Cam::kCenter));
+	ctx.Draw(6);
+
+	ctx.TransitionResource(
+		g_SceneColorBuffer, 
+		D3D12_RESOURCE_STATE_RENDER_TARGET, 
+		false, 
+		Cam::kCenter);
 
 	ctx.Finish();
 }
 
-struct myStruct
-{
-};
-
-myStruct ms;
 
 void D3D12RaytracingMiniEngineSample::SetupGraphicsState(
 	GraphicsContext& Ctx) const
@@ -1933,7 +2002,6 @@ void D3D12RaytracingMiniEngineSample::RenderPrepass(
 		ScopedTimer _prof(L"Z PrePass", Ctx);
 
 		Ctx.SetDynamicConstantBufferView(1, sizeof(Constants), &Constants);
-
 		{
 			ScopedTimer _prof(L"Opaque", Ctx);
 			Ctx.TransitionResource(g_SceneDepthBuffer,
@@ -1944,7 +2012,6 @@ void D3D12RaytracingMiniEngineSample::RenderPrepass(
 			Ctx.SetPipelineState(m_DepthPSO);
 
 			Ctx.SetViewportAndScissor(m_MainViewport, m_MainScissor);
-
 
 			Ctx.SetDepthStencilTarget(g_SceneDepthBuffer.GetSubDSV(CameraType));
 			RenderObjects(Ctx, Camera.GetViewProjMatrix(), CameraType, kOpaque);

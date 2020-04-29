@@ -9,5 +9,6 @@ struct VSOutput
 
 float4 main(VSOutput vsOutput) : SV_TARGET
 {
+    //return float4(1,0,0,1);
     return texture0.Sample(sampler0, vsOutput.uv);
 }
