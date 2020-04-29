@@ -716,7 +716,6 @@ void Graphics::PreparePresentLDR(void)
     {
         Context.SetPipelineState(PresentSDRPS);
         Context.TransitionResource(UpsampleDest, D3D12_RESOURCE_STATE_RENDER_TARGET);
-        Context.SetRenderTarget(UpsampleDest.GetRTV());
 		Context.SetRenderTarget(UpsampleDest.GetRTV());
         Context.SetViewportAndScissor(0, 0, g_DisplayWidth, g_DisplayHeight);
         Context.Draw(vertCount);

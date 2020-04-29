@@ -24,7 +24,17 @@ void ColorBuffer::CreateDerivedViews(ID3D12Device* Device, DXGI_FORMAT Format, u
 {
 	ASSERT(ArraySize == 1 || NumMips == 1, "We don't support auto-mips on texture arrays");
 
+	// Create subresources
+	// NOTE: Setting initial state like this will only work for STATE_COMMON!
+	// Because it is 0.
+	m_SubresourceUsageStates = new D3D12_RESOURCE_STATES[ArraySize];
+	for (int i = 0; i < ArraySize; i++)
+		m_SubresourceUsageStates[i] = m_UsageState;
+	m_SubresourceCount = ArraySize;
+
+
 	m_NumMipMaps = NumMips - 1;
+
 
 	D3D12_RENDER_TARGET_VIEW_DESC RTVDesc = {};
 	D3D12_UNORDERED_ACCESS_VIEW_DESC UAVDesc = {};
@@ -179,7 +189,7 @@ void ColorBuffer::CreateArray(const std::wstring& Name, uint32_t Width, uint32_t
 {
 	D3D12_RESOURCE_FLAGS Flags = CombineResourceFlags();
 	D3D12_RESOURCE_DESC ResourceDesc = DescribeTex2D(Width, Height, ArrayCount, 1, Format, Flags);
-	
+
 	D3D12_CLEAR_VALUE ClearValue = {};
 	ClearValue.Format = Format;
 	memcpy(ClearValue.Color, m_ClearColor.GetPtr(), sizeof(ClearValue.Color));
@@ -189,8 +199,9 @@ void ColorBuffer::CreateArray(const std::wstring& Name, uint32_t Width, uint32_t
 }
 
 void ColorBuffer::CreateArray(const std::wstring& Name, uint32_t Width, uint32_t Height, uint32_t ArrayCount,
-                              DXGI_FORMAT Format, EsramAllocator&)
+                              DXGI_FORMAT Format, EsramAllocator&, bool ConsiderSubresources)
 {
+	m_ConsiderSubresources = ConsiderSubresources;
 	CreateArray(Name, Width, Height, ArrayCount, Format);
 }
 

@@ -329,7 +329,7 @@ void SSAO::Render( GraphicsContext& GfxContext, const float* ProjMat, float Near
 
         if (DebugDraw)
         {
-            Context.TransitionResource(g_SceneColorBuffer, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+            Context.TransitionResource(g_SceneColorBuffer, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, true);
             Context.TransitionResource(LinearDepth, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
             Context.SetDynamicDescriptors(2, 0, 1, &g_SceneColorBuffer.GetUAV());
             Context.SetDynamicDescriptors(3, 0, 1, &LinearDepth.GetSRV() );
@@ -516,7 +516,7 @@ void SSAO::Render( GraphicsContext& GfxContext, const float* ProjMat, float Near
         }
 
         ComputeContext& CC = GfxContext.GetComputeContext();
-        CC.TransitionResource(g_SceneColorBuffer, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+        CC.TransitionResource(g_SceneColorBuffer, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, true);
         CC.TransitionResource(g_SSAOFullScreen, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
         CC.SetRootSignature(s_RootSignature);
         CC.SetPipelineState(s_DebugSSAOCS);

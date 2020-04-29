@@ -52,7 +52,7 @@ public:
     // Create a color buffer.  Memory will be allocated in ESRAM (on Xbox One).  On Windows,
     // this functions the same as Create() without a video address.
     void CreateArray(const std::wstring& Name, uint32_t Width, uint32_t Height, uint32_t ArrayCount,
-        DXGI_FORMAT Format, EsramAllocator& Allocator);
+        DXGI_FORMAT Format, EsramAllocator& Allocator, bool ConsiderSubresources = false);
 	const D3D12_CPU_DESCRIPTOR_HANDLE& GetSubRTV(int i) const { return m_RTVSubHandles[i]; }
 
     // Get pre-created CPU-visible descriptor handles

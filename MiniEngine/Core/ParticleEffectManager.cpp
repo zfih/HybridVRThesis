@@ -528,6 +528,7 @@ void ParticleEffects::Initialize( uint32_t MaxDisplayWidth, uint32_t MaxDisplayH
     HeapProps.CreationNodeMask = 1;
     HeapProps.VisibleNodeMask = 1;
 
+
     ID3D12Resource* tex = nullptr;
     ASSERT_SUCCEEDED( g_Device->CreateCommittedResource( &HeapProps, D3D12_HEAP_FLAG_NONE,
         &TexDesc, D3D12_RESOURCE_STATE_COPY_DEST, nullptr, MY_IID_PPV_ARGS(&tex)) );

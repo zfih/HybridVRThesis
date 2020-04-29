@@ -40,6 +40,7 @@
 #include <atlbase.h>
 #include <atlbase.h>
 #include "DXSampleHelper.h"
+#include <string>
 
 #include "CompiledShaders/DepthViewerVS.h"
 #include "CompiledShaders/DepthViewerPS.h"
@@ -272,11 +273,12 @@ private:
 
 	void CreateRayTraceAccelerationStructures(UINT numMeshes);
 
-	void RenderLightShadows(GraphicsContext& Ctx, Cam::CameraType CameraType );
+	void RenderLightShadows(GraphicsContext& Ctx, Cam::CameraType CameraType);
 
 	enum eObjectFilter { kOpaque = 0x1, kCutout = 0x2, kTransparent = 0x4, kAll = 0xF, kNone = 0x0 };
 	void RenderObjects(GraphicsContext& Context, const Matrix4& ViewProjMat, UINT curCam, eObjectFilter Filter = kAll);
-	void RenderCenterViewToEye(GraphicsContext& Ctx, UINT cam);
+	void RenderCenterViewToEye(GraphicsContext& Ctx,
+	                           Cam::CameraType CameraType);
 	void RaytraceDiffuse(GraphicsContext& context, const Math::Camera& camera, ColorBuffer& colorTarget);
 	void RaytraceShadows(GraphicsContext& context, const Math::Camera& camera, ColorBuffer& colorTarget,
 	                     DepthBuffer& depth);
@@ -421,7 +423,7 @@ enum RaytracingMode
 	RTM_REFLECTIONS,
 };
 
-EnumVar rayTracingMode("Application/Raytracing/RayTraceMode", RTM_DIFFUSE_WITH_SHADOWMAPS, _countof(rayTracingModes),
+EnumVar rayTracingMode("RayTraceMode", RTM_DIFFUSE_WITH_SHADOWMAPS, _countof(rayTracingModes),
                        rayTracingModes);
 
 class DescriptorHeapStack
@@ -509,11 +511,15 @@ void InitializeSceneInfo(
 	std::vector<RayTraceMeshInfo> meshInfoData(model.m_Header.meshCount);
 	for (UINT i = 0; i < model.m_Header.meshCount; ++i)
 	{
-		meshInfoData[i].m_indexOffsetBytes = model.m_pMesh[i].indexDataByteOffset;
-		meshInfoData[i].m_uvAttributeOffsetBytes = model.m_pMesh[i].vertexDataByteOffset + model.m_pMesh[i].attrib[Model
-			::attrib_texcoord0].offset;
-		meshInfoData[i].m_normalAttributeOffsetBytes = model.m_pMesh[i].vertexDataByteOffset + model.m_pMesh[i].attrib[
-			Model::attrib_normal].offset;
+		meshInfoData[i].m_indexOffsetBytes = model
+			.m_pMesh[i]
+			.indexDataByteOffset;
+		meshInfoData[i].m_uvAttributeOffsetBytes =
+			model.m_pMesh[i].vertexDataByteOffset +
+			model.m_pMesh[i].attrib[Model::attrib_texcoord0].offset;
+		meshInfoData[i].m_normalAttributeOffsetBytes =
+			model.m_pMesh[i].vertexDataByteOffset +
+			model.m_pMesh[i].attrib[Model::attrib_normal].offset;
 		meshInfoData[i].m_positionAttributeOffsetBytes = model.m_pMesh[i].vertexDataByteOffset + model.m_pMesh[i].attrib
 			[Model::attrib_position].offset;
 		meshInfoData[i].m_tangentAttributeOffsetBytes = model.m_pMesh[i].vertexDataByteOffset + model.m_pMesh[i].attrib[
@@ -564,7 +570,6 @@ void InitializeViews(const Model& model)
 		Graphics::g_Device->CopyDescriptorsSimple(1, srvHandle, g_SceneNormalBuffer.GetSRV(),
 		                                          D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 	}
-
 	{
 		D3D12_CPU_DESCRIPTOR_HANDLE srvHandle;
 		UINT srvDescriptorIndex;
@@ -1200,34 +1205,36 @@ void D3D12RaytracingMiniEngineSample::Startup(void)
 		D3D12_INPUT_ELEMENT_DESC screenVertElem[] =
 		{
 			{
-				"POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT,
+				"POSITION", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0,
+				D3D12_APPEND_ALIGNED_ELEMENT,
 				D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0
 			},
 			{
-				"TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT,
+				"TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0,
+				D3D12_APPEND_ALIGNED_ELEMENT,
 				D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0
 			}
 		};
 
-
+		// Root signature configuration
 		RootSignature& rs = m_screenTextureData.m_RootSignature;
 		rs.Reset(RS_ScreenTexture::kCount, 1);
-		rs[RS_ScreenTexture::kTextureToRender].InitAsDescriptorRange(D3D12_DESCRIPTOR_RANGE_TYPE_SRV,
-		                                                             RS_ScreenTexture::kTextureToRender, 1,
-		                                                             D3D12_SHADER_VISIBILITY_PIXEL);
+		rs[RS_ScreenTexture::kTextureToRender].InitAsDescriptorRange(
+			D3D12_DESCRIPTOR_RANGE_TYPE_SRV,
+			RS_ScreenTexture::kTextureToRender, 1,
+			D3D12_SHADER_VISIBILITY_PIXEL);
+
 		rs.InitStaticSampler(0, DefaultSamplerDesc, D3D12_SHADER_VISIBILITY_PIXEL);
-		rs.Finalize(L"D3D12RaytracingMiniEngineSample AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+		rs.Finalize(L"D3D12RaytracingMiniEngineSample",
 		            D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
 		// SubAlbert
 		GraphicsPSO& pso = m_screenTextureData.m_PSO;
 		pso.SetRootSignature(rs);
 		pso.SetRasterizerState(RasterizerDefault);
-		pso.SetBlendState(BlendNoColorWrite);
-		pso.SetDepthStencilState(DepthStateReadWrite);
+		pso.SetBlendState(BlendTraditional);
 		pso.SetInputLayout(_countof(screenVertElem), screenVertElem);
 		pso.SetPrimitiveTopologyType(D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE);
-		DXGI_FORMAT formats[]{ColorFormat, NormalFormat};
-		pso.SetRenderTargetFormats(_countof(formats), formats, DepthFormat);
+		pso.SetRenderTargetFormat(ColorFormat, DXGI_FORMAT_UNKNOWN);
 		pso.SetVertexShader(g_pScreenTextureVS, sizeof(g_pScreenTextureVS));
 		pso.SetPixelShader(g_pScreenTexturePS, sizeof(g_pScreenTexturePS));
 		pso.Finalize();
@@ -1273,18 +1280,21 @@ void D3D12RaytracingMiniEngineSample::Startup(void)
 	InitializeViews(m_Model);
 	UINT numMeshes = m_Model.m_Header.meshCount;
 
+	std::wstring dxrSupported = std::wstring(L"DXR Support: ") + (g_RayTraceSupport ? L"true" : L"false") + L"\n";
+	std::wstring vrSupported = std::wstring(L"VR Support: ") + (VR::IsVRAvailable() ? L"true" : L"false") + L"\n";
+
+	OutputDebugStringW(L"------------------------------\n");
+	OutputDebugStringW(dxrSupported.c_str());
+	OutputDebugStringW(vrSupported.c_str());
+	OutputDebugStringW(L"------------------------------\n");
 
 	if (g_RayTraceSupport)
 	{
 		CreateRayTraceAccelerationStructures(numMeshes);
-		OutputDebugStringW(
-			L"------------------------------\nDXR support present on Device\n------------------------------\n");
 	}
 	else
 	{
 		rayTracingMode = RTM_OFF;
-		OutputDebugStringW(
-			L"------------------------------\nDXR support not present on Device\n------------------------------\n");
 	}
 
 	InitializeStateObjects(m_Model, numMeshes);
@@ -1517,14 +1527,20 @@ void D3D12RaytracingMiniEngineSample::RenderObjects(
 	vsConstants.modelToProjection = Matrix4(XMMatrixScaling(2000, 2000, 1));
 }
 
-void D3D12RaytracingMiniEngineSample::RenderCenterViewToEye(GraphicsContext& Ctx, UINT CurCam)
+void D3D12RaytracingMiniEngineSample::RenderCenterViewToEye(
+	GraphicsContext& Ctx,
+	Cam::CameraType CameraType)
 {
-	// Render Quad
+
+	//Ctx.TransitionResource(g_SceneColorBuffer, D3D12_RESOURCE_STATE_COPY_DEST);
+
+	Ctx.TransitionResource(g_SceneColorBuffer, D3D12_RESOURCE_STATE_RENDER_TARGET, false, CameraType);
+	Ctx.TransitionResource(g_SceneColorBuffer, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, false, Cam::kCenter);
 	Ctx.SetPipelineState(m_screenTextureData.m_PSO);
 	Ctx.SetRootSignature(m_screenTextureData.m_RootSignature);
-	Ctx.SetRenderTarget(g_SceneColorBuffer.GetSubRTV(CurCam));
+	Ctx.SetRenderTarget(g_SceneColorBuffer.GetSubRTV(CameraType));
 	Ctx.SetVertexBuffer(0, m_screenTextureData.m_Buffer.VertexBufferView());
-	Ctx.SetDynamicDescriptor(RS_ScreenTexture::kTextureToRender, 0, g_SceneColorBuffer.GetSubSRV(2));
+	Ctx.SetDynamicDescriptor(RS_ScreenTexture::kTextureToRender, 0, g_SceneColorBuffer.GetSubSRV(Cam::kCenter));
 	Ctx.Draw(6);
 }
 
@@ -1722,7 +1738,7 @@ void D3D12RaytracingMiniEngineSample::RenderLightShadows(
 
 void D3D12RaytracingMiniEngineSample::RenderColor(
 	GraphicsContext& Ctx,
-	Camera &Camera,
+	Camera& Camera,
 	Cam::CameraType CameraType,
 	DepthBuffer& DepthBuffer,
 	PSConstants& Constants)
@@ -1812,7 +1828,7 @@ void D3D12RaytracingMiniEngineSample::RenderEye(
 	bool SkipDiffusePass,
 	bool SkipShadowMap,
 	PSConstants& Constants
-	)
+)
 {
 	GraphicsContext& ctx =
 		GraphicsContext::Begin(L"Scene Render " + CameraTypeToWString(CameraType));
@@ -1825,7 +1841,10 @@ void D3D12RaytracingMiniEngineSample::RenderEye(
 	RenderPrepass(ctx, CameraType, camera, Constants);
 
 	MainRender(ctx, CameraType, camera,
-		Constants, SkipDiffusePass, SkipShadowMap);
+	           Constants, SkipDiffusePass, SkipShadowMap);
+
+
+	ctx.Finish();
 }
 
 
@@ -1845,13 +1864,13 @@ void D3D12RaytracingMiniEngineSample::RenderCenter(
 	RenderPrepass(ctx, Cam::kCenter, camera, Constants);
 
 	ctx.TransitionResource(g_SceneDepthBuffer,
-		D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+	                       D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 	ctx.TransitionResource(g_SceneDepthBuffer,
-		D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+	                       D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 	ctx.TransitionResource(g_SceneDepthBuffer,
-		D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+	                       D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 	ctx.TransitionResource(g_SceneCenterColourDepthBuffer,
-		D3D12_RESOURCE_STATE_UNORDERED_ACCESS, true);
+	                       D3D12_RESOURCE_STATE_UNORDERED_ACCESS, true);
 
 	{
 		ComputeContext& cmpContext =
@@ -1875,9 +1894,23 @@ void D3D12RaytracingMiniEngineSample::RenderCenter(
 	}
 
 	MainRender(ctx, Cam::kCenter, camera,
-		Constants, skipDiffusePass, skipShadowMap);
+	           Constants, skipDiffusePass, skipShadowMap);
+
+
+	// Albert
+	// TODO(freemedude 09:36 27-04): Where to put this?
+	RenderCenterViewToEye(ctx, Cam::kLeft);
+	//RenderCenterViewToEye(ctx, Cam::kRight);
+
+
+	ctx.Finish();
 }
 
+struct myStruct
+{
+};
+
+myStruct ms;
 
 void D3D12RaytracingMiniEngineSample::SetupGraphicsState(
 	GraphicsContext& Ctx) const
@@ -1903,8 +1936,8 @@ void D3D12RaytracingMiniEngineSample::RenderPrepass(
 
 		{
 			ScopedTimer _prof(L"Opaque", Ctx);
-			Ctx.TransitionResource(g_SceneDepthBuffer, 
-				D3D12_RESOURCE_STATE_DEPTH_WRITE, true);
+			Ctx.TransitionResource(g_SceneDepthBuffer,
+			                       D3D12_RESOURCE_STATE_DEPTH_WRITE, true);
 
 			Ctx.ClearDepth(g_SceneDepthBuffer, CameraType);
 
@@ -1942,10 +1975,10 @@ void D3D12RaytracingMiniEngineSample::MainRender(
 		if (!SSAO::DebugDraw)
 		{
 			ScopedTimer _prof(L"Main Render", Ctx);
-			Ctx.TransitionResource(g_SceneColorBuffer, 
-				D3D12_RESOURCE_STATE_RENDER_TARGET, true);
-			Ctx.TransitionResource(g_SceneNormalBuffer, 
-				D3D12_RESOURCE_STATE_RENDER_TARGET, true);
+			Ctx.TransitionResource(g_SceneColorBuffer,
+			                       D3D12_RESOURCE_STATE_RENDER_TARGET, true);
+			Ctx.TransitionResource(g_SceneNormalBuffer,
+			                       D3D12_RESOURCE_STATE_RENDER_TARGET, true);
 
 			Ctx.ClearColor(g_SceneColorBuffer, CameraType);
 		}
@@ -1971,11 +2004,11 @@ void D3D12RaytracingMiniEngineSample::MainRender(
 
 				Ctx.SetPipelineState(m_ShadowPSO);
 				RenderObjects(Ctx, m_SunShadow.GetViewProjMatrix(),
-					CameraType, kOpaque);
+				              CameraType, kOpaque);
 
 				Ctx.SetPipelineState(m_CutoutShadowPSO);
 				RenderObjects(Ctx, m_SunShadow.GetViewProjMatrix(),
-					CameraType, kCutout);
+				              CameraType, kCutout);
 
 				g_ShadowBuffer.EndRendering(Ctx);
 			}
@@ -2026,13 +2059,6 @@ void D3D12RaytracingMiniEngineSample::MainRender(
 	{
 		Raytrace(Ctx, CameraType, &g_SceneDepthBuffer);
 	}
-
-	// Albert
-	// TODO(freemedude 09:36 27-04): Where to put this?
-	//RenderCenterViewToEye(leftGfxContext, 0);
-	//RenderCenterViewToEye(rightGfxContext, 1);
-
-	Ctx.Finish();
 }
 
 //

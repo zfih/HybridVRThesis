@@ -187,9 +187,13 @@
     <FxCompile Include="..\MiniEngine\ModelViewer\Shaders\CombineColourCS.hlsl" />
     <FxCompile Include="..\MiniEngine\ModelViewer\Shaders\CombineColourPS.hlsl">
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Pixel</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Pixel</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">Pixel</ShaderType>
     </FxCompile>
     <FxCompile Include="..\MiniEngine\ModelViewer\Shaders\CombineColourVS.hlsl">
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Vertex</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Vertex</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">Vertex</ShaderType>
     </FxCompile>
     <FxCompile Include="..\MiniEngine\ModelViewer\Shaders\CombineDepthsCS.hlsl" />
     <FxCompile Include="DiffuseHitShaderLib.hlsl">
@@ -382,6 +386,15 @@
     <FxCompile>
       <EnableDebuggingInformation Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">false</EnableDebuggingInformation>
     </FxCompile>
+    <ClCompile>
+      <LanguageStandard Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Default</LanguageStandard>
+    </ClCompile>
+    <ClCompile>
+      <LanguageStandard Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">Default</LanguageStandard>
+    </ClCompile>
+    <ClCompile>
+      <LanguageStandard Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Default</LanguageStandard>
+    </ClCompile>
   </ItemDefinitionGroup>
   <ImportGroup Label="ExtensionTargets">
     <Import Project="$(SolutionDir)Packages\WinPixEventRuntime.1.0.180612001\build\WinPixEventRuntime.targets" Condition="Exists('$(SolutionDir)Packages\WinPixEventRuntime.1.0.180612001\build\WinPixEventRuntime.targets')" />
