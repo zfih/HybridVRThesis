@@ -804,7 +804,8 @@ void Graphics::HiddenMeshDepthPrepass()
     GraphicsContext& context = GraphicsContext::Begin(L"Hidden Mesh Z-prepass");
 
 	// Transition and clear depth
-    context.TransitionResource(g_SceneDepthBuffer, D3D12_RESOURCE_STATE_DEPTH_WRITE, true);
+    context.TransitionResource(g_SceneDepthBuffer, D3D12_RESOURCE_STATE_DEPTH_WRITE);
+    context.TransitionResource(g_DisplayPlane[g_CurrentBuffer], D3D12_RESOURCE_STATE_RENDER_TARGET, true);
     context.ClearDepth(g_SceneDepthBuffer);
 
 	// Set render target
