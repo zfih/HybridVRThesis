@@ -194,6 +194,7 @@ public:
 	virtual void Cleanup(void) override;
 
 	virtual void Update(float deltaT) override;
+	virtual void RenderShadowMap() override;
 	virtual void RenderScene(UINT cam) override;
 	virtual void RenderUI(class GraphicsContext&) override;
 	virtual void Raytrace(class GraphicsContext&, UINT cam);
@@ -1494,6 +1495,50 @@ void D3D12RaytracingMiniEngineSample::RenderLightShadows(GraphicsContext& gfxCon
 	++LightIndex;
 }
 
+void D3D12RaytracingMiniEngineSample::RenderShadowMap()
+{
+	const bool skipShadowMap =
+		rayTracingMode == RTM_DIFFUSE_WITH_SHADOWRAYS ||
+		rayTracingMode == RTM_TRAVERSAL ||
+		rayTracingMode == RTM_SSR;
+
+	if (!skipShadowMap)
+	{
+		if (!SSAO::DebugDraw)
+		{
+			GraphicsContext& gfxContext = 
+				GraphicsContext::Begin(L"Shadow Map Render");
+
+			gfxContext.SetRootSignature(m_RootSig);								// TODO: Replace with pfnSetupGraphicsState()
+			gfxContext.SetPrimitiveTopology(									//
+				D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);							//
+			gfxContext.SetIndexBuffer(m_Model.m_IndexBuffer.IndexBufferView());	//
+			gfxContext.SetVertexBuffer(											//
+				0, m_Model.m_VertexBuffer.VertexBufferView());					//
+			{
+				ScopedTimer _prof(L"Render Shadow Map", gfxContext);
+
+				m_SunShadow.UpdateMatrix(-m_SunDirection, 
+					Vector3(0, -500.0f, 0),
+					Vector3(ShadowDimX, ShadowDimY, ShadowDimZ),
+					(uint32_t)g_ShadowBuffer.GetWidth(), 
+					(uint32_t)g_ShadowBuffer.GetHeight(), 16);
+
+				g_ShadowBuffer.BeginRendering(gfxContext);
+				gfxContext.SetPipelineState(m_ShadowPSO);
+				RenderObjects(
+					gfxContext, m_SunShadow.GetViewProjMatrix(), 0, kOpaque);
+				gfxContext.SetPipelineState(m_CutoutShadowPSO);
+				RenderObjects(
+					gfxContext, m_SunShadow.GetViewProjMatrix(), 0, kCutout);
+				g_ShadowBuffer.EndRendering(gfxContext);
+			}
+
+			gfxContext.Finish();
+		}
+	}
+}
+
 void D3D12RaytracingMiniEngineSample::RenderScene(UINT cam)
 {
 	DepthBuffer& db = g_SceneDepthBuffer;
@@ -1501,11 +1546,6 @@ void D3D12RaytracingMiniEngineSample::RenderScene(UINT cam)
 		rayTracingMode == RTM_DIFFUSE_WITH_SHADOWMAPS ||
 		rayTracingMode == RTM_DIFFUSE_WITH_SHADOWRAYS ||
 		rayTracingMode == RTM_TRAVERSAL;
-
-	const bool skipShadowMap =
-		rayTracingMode == RTM_DIFFUSE_WITH_SHADOWRAYS ||
-		rayTracingMode == RTM_TRAVERSAL ||
-		rayTracingMode == RTM_SSR;
 
 	static bool s_ShowLightCounts = false;
 	if (ShowWaveTileCounts != s_ShowLightCounts)
@@ -1609,28 +1649,6 @@ void D3D12RaytracingMiniEngineSample::RenderScene(UINT cam)
 				gfxContext.TransitionResource(g_SceneColorBuffer, D3D12_RESOURCE_STATE_RENDER_TARGET, true);
 				gfxContext.TransitionResource(g_SceneNormalBuffer, D3D12_RESOURCE_STATE_RENDER_TARGET, true);
 				gfxContext.ClearColor(g_SceneColorBuffer, cam);
-			}
-		}
-	}
-
-	if (!skipShadowMap)
-	{
-		if (!SSAO::DebugDraw)
-		{
-			pfnSetupGraphicsState();
-			{
-				ScopedTimer _prof(L"Render Shadow Map", gfxContext);
-
-				m_SunShadow.UpdateMatrix(-m_SunDirection, Vector3(0, -500.0f, 0),
-				                         Vector3(ShadowDimX, ShadowDimY, ShadowDimZ),
-				                         (uint32_t)g_ShadowBuffer.GetWidth(), (uint32_t)g_ShadowBuffer.GetHeight(), 16);
-
-				g_ShadowBuffer.BeginRendering(gfxContext);
-				gfxContext.SetPipelineState(m_ShadowPSO);
-				RenderObjects(gfxContext, m_SunShadow.GetViewProjMatrix(), cam, kOpaque);
-				gfxContext.SetPipelineState(m_CutoutShadowPSO);
-				RenderObjects(gfxContext, m_SunShadow.GetViewProjMatrix(), cam, kCutout);
-				g_ShadowBuffer.EndRendering(gfxContext);
 			}
 		}
 	}
