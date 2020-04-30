@@ -41,6 +41,10 @@
 #include <atlbase.h>
 #include "DXSampleHelper.h"
 
+#include "Raytracing.h"
+#include "DescriptorHeapStack.h"
+
+// Shaders
 #include "CompiledShaders/DepthViewerVS.h"
 #include "CompiledShaders/DepthViewerPS.h"
 #include "CompiledShaders/ModelViewerVS.h"
@@ -53,6 +57,7 @@
 #include "CompiledShaders/DiffuseHitShaderLib.h"
 #include "CompiledShaders/RayGenerationShadowsLib.h"
 #include "CompiledShaders/MissShadowsLib.h"
+#include "CompiledShaders/AlphaTransparencyAnyHit.h"
 
 #include "CompiledShaders/CombineDepthsCS.h"
 
@@ -111,67 +116,6 @@ const static UINT MaxRayRecursion = 2;
 
 const static UINT c_NumCameraPositions = 5;
 
-struct RaytracingDispatchRayInputs
-{
-	RaytracingDispatchRayInputs()
-	{
-	}
-
-	RaytracingDispatchRayInputs(
-		ID3D12Device5& device,
-		ID3D12StateObject* pPSO,
-		void* pHitGroupShaderTable,
-		UINT HitGroupStride,
-		UINT HitGroupTableSize,
-		LPCWSTR rayGenExportName,
-		LPCWSTR missExportName) : m_pPSO(pPSO)
-	{
-		const UINT shaderTableSize = D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES;
-		ID3D12StateObjectProperties* stateObjectProperties = nullptr;
-		ThrowIfFailed(pPSO->QueryInterface(IID_PPV_ARGS(&stateObjectProperties)));
-		void* pRayGenShaderData = stateObjectProperties->GetShaderIdentifier(rayGenExportName);
-		void* pMissShaderData = stateObjectProperties->GetShaderIdentifier(missExportName);
-
-		m_HitGroupStride = HitGroupStride;
-
-		// MiniEngine requires that all initial data be aligned to 16 bytes
-		UINT alignment = 16;
-		std::vector<BYTE> alignedShaderTableData(shaderTableSize + alignment - 1);
-		BYTE* pAlignedShaderTableData = alignedShaderTableData.data() + ((UINT64)alignedShaderTableData.data() %
-			alignment);
-		memcpy(pAlignedShaderTableData, pRayGenShaderData, shaderTableSize);
-		m_RayGenShaderTable.Create(L"Ray Gen Shader Table", 1, shaderTableSize, alignedShaderTableData.data());
-
-		memcpy(pAlignedShaderTableData, pMissShaderData, shaderTableSize);
-		m_MissShaderTable.Create(L"Miss Shader Table", 1, shaderTableSize, alignedShaderTableData.data());
-
-		m_HitShaderTable.Create(L"Hit Shader Table", 1, HitGroupTableSize, pHitGroupShaderTable);
-	}
-
-	D3D12_DISPATCH_RAYS_DESC GetDispatchRayDesc(UINT DispatchWidth, UINT DispatchHeight)
-	{
-		D3D12_DISPATCH_RAYS_DESC dispatchRaysDesc = {};
-
-		dispatchRaysDesc.RayGenerationShaderRecord.StartAddress = m_RayGenShaderTable.GetGpuVirtualAddress();
-		dispatchRaysDesc.RayGenerationShaderRecord.SizeInBytes = m_RayGenShaderTable.GetBufferSize();
-		dispatchRaysDesc.HitGroupTable.StartAddress = m_HitShaderTable.GetGpuVirtualAddress();
-		dispatchRaysDesc.HitGroupTable.SizeInBytes = m_HitShaderTable.GetBufferSize();
-		dispatchRaysDesc.HitGroupTable.StrideInBytes = m_HitGroupStride;
-		dispatchRaysDesc.MissShaderTable.StartAddress = m_MissShaderTable.GetGpuVirtualAddress();
-		dispatchRaysDesc.MissShaderTable.SizeInBytes = m_MissShaderTable.GetBufferSize();
-		dispatchRaysDesc.MissShaderTable.StrideInBytes = dispatchRaysDesc.MissShaderTable.SizeInBytes; // Only one entry
-		dispatchRaysDesc.Width = DispatchWidth;
-		dispatchRaysDesc.Height = DispatchHeight;
-		dispatchRaysDesc.Depth = 1;
-		return dispatchRaysDesc;
-	}
-
-	UINT m_HitGroupStride;
-	CComPtr<ID3D12StateObject> m_pPSO;
-	ByteAddressBuffer m_RayGenShaderTable;
-	ByteAddressBuffer m_MissShaderTable;
-	ByteAddressBuffer m_HitShaderTable;
-};
 
 struct MaterialRootConstant
 {
@@ -195,6 +139,7 @@ public:
 	virtual void Cleanup(void) override;
 
 	virtual void Update(float deltaT) override;
+	virtual void RenderShadowMap() override;
 	virtual void RenderScene(UINT cam) override;
 	virtual void RenderUI(class GraphicsContext&) override;
 	virtual void Raytrace(class GraphicsContext&, UINT cam, 
@@ -258,19 +203,6 @@ private:
 };
 
 
-// Returns bool whether the device supports DirectX Raytracing tier.
-inline bool IsDirectXRaytracingSupported(IDXGIAdapter1* adapter)
-{
-	ComPtr<ID3D12Device> testDevice;
-	D3D12_FEATURE_DATA_D3D12_OPTIONS5 featureSupportData = {};
-
-	return SUCCEEDED(D3D12CreateDevice(adapter, D3D_FEATURE_LEVEL_11_0, IID_PPV_ARGS(&testDevice)))
-		&& SUCCEEDED(
-			testDevice->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS5, &featureSupportData, sizeof(featureSupportData
-			)))
-		&& featureSupportData.RaytracingTier != D3D12_RAYTRACING_TIER_NOT_SUPPORTED;
-}
-
 int wmain(int argc, wchar_t** argv)
 {
 #if _DEBUG
@@ -281,27 +213,27 @@ int wmain(int argc, wchar_t** argv)
 	}
 #endif
 
-    CComPtr<ID3D12Device> pDevice;
-    CComPtr<IDXGIAdapter1> pAdapter;
-    CComPtr<IDXGIFactory2> pFactory;
-    CreateDXGIFactory2(0, IID_PPV_ARGS(&pFactory));
-	
-    bool validDeviceFound = false;
-    for (uint32_t Idx = 0; !validDeviceFound && DXGI_ERROR_NOT_FOUND != pFactory->EnumAdapters1(Idx, &pAdapter); ++Idx)
-    {
-        DXGI_ADAPTER_DESC1 desc;
-        pAdapter->GetDesc1(&desc);
+	CComPtr<ID3D12Device> pDevice;
+	CComPtr<IDXGIAdapter1> pAdapter;
+	CComPtr<IDXGIFactory2> pFactory;
+	CreateDXGIFactory2(0, IID_PPV_ARGS(&pFactory));
 
-        validDeviceFound = IsDirectXRaytracingSupported(pAdapter);
-        
-        pAdapter = nullptr;
-    }
-	
-    s_EnableVSync.Decrement();
-    g_DisplayWidth = 1280;
-    g_DisplayHeight = 720;
-    GameCore::RunApplication(D3D12RaytracingMiniEngineSample(validDeviceFound), L"D3D12RaytracingMiniEngineSample"); 
-    return 0;
+	bool validDeviceFound = false;
+	for (uint32_t Idx = 0; !validDeviceFound && DXGI_ERROR_NOT_FOUND != pFactory->EnumAdapters1(Idx, &pAdapter); ++Idx)
+	{
+		DXGI_ADAPTER_DESC1 desc;
+		pAdapter->GetDesc1(&desc);
+
+		validDeviceFound = IsDirectXRaytracingSupported(pAdapter);
+
+		pAdapter = nullptr;
+	}
+
+	s_EnableVSync.Decrement();
+	g_DisplayWidth = 1280;
+	g_DisplayHeight = 720;
+	GameCore::RunApplication(D3D12RaytracingMiniEngineSample(validDeviceFound), L"D3D12RaytracingMiniEngineSample");
+	return 0;
 }
 
 ExpVar m_SunLightIntensity("Application/Lighting/Sun Light Intensity", 4.0f, 0.0f, 16.0f, 0.1f);
@@ -338,77 +270,6 @@ enum RaytracingMode
 };
 EnumVar rayTracingMode("Application/Raytracing/RayTraceMode", RTM_DIFFUSE_WITH_SHADOWMAPS, _countof(rayTracingModes),
                        rayTracingModes);
-
-class DescriptorHeapStack
-{
-public:
-	DescriptorHeapStack(ID3D12Device& device, UINT numDescriptors, D3D12_DESCRIPTOR_HEAP_TYPE type, UINT NodeMask) :
-		m_device(device)
-	{
-		D3D12_DESCRIPTOR_HEAP_DESC desc = {};
-		desc.NumDescriptors = numDescriptors;
-		desc.Type = type;
-		desc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
-		desc.NodeMask = NodeMask;
-		device.CreateDescriptorHeap(&desc, IID_PPV_ARGS(&m_pDescriptorHeap));
-
-		m_descriptorSize = device.GetDescriptorHandleIncrementSize(type);
-		m_descriptorHeapCpuBase = m_pDescriptorHeap->GetCPUDescriptorHandleForHeapStart();
-	}
-
-	ID3D12DescriptorHeap& GetDescriptorHeap() { return *m_pDescriptorHeap; }
-
-	void AllocateDescriptor(_Out_ D3D12_CPU_DESCRIPTOR_HANDLE& cpuHandle, _Out_ UINT& descriptorHeapIndex)
-	{
-		descriptorHeapIndex = m_descriptorsAllocated;
-		cpuHandle = CD3DX12_CPU_DESCRIPTOR_HANDLE(m_descriptorHeapCpuBase, descriptorHeapIndex, m_descriptorSize);
-		m_descriptorsAllocated++;
-	}
-
-	UINT AllocateBufferSrv(_In_ ID3D12Resource& resource)
-	{
-		UINT descriptorHeapIndex;
-		D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle;
-		AllocateDescriptor(cpuHandle, descriptorHeapIndex);
-		D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
-		srvDesc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
-		srvDesc.Buffer.NumElements = (UINT)(resource.GetDesc().Width / sizeof(UINT32));
-		srvDesc.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_RAW;
-		srvDesc.Format = DXGI_FORMAT_R32_TYPELESS;
-		srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-
-		m_device.CreateShaderResourceView(&resource, &srvDesc, cpuHandle);
-		return descriptorHeapIndex;
-	}
-
-	UINT AllocateBufferUav(_In_ ID3D12Resource& resource)
-	{
-		UINT descriptorHeapIndex;
-		D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle;
-		AllocateDescriptor(cpuHandle, descriptorHeapIndex);
-		D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc = {};
-		uavDesc.ViewDimension = D3D12_UAV_DIMENSION_BUFFER;
-		uavDesc.Buffer.NumElements = (UINT)(resource.GetDesc().Width / sizeof(UINT32));
-		uavDesc.Buffer.Flags = D3D12_BUFFER_UAV_FLAG_RAW;
-		uavDesc.Format = DXGI_FORMAT_R32_TYPELESS;
-
-		m_device.CreateUnorderedAccessView(&resource, nullptr, &uavDesc, cpuHandle);
-		return descriptorHeapIndex;
-	}
-
-	D3D12_GPU_DESCRIPTOR_HANDLE GetGpuHandle(UINT descriptorIndex)
-	{
-		return CD3DX12_GPU_DESCRIPTOR_HANDLE(m_pDescriptorHeap->GetGPUDescriptorHandleForHeapStart(), descriptorIndex,
-		                                     m_descriptorSize);
-	}
-
-private:
-	ID3D12Device& m_device;
-	CComPtr<ID3D12DescriptorHeap> m_pDescriptorHeap;
-	UINT m_descriptorsAllocated = 0;
-	UINT m_descriptorSize;
-	D3D12_CPU_DESCRIPTOR_HANDLE m_descriptorHeapCpuBase;
-};
 
 std::unique_ptr<DescriptorHeapStack> g_pRaytracingDescriptorHeap;
 
@@ -520,225 +381,335 @@ D3D12_STATE_SUBOBJECT CreateDxilLibrary(LPCWSTR entrypoint, const void* pShaderB
                                         D3D12_DXIL_LIBRARY_DESC& dxilLibDesc, D3D12_EXPORT_DESC& exportDesc)
 {
 	exportDesc = {entrypoint, nullptr, D3D12_EXPORT_FLAG_NONE};
-	D3D12_STATE_SUBOBJECT dxilLibSubObject = {};
 	dxilLibDesc.DXILLibrary.pShaderBytecode = pShaderByteCode;
 	dxilLibDesc.DXILLibrary.BytecodeLength = bytecodeLength;
 	dxilLibDesc.NumExports = 1;
 	dxilLibDesc.pExports = &exportDesc;
+	D3D12_STATE_SUBOBJECT dxilLibSubObject = {};
 	dxilLibSubObject.Type = D3D12_STATE_SUBOBJECT_TYPE_DXIL_LIBRARY;
 	dxilLibSubObject.pDesc = &dxilLibDesc;
 	return dxilLibSubObject;
 }
 
-void SetPipelineStateStackSize(LPCWSTR raygen, LPCWSTR closestHit, LPCWSTR miss, UINT maxRecursion,
-                               ID3D12StateObject* pStateObject)
+void SetPipelineStateStackSize(
+	LPCWSTR raygen,
+	LPCWSTR closestHit,
+	LPCWSTR anyHit,
+	LPCWSTR miss,
+	UINT maxRecursion,
+	ID3D12StateObject* pStateObject)
 {
 	ID3D12StateObjectProperties* stateObjectProperties = nullptr;
 	ThrowIfFailed(pStateObject->QueryInterface(IID_PPV_ARGS(&stateObjectProperties)));
 	UINT64 closestHitStackSize = stateObjectProperties->GetShaderStackSize(closestHit);
+	UINT64 anyHitStackSize = stateObjectProperties->GetShaderStackSize(anyHit);
 	UINT64 missStackSize = stateObjectProperties->GetShaderStackSize(miss);
 	UINT64 raygenStackSize = stateObjectProperties->GetShaderStackSize(raygen);
 
-	UINT64 totalStackSize = raygenStackSize + std::max(missStackSize, closestHitStackSize) * maxRecursion;
+	UINT64 shaderStackSize = std::max(
+		{missStackSize, closestHitStackSize, anyHitStackSize}
+	);
+
+	UINT64 totalStackSize = raygenStackSize + shaderStackSize * maxRecursion;
 	stateObjectProperties->SetPipelineStackSize(totalStackSize);
 }
 
-
 void InitializeRaytracingStateObjects(const Model& model, UINT numMeshes)
 {
+	// Initialize subobject list
+	// ----------------------------------------------------------------//
 	std::vector<D3D12_STATE_SUBOBJECT> subObjects;
+	std::vector<LPCWSTR> shadersToAssociate;
+
 	D3D12_STATE_SUBOBJECT nodeMaskSubObject;
 	UINT nodeMask = 1;
 	nodeMaskSubObject.pDesc = &nodeMask;
 	nodeMaskSubObject.Type = D3D12_STATE_SUBOBJECT_TYPE_NODE_MASK;
 	subObjects.push_back(nodeMaskSubObject);
+	// -----------------//
 
+	// Global Root Signature
+	// ----------------------------------------------------------------//
 	D3D12_STATE_SUBOBJECT rootSignatureSubObject;
 	rootSignatureSubObject.pDesc = &g_GlobalRaytracingRootSignature.p;
-	rootSignatureSubObject.Type = D3D12_STATE_SUBOBJECT_TYPE_GLOBAL_ROOT_SIGNATURE;
+	rootSignatureSubObject.Type =
+		D3D12_STATE_SUBOBJECT_TYPE_GLOBAL_ROOT_SIGNATURE;
 	subObjects.push_back(rootSignatureSubObject);
+	// -----------------//
 
+	// Configuration
+	// ----------------------------------------------------------------//
 	D3D12_STATE_SUBOBJECT configurationSubObject;
 	D3D12_RAYTRACING_PIPELINE_CONFIG pipelineConfig;
 	pipelineConfig.MaxTraceRecursionDepth = MaxRayRecursion;
 	configurationSubObject.pDesc = &pipelineConfig;
-	configurationSubObject.Type = D3D12_STATE_SUBOBJECT_TYPE_RAYTRACING_PIPELINE_CONFIG;
+	configurationSubObject.Type =
+		D3D12_STATE_SUBOBJECT_TYPE_RAYTRACING_PIPELINE_CONFIG;
 	subObjects.push_back(configurationSubObject);
+	// -----------------//
 
-	std::vector<LPCWSTR> shadersToAssociate;
 
-	// Ray Gen shader stuff
+	// Ray Gen shader
 	// ----------------------------------------------------------------//
 	LPCWSTR rayGenShaderExportName = L"RayGen";
+	shadersToAssociate.push_back(rayGenShaderExportName);
+
 	subObjects.push_back(D3D12_STATE_SUBOBJECT{});
 	D3D12_STATE_SUBOBJECT& rayGenDxilLibSubobject = subObjects.back();
 	D3D12_EXPORT_DESC rayGenExportDesc;
 	D3D12_DXIL_LIBRARY_DESC rayGenDxilLibDesc = {};
-	rayGenDxilLibSubobject = CreateDxilLibrary(rayGenShaderExportName, g_pRayGenerationShaderLib,
-	                                           sizeof(g_pRayGenerationShaderLib), rayGenDxilLibDesc, rayGenExportDesc);
-	shadersToAssociate.push_back(rayGenShaderExportName);
+	rayGenDxilLibSubobject = CreateDxilLibrary(
+		rayGenShaderExportName, g_pRayGenerationShaderLib,
+		sizeof(g_pRayGenerationShaderLib), rayGenDxilLibDesc, rayGenExportDesc);
+	// -----------------//
 
 	// Hit Group shader stuff
 	// ----------------------------------------------------------------//
+	// Closest hit shader
 	LPCWSTR closestHitExportName = L"Hit";
-	D3D12_EXPORT_DESC hitGroupExportDesc;
-	D3D12_DXIL_LIBRARY_DESC hitGroupDxilLibDesc = {};
-	D3D12_STATE_SUBOBJECT hitGroupLibSubobject = CreateDxilLibrary(closestHitExportName, g_phitShaderLib,
-	                                                               sizeof(g_phitShaderLib), hitGroupDxilLibDesc,
-	                                                               hitGroupExportDesc);
-
-	subObjects.push_back(hitGroupLibSubobject);
 	shadersToAssociate.push_back(closestHitExportName);
 
+	D3D12_EXPORT_DESC closestHitExportDesc;
+	D3D12_DXIL_LIBRARY_DESC closestHitDxilLibDesc = {};
+	D3D12_STATE_SUBOBJECT closestHitLibSubobject = CreateDxilLibrary(
+		closestHitExportName, g_phitShaderLib,
+		sizeof(g_phitShaderLib), closestHitDxilLibDesc,
+		closestHitExportDesc);
+	subObjects.push_back(closestHitLibSubobject);
+	// -----------------//
+
+	// Any hit shader
+	// -----------------//
+	LPCWSTR anyHitExportName = L"AnyHit";
+	shadersToAssociate.push_back(anyHitExportName);
+
+	D3D12_EXPORT_DESC anyHitExportDesc;
+	D3D12_DXIL_LIBRARY_DESC anyHitDxilLibDesc = {};
+	D3D12_STATE_SUBOBJECT anyHitLibSubobject = CreateDxilLibrary(
+		anyHitExportName, g_pAlphaTransparencyAnyHit,
+		sizeof(g_pAlphaTransparencyAnyHit), anyHitDxilLibDesc,
+		anyHitExportDesc);
+	subObjects.push_back(anyHitLibSubobject);
+	// -----------------//
+
+	// Miss shader
+	// -----------------//
 	LPCWSTR missExportName = L"Miss";
-	D3D12_EXPORT_DESC missExportDesc;
-	D3D12_DXIL_LIBRARY_DESC missDxilLibDesc = {};
-	D3D12_STATE_SUBOBJECT missLibSubobject = CreateDxilLibrary(missExportName, g_pmissShaderLib,
-	                                                           sizeof(g_pmissShaderLib), missDxilLibDesc,
-	                                                           missExportDesc);
-
-	subObjects.push_back(missLibSubobject);
-	D3D12_STATE_SUBOBJECT& missDxilLibSubobject = subObjects.back();
-
 	shadersToAssociate.push_back(missExportName);
 
-	D3D12_STATE_SUBOBJECT shaderConfigStateObject;
-	D3D12_RAYTRACING_SHADER_CONFIG shaderConfig;
-	shaderConfig.MaxAttributeSizeInBytes = 8;
-	shaderConfig.MaxPayloadSizeInBytes = 8;
-	shaderConfigStateObject.pDesc = &shaderConfig;
-	shaderConfigStateObject.Type = D3D12_STATE_SUBOBJECT_TYPE_RAYTRACING_SHADER_CONFIG;
-	subObjects.push_back(shaderConfigStateObject);
-	D3D12_STATE_SUBOBJECT& shaderConfigSubobject = subObjects.back();
+	D3D12_EXPORT_DESC missExportDesc;
+	D3D12_DXIL_LIBRARY_DESC missDxilLibDesc = {};
+	D3D12_STATE_SUBOBJECT missDxilLibSubobject = CreateDxilLibrary(
+		missExportName, g_pmissShaderLib,
+		sizeof(g_pmissShaderLib), missDxilLibDesc,
+		missExportDesc);
 
+	subObjects.push_back(missDxilLibSubobject);
+	// -----------------//
+
+	// Hit Group
+	// ----------------------------------------------------------------//
 	LPCWSTR hitGroupExportName = L"HitGroup";
+
 	D3D12_HIT_GROUP_DESC hitGroupDesc = {};
 	hitGroupDesc.ClosestHitShaderImport = closestHitExportName;
+	hitGroupDesc.AnyHitShaderImport = anyHitExportName;
 	hitGroupDesc.HitGroupExport = hitGroupExportName;
+
 	D3D12_STATE_SUBOBJECT hitGroupSubobject = {};
 	hitGroupSubobject.Type = D3D12_STATE_SUBOBJECT_TYPE_HIT_GROUP;
 	hitGroupSubobject.pDesc = &hitGroupDesc;
 	subObjects.push_back(hitGroupSubobject);
+	// -----------------//
 
+	// Shader config
+	// ----------------------------------------------------------------//
+	D3D12_STATE_SUBOBJECT shaderConfigStateObject;
+
+	D3D12_RAYTRACING_SHADER_CONFIG shaderConfig;
+	shaderConfig.MaxAttributeSizeInBytes = 8;
+	shaderConfig.MaxPayloadSizeInBytes = 8;
+	shaderConfigStateObject.pDesc = &shaderConfig;
+	shaderConfigStateObject.Type =
+		D3D12_STATE_SUBOBJECT_TYPE_RAYTRACING_SHADER_CONFIG;
+	subObjects.push_back(shaderConfigStateObject);
+	// -----------------//
+
+	// Local root signature
+	// ----------------------------------------------------------------//
 	D3D12_STATE_SUBOBJECT localRootSignatureSubObject;
 	localRootSignatureSubObject.pDesc = &g_LocalRaytracingRootSignature.p;
-	localRootSignatureSubObject.Type = D3D12_STATE_SUBOBJECT_TYPE_LOCAL_ROOT_SIGNATURE;
+	localRootSignatureSubObject.Type =
+		D3D12_STATE_SUBOBJECT_TYPE_LOCAL_ROOT_SIGNATURE;
 	subObjects.push_back(localRootSignatureSubObject);
-	D3D12_STATE_SUBOBJECT& rootSignatureSubobject = subObjects.back();
+	// -----------------//
 
+	// State Object
+	// ----------------------------------------------------------------//
 	D3D12_STATE_OBJECT_DESC stateObject;
 	stateObject.NumSubobjects = (UINT)subObjects.size();
 	stateObject.pSubobjects = subObjects.data();
 	stateObject.Type = D3D12_STATE_OBJECT_TYPE_RAYTRACING_PIPELINE;
+	// -----------------//
 
+	// Shader table creation
+	// ----------------------------------------------------------------//
 	const UINT shaderIdentifierSize = D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES;
+
 #define ALIGN(alignment, num) ((((num) + alignment - 1) / alignment) * alignment)
-	const UINT offsetToDescriptorHandle = ALIGN(sizeof(D3D12_GPU_DESCRIPTOR_HANDLE), shaderIdentifierSize);
-	const UINT offsetToMaterialConstants = ALIGN(sizeof(UINT32),
-	                                             offsetToDescriptorHandle + sizeof(D3D12_GPU_DESCRIPTOR_HANDLE));
-	const UINT shaderRecordSizeInBytes = ALIGN(D3D12_RAYTRACING_SHADER_RECORD_BYTE_ALIGNMENT,
-	                                           offsetToMaterialConstants + sizeof(MaterialRootConstant));
+	const UINT offsetToDescriptorHandle = ALIGN(
+		sizeof(D3D12_GPU_DESCRIPTOR_HANDLE),
+		shaderIdentifierSize);
+	const UINT offsetToMaterialConstants = ALIGN(
+		sizeof(UINT32),
+		offsetToDescriptorHandle + sizeof(D3D12_GPU_DESCRIPTOR_HANDLE));
+	const UINT shaderRecordSizeInBytes = ALIGN(
+		D3D12_RAYTRACING_SHADER_RECORD_BYTE_ALIGNMENT,
+		offsetToMaterialConstants + sizeof(MaterialRootConstant));
+	// -----------------//
 
 	std::vector<byte> pHitShaderTable(shaderRecordSizeInBytes * numMeshes);
-	auto GetShaderTable = [=](const Model& model, ID3D12StateObject* pPSO, byte* pShaderTable)
+
+	auto GetShaderTable = [=](const Model& model,
+	                          ID3D12StateObject* pPSO,
+	                          byte* pShaderTable)
 	{
 		ID3D12StateObjectProperties* stateObjectProperties = nullptr;
 		ThrowIfFailed(pPSO->QueryInterface(IID_PPV_ARGS(&stateObjectProperties)));
-		void* pHitGroupIdentifierData = stateObjectProperties->GetShaderIdentifier(hitGroupExportName);
+		void* pHitGroupIdentifierData = stateObjectProperties->
+			GetShaderIdentifier(hitGroupExportName);
 		for (UINT i = 0; i < numMeshes; i++)
 		{
 			byte* pShaderRecord = i * shaderRecordSizeInBytes + pShaderTable;
-			memcpy(pShaderRecord, pHitGroupIdentifierData, shaderIdentifierSize);
+			memcpy(pShaderRecord, pHitGroupIdentifierData, shaderRecordSizeInBytes);
 
 			UINT materialIndex = model.m_pMesh[i].materialIndex;
-			memcpy(pShaderRecord + offsetToDescriptorHandle, &g_GpuSceneMaterialSrvs[materialIndex].ptr,
+			memcpy(pShaderRecord + offsetToDescriptorHandle,
+			       &g_GpuSceneMaterialSrvs[materialIndex].ptr,
 			       sizeof(g_GpuSceneMaterialSrvs[materialIndex].ptr));
 
 			MaterialRootConstant material;
 			material.MaterialID = i;
-			memcpy(pShaderRecord + offsetToMaterialConstants, &material, sizeof(material));
+			memcpy(pShaderRecord + offsetToMaterialConstants,
+			       &material,
+			       sizeof(material));
 		}
 	};
 
+	// Rendering pipelines
+	// ----------------------------------------------------------------//
+
+	// Baricentric
 	{
 		CComPtr<ID3D12StateObject> pbarycentricPSO;
-		g_pRaytracingDevice->CreateStateObject(&stateObject, IID_PPV_ARGS(&pbarycentricPSO));
+		g_pRaytracingDevice->CreateStateObject(&stateObject,
+		                                       IID_PPV_ARGS(&pbarycentricPSO));
 		GetShaderTable(model, pbarycentricPSO, pHitShaderTable.data());
 		g_RaytracingInputs[Primarybarycentric] = RaytracingDispatchRayInputs(
-			*g_pRaytracingDevice, pbarycentricPSO, pHitShaderTable.data(), shaderRecordSizeInBytes,
-			(UINT)pHitShaderTable.size(), rayGenShaderExportName, missExportName);
+			*g_pRaytracingDevice, pbarycentricPSO,
+			pHitShaderTable.data(), shaderIdentifierSize, (UINT)pHitShaderTable.size(),
+			rayGenShaderExportName, missExportName);
 	}
 
+	// Reflections Barycentric
 	{
-		rayGenDxilLibSubobject = CreateDxilLibrary(rayGenShaderExportName, g_pRayGenerationShaderSSRLib,
-		                                           sizeof(g_pRayGenerationShaderSSRLib), rayGenDxilLibDesc,
-		                                           rayGenExportDesc);
+		rayGenDxilLibSubobject = CreateDxilLibrary(
+			rayGenShaderExportName, g_pRayGenerationShaderSSRLib,
+			sizeof(g_pRayGenerationShaderSSRLib), rayGenDxilLibDesc,
+			rayGenExportDesc);
+
 		CComPtr<ID3D12StateObject> pReflectionbarycentricPSO;
 		g_pRaytracingDevice->CreateStateObject(&stateObject, IID_PPV_ARGS(&pReflectionbarycentricPSO));
 		GetShaderTable(model, pReflectionbarycentricPSO, pHitShaderTable.data());
 		g_RaytracingInputs[Reflectionbarycentric] = RaytracingDispatchRayInputs(
-			*g_pRaytracingDevice, pReflectionbarycentricPSO, pHitShaderTable.data(), shaderRecordSizeInBytes,
-			(UINT)pHitShaderTable.size(), rayGenShaderExportName, missExportName);
+			*g_pRaytracingDevice, pReflectionbarycentricPSO,
+			pHitShaderTable.data(), shaderIdentifierSize, (UINT)pHitShaderTable.size(),
+			rayGenShaderExportName, missExportName);
 	}
 
+	// Shadows
 	{
-		rayGenDxilLibSubobject = CreateDxilLibrary(rayGenShaderExportName, g_pRayGenerationShadowsLib,
-		                                           sizeof(g_pRayGenerationShadowsLib), rayGenDxilLibDesc,
-		                                           rayGenExportDesc);
-		missDxilLibSubobject = CreateDxilLibrary(missExportName, g_pmissShadowsLib, sizeof(g_pmissShadowsLib),
-		                                         missDxilLibDesc, missExportDesc);
+		rayGenDxilLibSubobject = CreateDxilLibrary(
+			rayGenShaderExportName, g_pRayGenerationShadowsLib,
+			sizeof(g_pRayGenerationShadowsLib), rayGenDxilLibDesc,
+			rayGenExportDesc);
+		missDxilLibSubobject = CreateDxilLibrary(
+			missExportName, g_pmissShadowsLib, sizeof(g_pmissShadowsLib),
+			missDxilLibDesc, missExportDesc);
 
 		CComPtr<ID3D12StateObject> pShadowsPSO;
-		g_pRaytracingDevice->CreateStateObject(&stateObject, IID_PPV_ARGS(&pShadowsPSO));
+		g_pRaytracingDevice->CreateStateObject(&stateObject,
+		                                       IID_PPV_ARGS(&pShadowsPSO));
 		GetShaderTable(model, pShadowsPSO, pHitShaderTable.data());
-		g_RaytracingInputs[Shadows] = RaytracingDispatchRayInputs(*g_pRaytracingDevice, pShadowsPSO,
-		                                                          pHitShaderTable.data(), shaderRecordSizeInBytes,
-		                                                          (UINT)pHitShaderTable.size(), rayGenShaderExportName,
-		                                                          missExportName);
+		g_RaytracingInputs[Shadows] = RaytracingDispatchRayInputs(
+			*g_pRaytracingDevice, pShadowsPSO,
+			pHitShaderTable.data(), shaderIdentifierSize, (UINT)pHitShaderTable.size(),
+			rayGenShaderExportName,
+			missExportName);
 	}
 
+	// Diffuse PSO
 	{
-		rayGenDxilLibSubobject = CreateDxilLibrary(rayGenShaderExportName, g_pRayGenerationShaderLib,
-		                                           sizeof(g_pRayGenerationShaderLib), rayGenDxilLibDesc,
-		                                           rayGenExportDesc);
-		hitGroupLibSubobject = CreateDxilLibrary(closestHitExportName, g_pDiffuseHitShaderLib,
-		                                         sizeof(g_pDiffuseHitShaderLib), hitGroupDxilLibDesc,
-		                                         hitGroupExportDesc);
-		missDxilLibSubobject = CreateDxilLibrary(missExportName, g_pmissShaderLib, sizeof(g_pmissShaderLib),
-		                                         missDxilLibDesc, missExportDesc);
+		rayGenDxilLibSubobject = CreateDxilLibrary(
+			rayGenShaderExportName, g_pRayGenerationShaderLib,
+			sizeof(g_pRayGenerationShaderLib), rayGenDxilLibDesc,
+			rayGenExportDesc);
+
+		closestHitLibSubobject = CreateDxilLibrary(
+			closestHitExportName, g_pDiffuseHitShaderLib,
+			sizeof(g_pDiffuseHitShaderLib), closestHitDxilLibDesc,
+			closestHitExportDesc);
+
+		missDxilLibSubobject = CreateDxilLibrary(
+			missExportName, g_pmissShaderLib, sizeof(g_pmissShaderLib),
+			missDxilLibDesc, missExportDesc);
 
 		CComPtr<ID3D12StateObject> pDiffusePSO;
 		g_pRaytracingDevice->CreateStateObject(&stateObject, IID_PPV_ARGS(&pDiffusePSO));
 		GetShaderTable(model, pDiffusePSO, pHitShaderTable.data());
 		g_RaytracingInputs[DiffuseHitShader] = RaytracingDispatchRayInputs(
-			*g_pRaytracingDevice, pDiffusePSO, pHitShaderTable.data(), shaderRecordSizeInBytes,
-			(UINT)pHitShaderTable.size(), rayGenShaderExportName, missExportName);
+			*g_pRaytracingDevice, pDiffusePSO,
+			pHitShaderTable.data(), shaderIdentifierSize, (UINT)pHitShaderTable.size(),
+			rayGenShaderExportName, missExportName);
 	}
 
+	// SSR
 	{
-		rayGenDxilLibSubobject = CreateDxilLibrary(rayGenShaderExportName, g_pRayGenerationShaderSSRLib,
-		                                           sizeof(g_pRayGenerationShaderSSRLib), rayGenDxilLibDesc,
-		                                           rayGenExportDesc);
-		hitGroupLibSubobject = CreateDxilLibrary(closestHitExportName, g_pDiffuseHitShaderLib,
-		                                         sizeof(g_pDiffuseHitShaderLib), hitGroupDxilLibDesc,
-		                                         hitGroupExportDesc);
-		missDxilLibSubobject = CreateDxilLibrary(missExportName, g_pmissShaderLib, sizeof(g_pmissShaderLib),
-		                                         missDxilLibDesc, missExportDesc);
+		rayGenDxilLibSubobject = CreateDxilLibrary(
+			rayGenShaderExportName, g_pRayGenerationShaderSSRLib,
+			sizeof(g_pRayGenerationShaderSSRLib), rayGenDxilLibDesc,
+			rayGenExportDesc);
+		closestHitLibSubobject = CreateDxilLibrary(
+			closestHitExportName, g_pDiffuseHitShaderLib,
+			sizeof(g_pDiffuseHitShaderLib), closestHitDxilLibDesc,
+			closestHitExportDesc);
+		missDxilLibSubobject = CreateDxilLibrary(
+			missExportName, g_pmissShaderLib, sizeof(g_pmissShaderLib),
+			missDxilLibDesc, missExportDesc);
 
 		CComPtr<ID3D12StateObject> pReflectionPSO;
-		g_pRaytracingDevice->CreateStateObject(&stateObject, IID_PPV_ARGS(&pReflectionPSO));
+		g_pRaytracingDevice->CreateStateObject(&stateObject,
+		                                       IID_PPV_ARGS(&pReflectionPSO));
 		GetShaderTable(model, pReflectionPSO, pHitShaderTable.data());
-		g_RaytracingInputs[Reflection] = RaytracingDispatchRayInputs(*g_pRaytracingDevice, pReflectionPSO,
-		                                                             pHitShaderTable.data(), shaderRecordSizeInBytes,
-		                                                             (UINT)pHitShaderTable.size(),
-		                                                             rayGenShaderExportName, missExportName);
+		g_RaytracingInputs[Reflection] = RaytracingDispatchRayInputs(
+			*g_pRaytracingDevice, pReflectionPSO,
+			pHitShaderTable.data(), shaderIdentifierSize, (UINT)pHitShaderTable.size(),
+			rayGenShaderExportName, missExportName);
 	}
+	// -----------------//
 
+	WCHAR hitGroupExportNameAnyHitType[64];
+	swprintf_s(hitGroupExportNameAnyHitType, L"%s::anyhit", hitGroupExportName);
+
+	WCHAR hitGroupExportNameClosestHitType[64];
+	swprintf_s(hitGroupExportNameClosestHitType, L"%s::closesthit", hitGroupExportName);
+
+	// Set pipeline stack size for all ray tracing pipelines.
+	// ----------------------------------------------------------------//
 	for (auto& raytracingPipelineState : g_RaytracingInputs)
 	{
-		WCHAR hitGroupExportNameClosestHitType[64];
-		swprintf_s(hitGroupExportNameClosestHitType, L"%s::closesthit", hitGroupExportName);
-		SetPipelineStateStackSize(rayGenShaderExportName, hitGroupExportNameClosestHitType, missExportName,
+		SetPipelineStateStackSize(rayGenShaderExportName, hitGroupExportNameClosestHitType,
+		                          hitGroupExportNameAnyHitType, missExportName,
 		                          MaxRayRecursion, raytracingPipelineState.m_pPSO);
 	}
 }
@@ -850,12 +821,12 @@ void InitializeStateObjects(const Model& model, UINT numMeshes)
 
 void D3D12RaytracingMiniEngineSample::Startup(void)
 {
-    //m_Camera = m_VRCamera[VRCamera::CENTER];
+	//m_Camera = m_VRCamera[VRCamera::CENTER];
 
 	rayTracingMode = RTM_OFF;
 
     ThrowIfFailed(g_Device->QueryInterface(IID_PPV_ARGS(&g_pRaytracingDevice)), L"Couldn't get DirectX Raytracing interface for the device.\n");
-    g_SceneNormalBuffer.Create(L"Main Normal Buffer", g_SceneColorBuffer.GetWidth(), g_SceneColorBuffer.GetHeight(), 1, DXGI_FORMAT_R16G16B16A16_FLOAT);
+    g_SceneNormalBuffer.Create(L"Main Normal Buffer", g_SceneColorBuffer.GetWidth(), g_SceneColorBuffer.GetHeight(), 1, DXGI_FORMAT_R11G11B10_FLOAT);
 
     g_pRaytracingDescriptorHeap = std::unique_ptr<DescriptorHeapStack>(
         new DescriptorHeapStack(*g_Device, 200, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, 0));
@@ -966,89 +937,89 @@ void D3D12RaytracingMiniEngineSample::Startup(void)
     m_ExtraTextures[1] = g_ShadowBuffer.GetSRV();
 
 #define ASSET_DIRECTORY "../MiniEngine/ModelViewer/"
-    TextureManager::Initialize(ASSET_DIRECTORY L"Textures/");
-    bool bModelLoadSuccess = m_Model.Load(ASSET_DIRECTORY "Models/sponza.h3d");
-    ASSERT(bModelLoadSuccess, "Failed to load model");
-    ASSERT(m_Model.m_Header.meshCount > 0, "Model contains no meshes");
+	TextureManager::Initialize(ASSET_DIRECTORY L"Textures/");
+	bool bModelLoadSuccess = m_Model.Load(ASSET_DIRECTORY "Models/sponza.h3d");
+	ASSERT(bModelLoadSuccess, "Failed to load model");
+	ASSERT(m_Model.m_Header.meshCount > 0, "Model contains no meshes");
 
-    // The caller of this function can override which materials are considered cutouts
-    m_pMaterialIsCutout.resize(m_Model.m_Header.materialCount);
-    m_pMaterialIsReflective.resize(m_Model.m_Header.materialCount);
-    for (uint32_t i = 0; i < m_Model.m_Header.materialCount; ++i)
-    {
-        const Model::Material& mat = m_Model.m_pMaterial[i];
-        if (std::string(mat.texDiffusePath).find("thorn") != std::string::npos ||
-            std::string(mat.texDiffusePath).find("plant") != std::string::npos ||
-            std::string(mat.texDiffusePath).find("chain") != std::string::npos)
-        {
-            m_pMaterialIsCutout[i] = true;
-        }
-        else
-        {
-            m_pMaterialIsCutout[i] = false;
-        }
+	// The caller of this function can override which materials are considered cutouts
+	m_pMaterialIsCutout.resize(m_Model.m_Header.materialCount);
+	m_pMaterialIsReflective.resize(m_Model.m_Header.materialCount);
+	for (uint32_t i = 0; i < m_Model.m_Header.materialCount; ++i)
+	{
+		const Model::Material& mat = m_Model.m_pMaterial[i];
+		if (std::string(mat.texDiffusePath).find("thorn") != std::string::npos ||
+			std::string(mat.texDiffusePath).find("plant") != std::string::npos ||
+			std::string(mat.texDiffusePath).find("chain") != std::string::npos)
+		{
+			m_pMaterialIsCutout[i] = true;
+		}
+		else
+		{
+			m_pMaterialIsCutout[i] = false;
+		}
 
-        if (std::string(mat.texDiffusePath).find("floor") != std::string::npos)
-        {
-            m_pMaterialIsReflective[i] = true;
-        }
-        else
-        {
-            m_pMaterialIsReflective[i] = false;
-        }
-    }
+		if (std::string(mat.texDiffusePath).find("floor") != std::string::npos)
+		{
+			m_pMaterialIsReflective[i] = true;
+		}
+		else
+		{
+			m_pMaterialIsReflective[i] = false;
+		}
+	}
 
-    g_hitConstantBuffer.Create(L"Hit Constant Buffer", 1, sizeof(HitShaderConstants));
-    g_dynamicConstantBuffer.Create(L"Dynamic Constant Buffer", 1, sizeof(DynamicCB));
+	g_hitConstantBuffer.Create(L"Hit Constant Buffer", 1, sizeof(HitShaderConstants));
+	g_dynamicConstantBuffer.Create(L"Dynamic Constant Buffer", 1, sizeof(DynamicCB));
 
-    InitializeSceneInfo(m_Model);
-    InitializeViews(m_Model);
-    UINT numMeshes = m_Model.m_Header.meshCount;
+	InitializeSceneInfo(m_Model);
+	InitializeViews(m_Model);
+	UINT numMeshes = m_Model.m_Header.meshCount;
 
+	if (g_RayTraceSupport)
+	{
+		CreateRayTraceAccelerationStructures(numMeshes);
+		OutputDebugStringW(L"DXR support present on Device");
+	}
+	else
+	{
+		rayTracingMode = RTM_OFF;
+		OutputDebugStringW(L"DXR support not present on Device");
+	}
 
-    if (g_RayTraceSupport)
-    {
-        CreateRayTraceAccelerationStructures(numMeshes);
-        OutputDebugStringW(L"DXR support present on Device");
-    }
-    else
-    {
-        rayTracingMode = RTM_OFF;
-        OutputDebugStringW(L"DXR support not present on Device");
-    }
+	InitializeStateObjects(m_Model, numMeshes);
 
-    InitializeStateObjects(m_Model, numMeshes);
+	float modelRadius = Length(m_Model.m_Header.boundingBox.max - m_Model.m_Header.boundingBox.min) * .5f;
+	const Vector3 eye = (m_Model.m_Header.boundingBox.min + m_Model.m_Header.boundingBox.max) * .5f + Vector3(
+		modelRadius * .5f, 0.0f, 0.0f);
+	m_Camera.SetEyeAtUp(eye, Vector3(kZero), Vector3(kYUnitVector));
 
-    float modelRadius = Length(m_Model.m_Header.boundingBox.max - m_Model.m_Header.boundingBox.min) * .5f;
-    const Vector3 eye = (m_Model.m_Header.boundingBox.min + m_Model.m_Header.boundingBox.max) * .5f + Vector3(modelRadius * .5f, 0.0f, 0.0f);
-    m_Camera.SetEyeAtUp(eye, Vector3(kZero), Vector3(kYUnitVector));
-    
-    m_CameraPosArrayCurrentPosition = 0;
-    
-    // Lion's head
-    m_CameraPosArray[0].position = Vector3(-1100.0f, 170.0f, -30.0f);
-    m_CameraPosArray[0].heading = 1.5707f;
-    m_CameraPosArray[0].pitch = 0.0f;
+	m_CameraPosArrayCurrentPosition = 0;
 
-    // View of columns
-    m_CameraPosArray[1].position = Vector3(299.0f, 208.0f, -202.0f);
-    m_CameraPosArray[1].heading = -3.1111f;
-    m_CameraPosArray[1].pitch = 0.5953f;
+	// Lion's head
+	m_CameraPosArray[0].position = Vector3(-1100.0f, 170.0f, -30.0f);
+	m_CameraPosArray[0].heading = 1.5707f;
+	m_CameraPosArray[0].pitch = 0.0f;
 
-    // Bottom-up view from the floor
-    m_CameraPosArray[2].position = Vector3(-1237.61f, 80.60f, -26.02f);
-    m_CameraPosArray[2].heading = -1.5707f;
-    m_CameraPosArray[2].pitch = 0.268f;
+	// View of columns
+	m_CameraPosArray[1].position = Vector3(299.0f, 208.0f, -202.0f);
+	m_CameraPosArray[1].heading = -3.1111f;
+	m_CameraPosArray[1].pitch = 0.5953f;
 
-    // Top-down view from the second floor
-    m_CameraPosArray[3].position = Vector3(-977.90f, 595.05f, -194.97f);
-    m_CameraPosArray[3].heading = -2.077f;
-    m_CameraPosArray[3].pitch =  - 0.450f;
+	// Bottom-up view from the floor
+	m_CameraPosArray[2].position = Vector3(-1237.61f, 80.60f, -26.02f);
+	m_CameraPosArray[2].heading = -1.5707f;
+	m_CameraPosArray[2].pitch = 0.268f;
 
-    // View of corridors on the second floor
-    m_CameraPosArray[4].position = Vector3(-1463.0f, 600.0f, 394.52f);
-    m_CameraPosArray[4].heading = -1.236f;
-    m_CameraPosArray[4].pitch = 0.0f;
+	// Top-down view from the second floor
+	m_CameraPosArray[3].position = Vector3(-977.90f, 595.05f, -194.97f);
+	m_CameraPosArray[3].heading = -2.077f;
+	m_CameraPosArray[3].pitch = - 0.450f;
+
+	// View of corridors on the second floor
+	m_CameraPosArray[4].position = Vector3(-1463.0f, 600.0f, 394.52f);
+	m_CameraPosArray[4].heading = -1.236f;
+	m_CameraPosArray[4].pitch = 0.0f;
 
 	m_Camera.Setup(1.0f, 1000.0f, 3000.0f, false);
     //m_Camera.SetZRange(1.0f, 10000.0f);
@@ -1400,6 +1371,50 @@ void D3D12RaytracingMiniEngineSample::RenderLightShadows(GraphicsContext& gfxCon
 	++LightIndex;
 }
 
+void D3D12RaytracingMiniEngineSample::RenderShadowMap()
+{
+	const bool skipShadowMap =
+		rayTracingMode == RTM_DIFFUSE_WITH_SHADOWRAYS ||
+		rayTracingMode == RTM_TRAVERSAL ||
+		rayTracingMode == RTM_SSR;
+
+	if (!skipShadowMap)
+	{
+		if (!SSAO::DebugDraw)
+		{
+			GraphicsContext& gfxContext = 
+				GraphicsContext::Begin(L"Shadow Map Render");
+
+			gfxContext.SetRootSignature(m_RootSig);								// TODO: Replace with pfnSetupGraphicsState()
+			gfxContext.SetPrimitiveTopology(									//
+				D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);							//
+			gfxContext.SetIndexBuffer(m_Model.m_IndexBuffer.IndexBufferView());	//
+			gfxContext.SetVertexBuffer(											//
+				0, m_Model.m_VertexBuffer.VertexBufferView());					//
+			{
+				ScopedTimer _prof(L"Render Shadow Map", gfxContext);
+
+				m_SunShadow.UpdateMatrix(-m_SunDirection, 
+					Vector3(0, -500.0f, 0),
+					Vector3(ShadowDimX, ShadowDimY, ShadowDimZ),
+					(uint32_t)g_ShadowBuffer.GetWidth(), 
+					(uint32_t)g_ShadowBuffer.GetHeight(), 16);
+
+				g_ShadowBuffer.BeginRendering(gfxContext);
+				gfxContext.SetPipelineState(m_ShadowPSO);
+				RenderObjects(
+					gfxContext, m_SunShadow.GetViewProjMatrix(), 0, kOpaque);
+				gfxContext.SetPipelineState(m_CutoutShadowPSO);
+				RenderObjects(
+					gfxContext, m_SunShadow.GetViewProjMatrix(), 0, kCutout);
+				g_ShadowBuffer.EndRendering(gfxContext);
+			}
+
+			gfxContext.Finish();
+		}
+	}
+}
+
 void D3D12RaytracingMiniEngineSample::RenderScene(UINT cam)
 {
 	const bool skipDiffusePass = 
@@ -1558,27 +1573,6 @@ void D3D12RaytracingMiniEngineSample::RenderScene(UINT cam)
                 gfxContext.TransitionResource(g_SceneColorBuffer, D3D12_RESOURCE_STATE_RENDER_TARGET, true);
                 gfxContext.TransitionResource(g_SceneNormalBuffer, D3D12_RESOURCE_STATE_RENDER_TARGET, true);
                 gfxContext.ClearColor(g_SceneColorBuffer, cam);
-            }
-        }
-    }
-
-    if (!skipShadowMap)
-    {
-        if (!SSAO::DebugDraw)
-        {
-            pfnSetupGraphicsState();
-            {
-                ScopedTimer _prof(L"Render Shadow Map", gfxContext);
-
-                m_SunShadow.UpdateMatrix(-m_SunDirection, Vector3(0, -500.0f, 0), Vector3(ShadowDimX, ShadowDimY, ShadowDimZ),
-                    (uint32_t)g_ShadowBuffer.GetWidth(), (uint32_t)g_ShadowBuffer.GetHeight(), 16);
-
-                g_ShadowBuffer.BeginRendering(gfxContext);
-                gfxContext.SetPipelineState(m_ShadowPSO);
-                RenderObjects(gfxContext, m_SunShadow.GetViewProjMatrix(), cam, kOpaque);
-                gfxContext.SetPipelineState(m_CutoutShadowPSO);
-                RenderObjects(gfxContext, m_SunShadow.GetViewProjMatrix(), cam, kCutout);
-                g_ShadowBuffer.EndRendering(gfxContext);
             }
         }
     }
