@@ -178,7 +178,8 @@ namespace Graphics
     GraphicsPSO BicubicHorizontalUpsamplePS;
     GraphicsPSO BicubicVerticalUpsamplePS;
     GraphicsPSO BilinearUpsamplePS;
-	
+
+    RootSignature HiddenMeshDepthRS;
     GraphicsPSO HiddenMeshDepthPSO;
 
     RootSignature g_GenerateMipsRS;
@@ -509,6 +510,23 @@ void Graphics::Initialize(void)
     s_BlendUIPSO.SetRenderTargetFormat(SwapChainFormat, DXGI_FORMAT_UNKNOWN);
     s_BlendUIPSO.Finalize();
 
+    HiddenMeshDepthRS.Reset(1, 0);
+    HiddenMeshDepthRS[0].InitAsBufferSRV(0);
+    HiddenMeshDepthRS.Finalize(L"Hidden Mesh");
+
+    HiddenMeshDepthPSO.SetRootSignature(HiddenMeshDepthRS);
+    HiddenMeshDepthPSO.SetRasterizerState(RasterizerTwoSided);
+    HiddenMeshDepthPSO.SetBlendState(BlendPreMultiplied);
+    HiddenMeshDepthPSO.SetDepthStencilState(DepthStateReadWrite);
+    HiddenMeshDepthPSO.SetSampleMask(0xFFFFFFFF);
+    HiddenMeshDepthPSO.SetInputLayout(0, nullptr);
+    HiddenMeshDepthPSO.SetPrimitiveTopologyType(D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE);
+    HiddenMeshDepthPSO.SetVertexShader(g_pHiddenMeshVS, sizeof(g_pHiddenMeshVS));
+    HiddenMeshDepthPSO.SetPixelShader(g_pHiddenMeshPS, sizeof(g_pHiddenMeshPS));
+    HiddenMeshDepthPSO.SetRenderTargetFormat(SwapChainFormat, DXGI_FORMAT_UNKNOWN);
+    HiddenMeshDepthPSO.Finalize();
+	
+	
 #define CreatePSO( ObjName, ShaderByteCode ) \
     ObjName = s_BlendUIPSO; \
     ObjName.SetBlendState( BlendDisable ); \
@@ -521,8 +539,6 @@ void Graphics::Initialize(void)
     CreatePSO(BicubicHorizontalUpsamplePS, g_pBicubicHorizontalUpsamplePS);
     CreatePSO(BicubicVerticalUpsamplePS, g_pBicubicVerticalUpsamplePS);
     CreatePSO(SharpeningUpsamplePS, g_pSharpeningUpsamplePS);
-
-    CreatePSO(HiddenMeshDepthPSO, g_pHiddenMeshPS);
 
 #undef CreatePSO
 
