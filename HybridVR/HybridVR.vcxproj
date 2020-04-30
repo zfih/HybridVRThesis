@@ -296,9 +296,11 @@
     </FxCompile>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="DescriptorHeapStack.h" />
     <ClInclude Include="DXSampleHelper.h" />
     <ClInclude Include="ForwardPlusLighting.h" />
     <ClInclude Include="ModelViewerRayTracing.h" />
+    <ClInclude Include="Raytracing.h" />
     <ClInclude Include="RayTracingHlslCompat.h" />
     <ClInclude Include="stdafx.h" />
   </ItemGroup>
