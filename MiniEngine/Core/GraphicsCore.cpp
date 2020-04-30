@@ -511,19 +511,28 @@ void Graphics::Initialize(void)
     s_BlendUIPSO.Finalize();
 
     HiddenMeshDepthRS.Reset(1, 0);
-    HiddenMeshDepthRS[0].InitAsBufferSRV(0);
-    HiddenMeshDepthRS.Finalize(L"Hidden Mesh");
+    HiddenMeshDepthRS[0].InitAsDescriptorRange(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 0, 1);
+    HiddenMeshDepthRS.Finalize(L"Hidden Mesh", D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
+
+    D3D12_INPUT_ELEMENT_DESC vertElem[] =
+    {
+        {
+            "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 
+            D3D12_APPEND_ALIGNED_ELEMENT,
+            D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0
+        }
+    };
 
     HiddenMeshDepthPSO.SetRootSignature(HiddenMeshDepthRS);
     HiddenMeshDepthPSO.SetRasterizerState(RasterizerTwoSided);
-    HiddenMeshDepthPSO.SetBlendState(BlendPreMultiplied);
+    HiddenMeshDepthPSO.SetBlendState(BlendNoColorWrite);
     HiddenMeshDepthPSO.SetDepthStencilState(DepthStateReadWrite);
-    HiddenMeshDepthPSO.SetSampleMask(0xFFFFFFFF);
-    HiddenMeshDepthPSO.SetInputLayout(0, nullptr);
+    HiddenMeshDepthPSO.SetInputLayout(_countof(vertElem), vertElem);
     HiddenMeshDepthPSO.SetPrimitiveTopologyType(D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE);
     HiddenMeshDepthPSO.SetVertexShader(g_pHiddenMeshVS, sizeof(g_pHiddenMeshVS));
     HiddenMeshDepthPSO.SetPixelShader(g_pHiddenMeshPS, sizeof(g_pHiddenMeshPS));
-    HiddenMeshDepthPSO.SetRenderTargetFormat(SwapChainFormat, DXGI_FORMAT_UNKNOWN);
+    HiddenMeshDepthPSO.SetRenderTargetFormats(0, nullptr, DXGI_FORMAT_D32_FLOAT);
+    HiddenMeshDepthPSO.SetRenderTargetFormats(0, nullptr, DXGI_FORMAT_D32_FLOAT);
     HiddenMeshDepthPSO.Finalize();
 	
 	
@@ -819,15 +828,18 @@ void Graphics::HiddenMeshDepthPrepass()
 	// Start context
     GraphicsContext& context = GraphicsContext::Begin(L"Hidden Mesh Z-prepass");
 
+    context.SetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+
 	// Transition and clear depth
     context.TransitionResource(g_SceneDepthBuffer, D3D12_RESOURCE_STATE_DEPTH_WRITE);
     context.TransitionResource(g_DisplayPlane[g_CurrentBuffer], D3D12_RESOURCE_STATE_RENDER_TARGET, true);
     context.ClearDepth(g_SceneDepthBuffer);
 
 	// Set render target
-    context.SetRenderTarget(g_DisplayPlane[g_CurrentBuffer].GetRTV());
+    //context.SetRenderTarget(g_DisplayPlane[g_CurrentBuffer].GetRTV());
 
 	// Set pipelinestate
+    context.SetRootSignature(HiddenMeshDepthRS);
     context.SetPipelineState(HiddenMeshDepthPSO);
     context.SetViewportAndScissor(0, 0, g_DisplayWidth, g_DisplayHeight);
 
