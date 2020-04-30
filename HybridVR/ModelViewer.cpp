@@ -1576,7 +1576,9 @@ void D3D12RaytracingMiniEngineSample::RenderScene(UINT cam)
 			ScopedTimer _prof(L"Opaque", gfxContext);
 			{
 				gfxContext.TransitionResource(g_SceneDepthBuffer, D3D12_RESOURCE_STATE_DEPTH_WRITE, true);
-				gfxContext.ClearDepth(g_SceneDepthBuffer);
+				// note: we no longer clear because we need the stencil from engine
+				// prepass
+				//gfxContext.ClearDepth(g_SceneDepthBuffer);
 
 				gfxContext.SetPipelineState(m_DepthPSO[0]);
 				gfxContext.SetDepthStencilTarget(g_SceneDepthBuffer.GetSubDSV(cam));

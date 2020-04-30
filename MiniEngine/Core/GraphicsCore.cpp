@@ -55,6 +55,8 @@
 #include "CompiledShaders/BufferCopyPS.h"
 #include "CompiledShaders/PresentSDRPS.h"
 #include "CompiledShaders/PresentHDRPS.h"
+#include "CompiledShaders/HiddenMeshVS.h"
+#include "CompiledShaders/HiddenMeshPS.h"
 #include "CompiledShaders/MagnifyPixelsPS.h"
 #include "CompiledShaders/BilinearUpsamplePS.h"
 #include "CompiledShaders/BicubicHorizontalUpsamplePS.h"
@@ -176,6 +178,8 @@ namespace Graphics
     GraphicsPSO BicubicHorizontalUpsamplePS;
     GraphicsPSO BicubicVerticalUpsamplePS;
     GraphicsPSO BilinearUpsamplePS;
+	
+    GraphicsPSO HiddenMeshDepthPSO;
 
     RootSignature g_GenerateMipsRS;
     ComputePSO g_GenerateMipsLinearPSO[4];
@@ -518,6 +522,8 @@ void Graphics::Initialize(void)
     CreatePSO(BicubicVerticalUpsamplePS, g_pBicubicVerticalUpsamplePS);
     CreatePSO(SharpeningUpsamplePS, g_pSharpeningUpsamplePS);
 
+    CreatePSO(HiddenMeshDepthPSO, g_pHiddenMeshPS);
+
 #undef CreatePSO
 
     BicubicHorizontalUpsamplePS = s_BlendUIPSO;
@@ -777,8 +783,56 @@ void Graphics::PreparePresentLDR(void)
     Context.Finish();
 }
 
+
+void Graphics::HiddenMeshDepthPrepass()
+{
+    /// Clear depth
+    /// Set pipeline state
+    /// Add mesh
+    /// Render depth to each eye
+
+	// Get the relevant meshes from OpenVR
+    const StructuredBuffer& BufferLeft = VR::GetHiddenAreaMesh(vr::Eye_Left);
+    const StructuredBuffer& BufferRight = VR::GetHiddenAreaMesh(vr::Eye_Right);
+
+	if(BufferLeft.GetElementCount() < 2) // cannot create buffer with size 0, so default is size 1.
+	{
+        return;
+	}
+	
+	// Start context
+    GraphicsContext& context = GraphicsContext::Begin(L"Hidden Mesh Z-prepass");
+
+	// Transition and clear depth
+    context.TransitionResource(g_SceneDepthBuffer, D3D12_RESOURCE_STATE_DEPTH_WRITE, true);
+    context.ClearDepth(g_SceneDepthBuffer);
+
+	// Set render target
+    context.SetRenderTarget(g_DisplayPlane[g_CurrentBuffer].GetRTV());
+
+	// Set pipelinestate
+    context.SetPipelineState(HiddenMeshDepthPSO);
+    context.SetViewportAndScissor(0, 0, g_DisplayWidth, g_DisplayHeight);
+
+	// set vertex buffer and depth stencil then draw
+    context.SetVertexBuffer(0, BufferLeft.VertexBufferView());
+    context.SetDepthStencilTarget(g_SceneDepthBuffer.GetSubDSV(vr::Eye_Left));
+    context.Draw(BufferLeft.GetElementCount());
+
+	// repeat for right eye
+    context.SetVertexBuffer(0, BufferRight.VertexBufferView());
+	context.SetDepthStencilTarget(g_SceneDepthBuffer.GetSubDSV(vr::Eye_Right));
+    context.Draw(BufferRight.GetElementCount());
+
+	// clear render target, we need it cleaned.
+    context.ClearColor(g_DisplayPlane[g_CurrentBuffer]);
+    context.Finish();
+}
+
 void Graphics::Present(void)
 {
+    HiddenMeshDepthPrepass();
+	
     if (g_bEnableHDROutput)
         PreparePresentHDR();
     else

@@ -42,6 +42,8 @@ namespace Graphics
     void Present(void);
 	void SetNativeResolution(uint32_t NativeWidth, uint32_t NativeHeight);
 
+    void HiddenMeshDepthPrepass();
+	
     extern uint32_t g_DisplayWidth;
     extern uint32_t g_DisplayHeight;
 

@@ -228,3 +228,30 @@ void VR::Sync()
 		//DEBUGPRINT("A sync call was made for VR with no HMD present");
 	}
 }
+
+StructuredBuffer VR::GetHiddenAreaMesh(vr::Hmd_Eye eEye)
+{
+	StructuredBuffer buffer;
+	
+	if (!g_HMD)
+	{
+		//DEBUGPRINT("A GetHiddenAreaMesh call was made for VR with no HMD present");
+		buffer.Create(L"EMPTY", 1, 1, nullptr);
+		return buffer;
+	}
+	
+	const vr::HiddenAreaMesh_t mesh = g_HMD->GetHiddenAreaMesh(eEye); //vr::k_eHiddenAreaMesh_Standard
+	
+	if(!mesh.pVertexData || mesh.unTriangleCount == 0)
+	{
+		DEBUGPRINT("No available HiddenAreaMesh for %s", g_display);
+	}
+
+	buffer.Create(
+		L"Left Buffer",
+		mesh.unTriangleCount,
+		sizeof(mesh.pVertexData),
+		mesh.pVertexData);
+	
+	return buffer;
+}

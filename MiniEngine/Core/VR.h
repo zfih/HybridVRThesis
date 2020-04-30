@@ -39,4 +39,6 @@ namespace VR
 	void Submit(ColorBuffer buffer_array);
 	void Submit(ColorBuffer buffer_left, ColorBuffer buffer_right);
 	void Sync();
+
+	StructuredBuffer GetHiddenAreaMesh(vr::Hmd_Eye eEye);
 }
