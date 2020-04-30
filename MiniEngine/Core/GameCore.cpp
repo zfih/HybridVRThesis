@@ -72,6 +72,7 @@ namespace GameCore
         
         game.Update(DeltaTime);
         
+        game.RenderShadowMap();
         game.RenderScene(0);
         game.RenderScene(1);
         game.FrameIntegration();

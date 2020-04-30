@@ -35,6 +35,7 @@ namespace GameCore
         virtual void Update( float deltaT ) = 0;
 
         // Official rendering pass
+        virtual void RenderShadowMap() = 0;
         virtual void RenderScene( UINT cam) = 0;
         virtual void FrameIntegration() = 0;
 

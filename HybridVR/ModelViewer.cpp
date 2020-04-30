@@ -41,6 +41,10 @@
 #include <atlbase.h>
 #include "DXSampleHelper.h"
 
+#include "Raytracing.h"
+#include "DescriptorHeapStack.h"
+
+// Shaders
 #include "CompiledShaders/DepthViewerVS.h"
 #include "CompiledShaders/DepthViewerPS.h"
 #include "CompiledShaders/ModelViewerVS.h"
@@ -127,67 +131,6 @@ const static UINT MaxRayRecursion = 2;
 
 const static UINT c_NumCameraPositions = 5;
 
-struct RaytracingDispatchRayInputs
-{
-	RaytracingDispatchRayInputs()
-	{
-	}
-
-	RaytracingDispatchRayInputs(
-		ID3D12Device5& device,
-		ID3D12StateObject* pPSO,
-		void* pHitGroupShaderTable,
-		UINT HitGroupStride,
-		UINT HitGroupTableSize,
-		LPCWSTR rayGenExportName,
-		LPCWSTR missExportName) : m_pPSO(pPSO)
-	{
-		const UINT shaderTableSize = D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES;
-		ID3D12StateObjectProperties* stateObjectProperties = nullptr;
-		ThrowIfFailed(pPSO->QueryInterface(IID_PPV_ARGS(&stateObjectProperties)));
-		void* pRayGenShaderData = stateObjectProperties->GetShaderIdentifier(rayGenExportName);
-		void* pMissShaderData = stateObjectProperties->GetShaderIdentifier(missExportName);
-
-		m_HitGroupStride = HitGroupStride * 2;
-
-		// MiniEngine requires that all initial data be aligned to 16 bytes
-		UINT alignment = 16;
-		std::vector<BYTE> alignedShaderTableData(shaderTableSize + alignment - 1);
-		BYTE* pAlignedShaderTableData = alignedShaderTableData.data() + ((UINT64)alignedShaderTableData.data() %
-			alignment);
-		memcpy(pAlignedShaderTableData, pRayGenShaderData, shaderTableSize);
-		m_RayGenShaderTable.Create(L"Ray Gen Shader Table", 1, shaderTableSize, alignedShaderTableData.data());
-
-		memcpy(pAlignedShaderTableData, pMissShaderData, shaderTableSize);
-		m_MissShaderTable.Create(L"Miss Shader Table", 1, shaderTableSize, alignedShaderTableData.data());
-
-		m_HitShaderTable.Create(L"Hit Shader Table", 1, HitGroupTableSize, pHitGroupShaderTable);
-	}
-
-	D3D12_DISPATCH_RAYS_DESC GetDispatchRayDesc(UINT DispatchWidth, UINT DispatchHeight)
-	{
-		D3D12_DISPATCH_RAYS_DESC dispatchRaysDesc = {};
-
-		dispatchRaysDesc.RayGenerationShaderRecord.StartAddress = m_RayGenShaderTable.GetGpuVirtualAddress();
-		dispatchRaysDesc.RayGenerationShaderRecord.SizeInBytes = m_RayGenShaderTable.GetBufferSize();
-		dispatchRaysDesc.HitGroupTable.StartAddress = m_HitShaderTable.GetGpuVirtualAddress();
-		dispatchRaysDesc.HitGroupTable.SizeInBytes = m_HitShaderTable.GetBufferSize();
-		dispatchRaysDesc.HitGroupTable.StrideInBytes = m_HitGroupStride;
-		dispatchRaysDesc.MissShaderTable.StartAddress = m_MissShaderTable.GetGpuVirtualAddress();
-		dispatchRaysDesc.MissShaderTable.SizeInBytes = m_MissShaderTable.GetBufferSize();
-		dispatchRaysDesc.MissShaderTable.StrideInBytes = dispatchRaysDesc.MissShaderTable.SizeInBytes; // Only one entry
-		dispatchRaysDesc.Width = DispatchWidth;
-		dispatchRaysDesc.Height = DispatchHeight;
-		dispatchRaysDesc.Depth = 1;
-		return dispatchRaysDesc;
-	}
-
-	UINT m_HitGroupStride;
-	CComPtr<ID3D12StateObject> m_pPSO;
-	ByteAddressBuffer m_RayGenShaderTable;
-	ByteAddressBuffer m_MissShaderTable;
-	ByteAddressBuffer m_HitShaderTable;
-};
 
 struct MaterialRootConstant
 {
@@ -211,6 +154,7 @@ public:
 	virtual void Cleanup(void) override;
 
 	virtual void Update(float deltaT) override;
+	virtual void RenderShadowMap() override;
 	virtual void RenderScene(UINT cam) override;
 	virtual void FrameIntegration() override;
 	virtual void RenderUI(class GraphicsContext&) override;
@@ -276,19 +220,6 @@ private:
 	UINT m_CameraPosArrayCurrentPosition;
 };
 
-
-// Returns bool whether the device supports DirectX Raytracing tier.
-inline bool IsDirectXRaytracingSupported(IDXGIAdapter1* adapter)
-{
-	ComPtr<ID3D12Device> testDevice;
-	D3D12_FEATURE_DATA_D3D12_OPTIONS5 featureSupportData = {};
-
-	return SUCCEEDED(D3D12CreateDevice(adapter, D3D_FEATURE_LEVEL_11_0, IID_PPV_ARGS(&testDevice)))
-		&& SUCCEEDED(
-			testDevice->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS5, &featureSupportData, sizeof(featureSupportData
-			)))
-		&& featureSupportData.RaytracingTier != D3D12_RAYTRACING_TIER_NOT_SUPPORTED;
-}
 
 int wmain(int argc, wchar_t** argv)
 {
@@ -357,77 +288,6 @@ enum RaytracingMode
 };
 EnumVar rayTracingMode("Application/Raytracing/RayTraceMode", RTM_DIFFUSE_WITH_SHADOWMAPS, _countof(rayTracingModes),
                        rayTracingModes);
-
-class DescriptorHeapStack
-{
-public:
-	DescriptorHeapStack(ID3D12Device& device, UINT numDescriptors, D3D12_DESCRIPTOR_HEAP_TYPE type, UINT NodeMask) :
-		m_device(device)
-	{
-		D3D12_DESCRIPTOR_HEAP_DESC desc = {};
-		desc.NumDescriptors = numDescriptors;
-		desc.Type = type;
-		desc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
-		desc.NodeMask = NodeMask;
-		device.CreateDescriptorHeap(&desc, IID_PPV_ARGS(&m_pDescriptorHeap));
-
-		m_descriptorSize = device.GetDescriptorHandleIncrementSize(type);
-		m_descriptorHeapCpuBase = m_pDescriptorHeap->GetCPUDescriptorHandleForHeapStart();
-	}
-
-	ID3D12DescriptorHeap& GetDescriptorHeap() { return *m_pDescriptorHeap; }
-
-	void AllocateDescriptor(_Out_ D3D12_CPU_DESCRIPTOR_HANDLE& cpuHandle, _Out_ UINT& descriptorHeapIndex)
-	{
-		descriptorHeapIndex = m_descriptorsAllocated;
-		cpuHandle = CD3DX12_CPU_DESCRIPTOR_HANDLE(m_descriptorHeapCpuBase, descriptorHeapIndex, m_descriptorSize);
-		m_descriptorsAllocated++;
-	}
-
-	UINT AllocateBufferSrv(_In_ ID3D12Resource& resource)
-	{
-		UINT descriptorHeapIndex;
-		D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle;
-		AllocateDescriptor(cpuHandle, descriptorHeapIndex);
-		D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
-		srvDesc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
-		srvDesc.Buffer.NumElements = (UINT)(resource.GetDesc().Width / sizeof(UINT32));
-		srvDesc.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_RAW;
-		srvDesc.Format = DXGI_FORMAT_R32_TYPELESS;
-		srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-
-		m_device.CreateShaderResourceView(&resource, &srvDesc, cpuHandle);
-		return descriptorHeapIndex;
-	}
-
-	UINT AllocateBufferUav(_In_ ID3D12Resource& resource)
-	{
-		UINT descriptorHeapIndex;
-		D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle;
-		AllocateDescriptor(cpuHandle, descriptorHeapIndex);
-		D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc = {};
-		uavDesc.ViewDimension = D3D12_UAV_DIMENSION_BUFFER;
-		uavDesc.Buffer.NumElements = (UINT)(resource.GetDesc().Width / sizeof(UINT32));
-		uavDesc.Buffer.Flags = D3D12_BUFFER_UAV_FLAG_RAW;
-		uavDesc.Format = DXGI_FORMAT_R32_TYPELESS;
-
-		m_device.CreateUnorderedAccessView(&resource, nullptr, &uavDesc, cpuHandle);
-		return descriptorHeapIndex;
-	}
-
-	D3D12_GPU_DESCRIPTOR_HANDLE GetGpuHandle(UINT descriptorIndex)
-	{
-		return CD3DX12_GPU_DESCRIPTOR_HANDLE(m_pDescriptorHeap->GetGPUDescriptorHandleForHeapStart(), descriptorIndex,
-		                                     m_descriptorSize);
-	}
-
-private:
-	ID3D12Device& m_device;
-	CComPtr<ID3D12DescriptorHeap> m_pDescriptorHeap;
-	UINT m_descriptorsAllocated = 0;
-	UINT m_descriptorSize;
-	D3D12_CPU_DESCRIPTOR_HANDLE m_descriptorHeapCpuBase;
-};
 
 std::unique_ptr<DescriptorHeapStack> g_pRaytracingDescriptorHeap;
 
@@ -567,7 +427,6 @@ void SetPipelineStateStackSize(
 	stateObjectProperties->SetPipelineStackSize(totalStackSize);
 }
 
-// BOOKMARK JOHN
 void InitializeRaytracingStateObjects(const Model& model, UINT numMeshes)
 {
 	// Initialize subobject list
@@ -1539,17 +1398,56 @@ void D3D12RaytracingMiniEngineSample::RenderLightShadows(GraphicsContext& gfxCon
 	++LightIndex;
 }
 
+void D3D12RaytracingMiniEngineSample::RenderShadowMap()
+{
+	const bool skipShadowMap =
+		rayTracingMode == RTM_DIFFUSE_WITH_SHADOWRAYS ||
+		rayTracingMode == RTM_TRAVERSAL ||
+		rayTracingMode == RTM_SSR;
+
+	if (!skipShadowMap)
+	{
+		if (!SSAO::DebugDraw)
+		{
+			GraphicsContext& gfxContext = 
+				GraphicsContext::Begin(L"Shadow Map Render");
+
+			gfxContext.SetRootSignature(m_RootSig);								// TODO: Replace with pfnSetupGraphicsState()
+			gfxContext.SetPrimitiveTopology(									//
+				D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);							//
+			gfxContext.SetIndexBuffer(m_Model.m_IndexBuffer.IndexBufferView());	//
+			gfxContext.SetVertexBuffer(											//
+				0, m_Model.m_VertexBuffer.VertexBufferView());					//
+			{
+				ScopedTimer _prof(L"Render Shadow Map", gfxContext);
+
+				m_SunShadow.UpdateMatrix(-m_SunDirection, 
+					Vector3(0, -500.0f, 0),
+					Vector3(ShadowDimX, ShadowDimY, ShadowDimZ),
+					(uint32_t)g_ShadowBuffer.GetWidth(), 
+					(uint32_t)g_ShadowBuffer.GetHeight(), 16);
+
+				g_ShadowBuffer.BeginRendering(gfxContext);
+				gfxContext.SetPipelineState(m_ShadowPSO);
+				RenderObjects(
+					gfxContext, m_SunShadow.GetViewProjMatrix(), 0, kOpaque);
+				gfxContext.SetPipelineState(m_CutoutShadowPSO);
+				RenderObjects(
+					gfxContext, m_SunShadow.GetViewProjMatrix(), 0, kCutout);
+				g_ShadowBuffer.EndRendering(gfxContext);
+			}
+
+			gfxContext.Finish();
+		}
+	}
+}
+
 void D3D12RaytracingMiniEngineSample::RenderScene(UINT cam)
 {
     const bool skipDiffusePass = 
         rayTracingMode == RTM_DIFFUSE_WITH_SHADOWMAPS ||
         rayTracingMode == RTM_DIFFUSE_WITH_SHADOWRAYS ||
         rayTracingMode == RTM_TRAVERSAL;
-        
-    const bool skipShadowMap = 
-        rayTracingMode == RTM_DIFFUSE_WITH_SHADOWRAYS ||
-        rayTracingMode == RTM_TRAVERSAL ||
-        rayTracingMode == RTM_SSR;
 
     static bool s_ShowLightCounts = false;
     if (ShowWaveTileCounts != s_ShowLightCounts)
@@ -1653,27 +1551,6 @@ void D3D12RaytracingMiniEngineSample::RenderScene(UINT cam)
                 gfxContext.TransitionResource(*SceneColorBuffer(), D3D12_RESOURCE_STATE_RENDER_TARGET, true);
                 gfxContext.TransitionResource(SceneNormalBuffer(), D3D12_RESOURCE_STATE_RENDER_TARGET, true);
                 gfxContext.ClearColor(*SceneColorBuffer(), cam);
-            }
-        }
-    }
-
-    if (!skipShadowMap)
-    {
-        if (!SSAO::DebugDraw)
-        {
-            pfnSetupGraphicsState();
-            {
-                ScopedTimer _prof(L"Render Shadow Map", gfxContext);
-
-                m_SunShadow.UpdateMatrix(-m_SunDirection, Vector3(0, -500.0f, 0), Vector3(ShadowDimX, ShadowDimY, ShadowDimZ),
-                    (uint32_t)g_ShadowBuffer.GetWidth(), (uint32_t)g_ShadowBuffer.GetHeight(), 16);
-
-                g_ShadowBuffer.BeginRendering(gfxContext);
-                gfxContext.SetPipelineState(m_ShadowPSO);
-                RenderObjects(gfxContext, m_SunShadow.GetViewProjMatrix(), cam, kOpaque);
-                gfxContext.SetPipelineState(m_CutoutShadowPSO);
-                RenderObjects(gfxContext, m_SunShadow.GetViewProjMatrix(), cam, kCutout);
-                g_ShadowBuffer.EndRendering(gfxContext);
             }
         }
     }
