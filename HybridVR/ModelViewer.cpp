@@ -826,7 +826,7 @@ void D3D12RaytracingMiniEngineSample::Startup(void)
 	rayTracingMode = RTM_OFF;
 
     ThrowIfFailed(g_Device->QueryInterface(IID_PPV_ARGS(&g_pRaytracingDevice)), L"Couldn't get DirectX Raytracing interface for the device.\n");
-    g_SceneNormalBuffer.Create(L"Main Normal Buffer", g_SceneColorBuffer.GetWidth(), g_SceneColorBuffer.GetHeight(), 1, DXGI_FORMAT_R11G11B10_FLOAT);
+    g_SceneNormalBuffer.Create(L"Main Normal Buffer", g_SceneColorBuffer.GetWidth(), g_SceneColorBuffer.GetHeight(), 1, DXGI_FORMAT_R10G10B10A2_UNORM);
 
     g_pRaytracingDescriptorHeap = std::unique_ptr<DescriptorHeapStack>(
         new DescriptorHeapStack(*g_Device, 200, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, 0));
