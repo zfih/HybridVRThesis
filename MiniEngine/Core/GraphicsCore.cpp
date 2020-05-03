@@ -690,10 +690,10 @@ void Graphics::PreparePresentLDR(void)
 {
     GraphicsContext& Context = GraphicsContext::Begin(L"Present");
 
-	SubmitToVRHMD(true);
-
     // We're going to be reading these buffers to write to the swap chain buffer(s)
     Context.TransitionResource(g_SceneColorBuffer, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+	
+    SubmitToVRHMD(true);
 
     Context.SetRootSignature(s_PresentRS);
     Context.SetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
