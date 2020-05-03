@@ -81,4 +81,6 @@ namespace Graphics
     extern BoolVar s_EnableVSync;
     extern uint32_t g_DisplayWidth;
     extern uint32_t g_DisplayHeight;
+
+    extern EnumVar g_VRDepthStencil;
 }

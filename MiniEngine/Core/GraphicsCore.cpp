@@ -127,6 +127,10 @@ namespace Graphics
     const char* HDRModeLabels[] = { "HDR", "SDR", "Side-by-Side" };
     EnumVar HDRDebugMode("Graphics/Display/HDR Debug Mode", 0, 3, HDRModeLabels);
 
+    const char* OnOffLabels[] = { "On", "Off" };
+    EnumVar g_VRDepthStencil(
+        "VR Depth Stencil", 0, _countof(OnOffLabels), OnOffLabels);
+
     uint32_t g_NativeWidth = 0;
     uint32_t g_NativeHeight = 0;
     uint32_t g_DisplayWidth = 1920;
@@ -517,7 +521,7 @@ void Graphics::Initialize(void)
     D3D12_INPUT_ELEMENT_DESC vertElem[] =
     {
         {
-            "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 
+            "POSITION", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 
             D3D12_APPEND_ALIGNED_ELEMENT,
             D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0
         }
@@ -526,13 +530,12 @@ void Graphics::Initialize(void)
     HiddenMeshDepthPSO.SetRootSignature(HiddenMeshDepthRS);
     HiddenMeshDepthPSO.SetRasterizerState(RasterizerTwoSided);
     HiddenMeshDepthPSO.SetBlendState(BlendNoColorWrite);
-    HiddenMeshDepthPSO.SetDepthStencilState(DepthStateReadWrite);
+    HiddenMeshDepthPSO.SetDepthStencilState(DepthStateReadWriteStencil);
     HiddenMeshDepthPSO.SetInputLayout(_countof(vertElem), vertElem);
     HiddenMeshDepthPSO.SetPrimitiveTopologyType(D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE);
     HiddenMeshDepthPSO.SetVertexShader(g_pHiddenMeshVS, sizeof(g_pHiddenMeshVS));
     HiddenMeshDepthPSO.SetPixelShader(g_pHiddenMeshPS, sizeof(g_pHiddenMeshPS));
-    HiddenMeshDepthPSO.SetRenderTargetFormats(0, nullptr, DXGI_FORMAT_D32_FLOAT);
-    HiddenMeshDepthPSO.SetRenderTargetFormats(0, nullptr, DXGI_FORMAT_D32_FLOAT);
+    HiddenMeshDepthPSO.SetRenderTargetFormats(0, nullptr, DXGI_FORMAT_D24_UNORM_S8_UINT);
     HiddenMeshDepthPSO.Finalize();
 	
 	
@@ -721,10 +724,9 @@ void Graphics::PreparePresentLDR(void)
 {
     GraphicsContext& Context = GraphicsContext::Begin(L"Present");
 
+    Context.TransitionResource(g_SceneColorBuffer, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, true);
+    Context.Flush();
 	SubmitToVRHMD(true);
-
-    // We're going to be reading these buffers to write to the swap chain buffer(s)
-    Context.TransitionResource(g_SceneColorBuffer, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 
     Context.SetRootSignature(s_PresentRS);
     Context.SetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
@@ -822,6 +824,7 @@ void Graphics::HiddenMeshDepthPrepass()
 
 	if(BufferLeft.GetElementCount() < 2) // cannot create buffer with size 0, so default is size 1.
 	{
+        g_VRDepthStencil.Increment();
         return;
 	}
 	
@@ -835,13 +838,10 @@ void Graphics::HiddenMeshDepthPrepass()
     context.TransitionResource(g_DisplayPlane[g_CurrentBuffer], D3D12_RESOURCE_STATE_RENDER_TARGET, true);
     context.ClearDepth(g_SceneDepthBuffer);
 
-	// Set render target
-    //context.SetRenderTarget(g_DisplayPlane[g_CurrentBuffer].GetRTV());
-
 	// Set pipelinestate
     context.SetRootSignature(HiddenMeshDepthRS);
     context.SetPipelineState(HiddenMeshDepthPSO);
-    context.SetViewportAndScissor(0, 0, g_DisplayWidth, g_DisplayHeight);
+    context.SetViewportAndScissor(0, 0, g_SceneDepthBuffer.GetWidth(), g_SceneDepthBuffer.GetHeight());
 
 	// set vertex buffer and depth stencil then draw
     context.SetVertexBuffer(0, BufferLeft.VertexBufferView());
@@ -853,15 +853,11 @@ void Graphics::HiddenMeshDepthPrepass()
 	context.SetDepthStencilTarget(g_SceneDepthBuffer.GetSubDSV(vr::Eye_Right));
     context.Draw(BufferRight.GetElementCount());
 
-	// clear render target, we need it cleaned.
-    context.ClearColor(g_DisplayPlane[g_CurrentBuffer]);
     context.Finish();
 }
 
 void Graphics::Present(void)
-{
-    HiddenMeshDepthPrepass();
-	
+{	
     if (g_bEnableHDROutput)
         PreparePresentHDR();
     else

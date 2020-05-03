@@ -955,7 +955,7 @@ void D3D12RaytracingMiniEngineSample::Startup(void)
 	                           DXGI_FORMAT_R16G16B16A16_FLOAT);
 #else
 	g_SceneNormalBuffer.CreateArray(L"Main Normal Buffer", g_SceneColorBuffer.GetWidth(), g_SceneColorBuffer.GetHeight(), 2,
-	                           DXGI_FORMAT_R11G11B10_FLOAT);
+	                           DXGI_FORMAT_R8G8B8A8_UNORM);
 #endif
 
 
@@ -1578,7 +1578,11 @@ void D3D12RaytracingMiniEngineSample::RenderScene(UINT cam)
 				gfxContext.TransitionResource(g_SceneDepthBuffer, D3D12_RESOURCE_STATE_DEPTH_WRITE, true);
 				// note: we no longer clear because we need the stencil from engine
 				// prepass
-				//gfxContext.ClearDepth(g_SceneDepthBuffer);
+				auto fuckyou = g_VRDepthStencil;
+				if (g_VRDepthStencil == 1)
+				{
+					gfxContext.ClearDepth(g_SceneDepthBuffer);
+				}
 
 				gfxContext.SetPipelineState(m_DepthPSO[0]);
 				gfxContext.SetDepthStencilTarget(g_SceneDepthBuffer.GetSubDSV(cam));

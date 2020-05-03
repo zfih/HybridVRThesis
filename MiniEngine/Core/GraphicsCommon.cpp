@@ -56,6 +56,7 @@ namespace Graphics
 
     D3D12_DEPTH_STENCIL_DESC DepthStateDisabled;
     D3D12_DEPTH_STENCIL_DESC DepthStateReadWrite;
+    D3D12_DEPTH_STENCIL_DESC DepthStateReadWriteStencil;
     D3D12_DEPTH_STENCIL_DESC DepthStateReadOnly;
     D3D12_DEPTH_STENCIL_DESC DepthStateReadOnlyReversed;
     D3D12_DEPTH_STENCIL_DESC DepthStateTestEqual;
@@ -160,6 +161,12 @@ void Graphics::InitializeCommonState(void)
     DepthStateReadWrite.DepthEnable = TRUE;
     DepthStateReadWrite.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ALL;
     DepthStateReadWrite.DepthFunc = D3D12_COMPARISON_FUNC_GREATER_EQUAL;
+
+    DepthStateReadWriteStencil = DepthStateReadWrite;
+    DepthStateReadWriteStencil.StencilEnable = TRUE;
+    DepthStateReadWriteStencil.FrontFace.StencilFunc = D3D12_COMPARISON_FUNC_GREATER;
+    DepthStateReadWriteStencil.FrontFace.StencilPassOp = D3D12_STENCIL_OP_INCR;
+    DepthStateReadWriteStencil.BackFace = DepthStateReadWriteStencil.FrontFace;
 
     DepthStateReadOnly = DepthStateReadWrite;
     DepthStateReadOnly.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ZERO;

@@ -81,17 +81,16 @@ namespace Graphics
     // For testing GenerateMipMaps()
     ColorBuffer g_GenMipsBuffer;
 
-    DXGI_FORMAT DefaultHdrColorFormat = DXGI_FORMAT_R11G11B10_FLOAT;
+    DXGI_FORMAT DefaultHdrColorFormat = DXGI_FORMAT_R8G8B8A8_UNORM; //DXGI_FORMAT_R11G11B10_FLOAT; // TODO: This is not HDR. Handle that.
 }
 
 #define T2X_COLOR_FORMAT DXGI_FORMAT_R10G10B10A2_UNORM
 #define HDR_MOTION_FORMAT DXGI_FORMAT_R16G16B16A16_FLOAT
-#define DSV_FORMAT DXGI_FORMAT_D32_FLOAT
+#define DSV_FORMAT DXGI_FORMAT_D24_UNORM_S8_UINT
 
 void Graphics::InitializeRenderingBuffers( uint32_t bufferWidth, uint32_t bufferHeight )
 {
     GraphicsContext& InitContext = GraphicsContext::Begin();
-    [[]] [] (){}();
     const uint32_t bufferWidth1 = (bufferWidth + 1) / 2;
     const uint32_t bufferWidth2 = (bufferWidth + 3) / 4;
     const uint32_t bufferWidth3 = (bufferWidth + 7) / 8;

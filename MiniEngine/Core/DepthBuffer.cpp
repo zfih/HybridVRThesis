@@ -152,7 +152,7 @@ void DepthBuffer::CreateDerivedViews(ID3D12Device* Device, DXGI_FORMAT Format, u
 	for (int i = 0; i < ArraySize; i++)
 	{
 		D3D12_DEPTH_STENCIL_VIEW_DESC dsvDesc{};
-		dsvDesc.Format = Format;
+		dsvDesc.Format = GetDSVFormat(Format);
 		dsvDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2DARRAY;
 		dsvDesc.Texture2DArray.MipSlice = 0;
 		dsvDesc.Texture2DArray.FirstArraySlice = i;
@@ -170,6 +170,16 @@ void DepthBuffer::CreateDerivedViews(ID3D12Device* Device, DXGI_FORMAT Format, u
 			m_hStencilSRV = Graphics::AllocateDescriptor(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 
 		SRVDesc.Format = stencilReadFormat;
+
+		if (ArraySize > 1)
+		{
+			SRVDesc.Texture2DArray.PlaneSlice = 1;
+		}
+		else if (Resource->GetDesc().SampleDesc.Count == 1)
+		{
+			SRVDesc.Texture2D.PlaneSlice = 1;
+		}
+
 		Device->CreateShaderResourceView(Resource, &SRVDesc, m_hStencilSRV);
 	}
 }
