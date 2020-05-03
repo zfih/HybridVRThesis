@@ -530,7 +530,7 @@ void Graphics::Initialize(void)
     HiddenMeshDepthPSO.SetRootSignature(HiddenMeshDepthRS);
     HiddenMeshDepthPSO.SetRasterizerState(RasterizerTwoSided);
     HiddenMeshDepthPSO.SetBlendState(BlendNoColorWrite);
-    HiddenMeshDepthPSO.SetDepthStencilState(DepthStateReadWriteStencil);
+    HiddenMeshDepthPSO.SetDepthStencilState(DepthReadWriteStencilWriteState);
     HiddenMeshDepthPSO.SetInputLayout(_countof(vertElem), vertElem);
     HiddenMeshDepthPSO.SetPrimitiveTopologyType(D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE);
     HiddenMeshDepthPSO.SetVertexShader(g_pHiddenMeshVS, sizeof(g_pHiddenMeshVS));
@@ -841,6 +841,7 @@ void Graphics::HiddenMeshDepthPrepass()
 	// Set pipelinestate
     context.SetRootSignature(HiddenMeshDepthRS);
     context.SetPipelineState(HiddenMeshDepthPSO);
+    context.SetStencilRef(0xFF);
     context.SetViewportAndScissor(0, 0, g_SceneDepthBuffer.GetWidth(), g_SceneDepthBuffer.GetHeight());
 
 	// set vertex buffer and depth stencil then draw

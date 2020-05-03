@@ -1005,7 +1005,7 @@ void D3D12RaytracingMiniEngineSample::Startup(void)
 	m_DepthPSO[0].SetRootSignature(m_RootSig);
 	m_DepthPSO[0].SetRasterizerState(RasterizerDefault);
 	m_DepthPSO[0].SetBlendState(BlendNoColorWrite);
-	m_DepthPSO[0].SetDepthStencilState(DepthStateReadWrite);
+	m_DepthPSO[0].SetDepthStencilState(DepthReadWriteStencilReadState);
 	m_DepthPSO[0].SetInputLayout(_countof(vertElem), vertElem);
 	m_DepthPSO[0].SetPrimitiveTopologyType(D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE);
 	m_DepthPSO[0].SetRenderTargetFormats(0, nullptr, DepthFormat);
@@ -1568,6 +1568,8 @@ void D3D12RaytracingMiniEngineSample::RenderScene(UINT cam)
 	RenderLightShadows(gfxContext, cam);
 
 	{
+		gfxContext.SetStencilRef(0xFF);
+		
 		ScopedTimer _prof(L"Z PrePass", gfxContext);
 
 		gfxContext.SetDynamicConstantBufferView(1, sizeof(psConstants), &psConstants);
