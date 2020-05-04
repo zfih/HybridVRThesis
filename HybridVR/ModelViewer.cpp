@@ -883,7 +883,7 @@ void D3D12RaytracingMiniEngineSample::Startup(void)
     m_DepthPSO[0].SetRootSignature(m_RootSig);
     m_DepthPSO[0].SetRasterizerState(RasterizerDefault);
     m_DepthPSO[0].SetBlendState(BlendNoColorWrite);
-    m_DepthPSO[0].SetDepthStencilState(DepthStateReadWrite);
+    m_DepthPSO[0].SetDepthStencilState(DepthReadWriteStencilReadState);
     m_DepthPSO[0].SetInputLayout(_countof(vertElem), vertElem);
     m_DepthPSO[0].SetPrimitiveTopologyType(D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE);
     m_DepthPSO[0].SetRenderTargetFormats(0, nullptr, DepthFormat);
@@ -1512,13 +1512,19 @@ void D3D12RaytracingMiniEngineSample::RenderScene(UINT cam)
     {
         ScopedTimer _prof(L"Z PrePass", gfxContext);
 
+		gfxContext.SetStencilRef(0x0);
+
         gfxContext.SetDynamicConstantBufferView(1, sizeof(psConstants), &psConstants);
 
         {
             ScopedTimer _prof(L"Opaque", gfxContext);
             {
                 gfxContext.TransitionResource(*SceneDepthBuffer(), D3D12_RESOURCE_STATE_DEPTH_WRITE, true);
-                gfxContext.ClearDepth(*SceneDepthBuffer());
+                
+				if (g_VRDepthStencil == 1)
+				{
+					gfxContext.ClearDepthAndStencil(*SceneDepthBuffer());
+				}
 
                 gfxContext.SetPipelineState(m_DepthPSO[0]);
                 gfxContext.SetDepthStencilTarget(SceneDepthBuffer()->GetSubDSV(cam));

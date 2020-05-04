@@ -42,6 +42,8 @@ namespace Graphics
     void Present(void);
 	void SetNativeResolution(uint32_t NativeWidth, uint32_t NativeHeight);
 
+    void HiddenMeshDepthPrepass();
+	
     extern uint32_t g_DisplayWidth;
     extern uint32_t g_DisplayHeight;
 
@@ -85,4 +87,5 @@ namespace Graphics
         enum { kOn, kOffFullRes, kOffLowRes, kOnFullRes, kOnLowRes, kResidules };
     }
     extern EnumVar g_TMPMode;
+    extern EnumVar g_VRDepthStencil;
 }

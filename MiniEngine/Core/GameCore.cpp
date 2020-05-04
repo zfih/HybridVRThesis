@@ -71,7 +71,12 @@ namespace GameCore
         EngineTuning::Update(DeltaTime);
         
         game.Update(DeltaTime);
-        
+
+        if (g_VRDepthStencil == 0)
+        {
+            Graphics::HiddenMeshDepthPrepass();
+        }
+
         game.RenderShadowMap();
         game.RenderScene(0);
         game.RenderScene(1);

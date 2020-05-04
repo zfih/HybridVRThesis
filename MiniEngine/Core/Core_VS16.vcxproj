@@ -199,6 +199,16 @@
     <ClCompile Include="VR.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <FxCompile Include="HiddenMeshPS.hlsl">
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Pixel</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">Pixel</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Pixel</ShaderType>
+    </FxCompile>
+    <FxCompile Include="HiddenMeshVS.hlsl">
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Vertex</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">Vertex</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Vertex</ShaderType>
+    </FxCompile>
     <FxCompile Include="Shaders\AdaptExposureCS.hlsl" />
     <FxCompile Include="Shaders\AoBlurUpsampleBlendOutCS.hlsl" />
     <FxCompile Include="Shaders\AoBlurUpsampleCS.hlsl" />
