@@ -55,6 +55,8 @@
 #include "CompiledShaders/BufferCopyPS.h"
 #include "CompiledShaders/PresentSDRPS.h"
 #include "CompiledShaders/PresentHDRPS.h"
+#include "CompiledShaders/HiddenMeshVS.h"
+#include "CompiledShaders/HiddenMeshPS.h"
 #include "CompiledShaders/MagnifyPixelsPS.h"
 #include "CompiledShaders/BilinearUpsamplePS.h"
 #include "CompiledShaders/BicubicHorizontalUpsamplePS.h"
@@ -125,6 +127,10 @@ namespace Graphics
     const char* HDRModeLabels[] = { "HDR", "SDR", "Side-by-Side" };
     EnumVar HDRDebugMode("Graphics/Display/HDR Debug Mode", 0, 3, HDRModeLabels);
 
+    const char* OnOffLabels[] = { "On", "Off" };
+    EnumVar g_VRDepthStencil(
+        "VR Depth Stencil", 0, _countof(OnOffLabels), OnOffLabels);
+
     uint32_t g_NativeWidth = 0;
     uint32_t g_NativeHeight = 0;
     uint32_t g_DisplayWidth = 1920;
@@ -176,6 +182,9 @@ namespace Graphics
     GraphicsPSO BicubicHorizontalUpsamplePS;
     GraphicsPSO BicubicVerticalUpsamplePS;
     GraphicsPSO BilinearUpsamplePS;
+
+    RootSignature HiddenMeshDepthRS;
+    GraphicsPSO HiddenMeshDepthPSO;
 
     RootSignature g_GenerateMipsRS;
     ComputePSO g_GenerateMipsLinearPSO[4];
@@ -505,6 +514,31 @@ void Graphics::Initialize(void)
     s_BlendUIPSO.SetRenderTargetFormat(SwapChainFormat, DXGI_FORMAT_UNKNOWN);
     s_BlendUIPSO.Finalize();
 
+    HiddenMeshDepthRS.Reset(1, 0);
+    HiddenMeshDepthRS[0].InitAsDescriptorRange(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 0, 1);
+    HiddenMeshDepthRS.Finalize(L"Hidden Mesh", D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
+
+    D3D12_INPUT_ELEMENT_DESC vertElem[] =
+    {
+        {
+            "POSITION", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 
+            D3D12_APPEND_ALIGNED_ELEMENT,
+            D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0
+        }
+    };
+
+    HiddenMeshDepthPSO.SetRootSignature(HiddenMeshDepthRS);
+    HiddenMeshDepthPSO.SetRasterizerState(RasterizerTwoSided);
+    HiddenMeshDepthPSO.SetBlendState(BlendNoColorWrite);
+    HiddenMeshDepthPSO.SetDepthStencilState(DepthReadWriteStencilWriteState);
+    HiddenMeshDepthPSO.SetInputLayout(_countof(vertElem), vertElem);
+    HiddenMeshDepthPSO.SetPrimitiveTopologyType(D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE);
+    HiddenMeshDepthPSO.SetVertexShader(g_pHiddenMeshVS, sizeof(g_pHiddenMeshVS));
+    HiddenMeshDepthPSO.SetPixelShader(g_pHiddenMeshPS, sizeof(g_pHiddenMeshPS));
+    HiddenMeshDepthPSO.SetRenderTargetFormats(0, nullptr, DXGI_FORMAT_D24_UNORM_S8_UINT);
+    HiddenMeshDepthPSO.Finalize();
+	
+	
 #define CreatePSO( ObjName, ShaderByteCode ) \
     ObjName = s_BlendUIPSO; \
     ObjName.SetBlendState( BlendDisable ); \
@@ -690,10 +724,9 @@ void Graphics::PreparePresentLDR(void)
 {
     GraphicsContext& Context = GraphicsContext::Begin(L"Present");
 
-    // We're going to be reading these buffers to write to the swap chain buffer(s)
-    Context.TransitionResource(g_SceneColorBuffer, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
-	
-    SubmitToVRHMD(true);
+    Context.TransitionResource(g_SceneColorBuffer, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, true);
+    Context.Flush();
+	SubmitToVRHMD(true);
 
     Context.SetRootSignature(s_PresentRS);
     Context.SetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
@@ -777,15 +810,62 @@ void Graphics::PreparePresentLDR(void)
     Context.Finish();
 }
 
-void Graphics::Present(void)
+
+void Graphics::HiddenMeshDepthPrepass()
 {
+    /// Clear depth
+    /// Set pipeline state
+    /// Add mesh
+    /// Render depth to each eye
+
+	// Get the relevant meshes from OpenVR
+    const StructuredBuffer& BufferLeft = VR::GetHiddenAreaMesh(vr::Eye_Left);
+    const StructuredBuffer& BufferRight = VR::GetHiddenAreaMesh(vr::Eye_Right);
+
+	if(BufferLeft.GetElementCount() < 2) // cannot create buffer with size 0, so default is size 1.
+	{
+        g_VRDepthStencil.Increment();
+        return;
+	}
+	
+	// Start context
+    GraphicsContext& context = GraphicsContext::Begin(L"Hidden Mesh Z-prepass");
+
+    context.SetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+
+	// Transition and clear depth
+    context.TransitionResource(g_SceneLeftDepthBuffer, D3D12_RESOURCE_STATE_DEPTH_WRITE);
+    context.TransitionResource(g_SceneRightDepthBuffer, D3D12_RESOURCE_STATE_DEPTH_WRITE);
+    context.TransitionResource(g_DisplayPlane[g_CurrentBuffer], D3D12_RESOURCE_STATE_RENDER_TARGET, true);
+    context.ClearDepthAndStencil(g_SceneLeftDepthBuffer);
+    context.ClearDepthAndStencil(g_SceneRightDepthBuffer);
+
+	// Set pipelinestate
+    context.SetRootSignature(HiddenMeshDepthRS);
+    context.SetPipelineState(HiddenMeshDepthPSO);
+    context.SetStencilRef(0x0);
+    context.SetViewportAndScissor(0, 0, g_SceneLeftDepthBuffer.GetWidth(), g_SceneLeftDepthBuffer.GetHeight());
+
+	// set vertex buffer and depth stencil then draw
+    context.SetVertexBuffer(0, BufferLeft.VertexBufferView());
+    context.SetDepthStencilTarget(g_SceneLeftDepthBuffer.GetDSV());
+    context.Draw(BufferLeft.GetElementCount());
+
+	// repeat for right eye
+    context.SetVertexBuffer(0, BufferRight.VertexBufferView());
+	context.SetDepthStencilTarget(g_SceneRightDepthBuffer.GetDSV());
+    context.Draw(BufferRight.GetElementCount());
+
+    context.Finish();
+}
+
+void Graphics::Present(void)
+{	
     if (g_bEnableHDROutput)
         PreparePresentHDR();
     else
         PreparePresentLDR();
 
-	// TODO: MOVE TO APPROPRITE PLACE IN PIPE - HERE FOR TESTING
-    VR::Sync();
 
     g_CurrentBuffer = (g_CurrentBuffer + 1) % SWAP_CHAIN_BUFFER_COUNT;
 
@@ -828,6 +908,9 @@ void Graphics::Present(void)
     TemporalEffects::Update((uint32_t)s_FrameIndex);
 
     SetNativeResolution(g_NativeWidth, g_NativeHeight);
+
+	// TODO: MOVE TO APPROPRITE PLACE IN PIPE - HERE FOR TESTING
+    VR::Sync();
 }
 
 uint64_t Graphics::GetFrameCount(void)

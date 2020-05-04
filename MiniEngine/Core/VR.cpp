@@ -15,6 +15,9 @@ namespace VR
 	std::string g_display;
 
 	vr::VRTextureBounds_t g_Bounds{0,0,1,1};
+
+	StructuredBuffer m_HiddenAreaMeshLeft;
+	StructuredBuffer m_HiddenAreaMeshRight;
 }
 
 bool VR::TryInitVR()
@@ -55,6 +58,8 @@ bool VR::TryInitVR()
 	}
 
 	g_VRRunning = true;
+
+	CreateHiddenAreaMesh();
 	
 	return g_VRRunning;
 }
@@ -227,4 +232,40 @@ void VR::Sync()
 	{
 		//DEBUGPRINT("A sync call was made for VR with no HMD present");
 	}
+}
+
+void VR::CreateHiddenAreaMesh()
+{
+	if (!g_HMD)
+	{
+		//DEBUGPRINT("A GetHiddenAreaMesh call was made for VR with no HMD present");
+		m_HiddenAreaMeshLeft.Create(L"EMPTY", 1, 1, nullptr);
+		m_HiddenAreaMeshRight.Create(L"EMPTY", 1, 1, nullptr);
+	}
+
+	const vr::HiddenAreaMesh_t meshLeft = g_HMD->GetHiddenAreaMesh(vr::Eye_Left); //vr::k_eHiddenAreaMesh_Standard
+	const vr::HiddenAreaMesh_t meshRight = g_HMD->GetHiddenAreaMesh(vr::Eye_Right); //vr::k_eHiddenAreaMesh_Standard
+
+	if (meshLeft.unTriangleCount == 0 || meshRight.unTriangleCount == 0)
+	{
+		DEBUGPRINT("No available HiddenAreaMesh for %s", g_display);
+	}
+
+	m_HiddenAreaMeshLeft.Create(
+		L"Left Buffer",
+		meshLeft.unTriangleCount * 3,
+		sizeof(vr::HmdVector2_t),
+		meshLeft.pVertexData);
+
+	m_HiddenAreaMeshRight.Create(
+		L"Right Buffer",
+		meshRight.unTriangleCount * 3,
+		sizeof(vr::HmdVector2_t),
+		meshRight.pVertexData);
+}
+
+StructuredBuffer VR::GetHiddenAreaMesh(vr::Hmd_Eye eEye)
+{
+	if (eEye == vr::Eye_Left) return m_HiddenAreaMeshLeft;
+	else return m_HiddenAreaMeshRight;
 }

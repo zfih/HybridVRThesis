@@ -27,6 +27,10 @@ void DepthBuffer::Create(const std::wstring& Name, uint32_t Width, uint32_t Heig
 
 	D3D12_CLEAR_VALUE ClearValue = {};
 	ClearValue.Format = Format;
+	ClearValue.DepthStencil.Stencil = 0xFF;
+
+	m_ClearStencil = ClearValue.DepthStencil.Stencil;
+
 	CreateTextureResource(Graphics::g_Device, Name, ResourceDesc, ClearValue, VidMemPtr);
 	CreateDerivedViews(Graphics::g_Device, Format);
 }
@@ -40,6 +44,10 @@ void DepthBuffer::Create(const std::wstring& Name, uint32_t Width, uint32_t Heig
 
 	D3D12_CLEAR_VALUE ClearValue = {};
 	ClearValue.Format = Format;
+	ClearValue.DepthStencil.Stencil = 0xFF;
+
+	m_ClearStencil = ClearValue.DepthStencil.Stencil;
+
 	CreateTextureResource(Graphics::g_Device, Name, ResourceDesc, ClearValue, VidMemPtr);
 	CreateDerivedViews(Graphics::g_Device, Format);
 }
@@ -65,7 +73,9 @@ void DepthBuffer::CreateArray(const std::wstring& Name, uint32_t Width, uint32_t
 	D3D12_CLEAR_VALUE ClearValue = {};
 	ClearValue.Format = Format;
 	ClearValue.DepthStencil.Depth = 0;
-	ClearValue.DepthStencil.Stencil = 0;
+	ClearValue.DepthStencil.Stencil = 0xFF;
+
+	m_ClearStencil = ClearValue.DepthStencil.Stencil;
 
 	CreateTextureResource(Graphics::g_Device, Name, ResourceDesc, ClearValue);
 	CreateDerivedViews(Graphics::g_Device, Format, ArrayCount);
@@ -152,7 +162,7 @@ void DepthBuffer::CreateDerivedViews(ID3D12Device* Device, DXGI_FORMAT Format, u
 	for (int i = 0; i < ArraySize; i++)
 	{
 		D3D12_DEPTH_STENCIL_VIEW_DESC dsvDesc{};
-		dsvDesc.Format = Format;
+		dsvDesc.Format = GetDSVFormat(Format);
 		dsvDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2DARRAY;
 		dsvDesc.Texture2DArray.MipSlice = 0;
 		dsvDesc.Texture2DArray.FirstArraySlice = i;
@@ -170,6 +180,16 @@ void DepthBuffer::CreateDerivedViews(ID3D12Device* Device, DXGI_FORMAT Format, u
 			m_hStencilSRV = Graphics::AllocateDescriptor(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 
 		SRVDesc.Format = stencilReadFormat;
+
+		if (ArraySize > 1)
+		{
+			SRVDesc.Texture2DArray.PlaneSlice = 1;
+		}
+		else if (Resource->GetDesc().SampleDesc.Count == 1)
+		{
+			SRVDesc.Texture2D.PlaneSlice = 1;
+		}
+
 		Device->CreateShaderResourceView(Resource, &SRVDesc, m_hStencilSRV);
 	}
 }

@@ -854,20 +854,28 @@ void D3D12RaytracingMiniEngineSample::Startup(void)
     DXGI_FORMAT DepthFormat = g_SceneLeftDepthBuffer.GetFormat();
     DXGI_FORMAT ShadowFormat = g_ShadowBuffer.GetFormat();
 
-    D3D12_INPUT_ELEMENT_DESC vertElem[] =
-    {
-        { "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-        { "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-        { "NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-        { "TANGENT", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-        { "BITANGENT", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 }
-    };
+	auto makeVertexInputElement = [](const char* name, DXGI_FORMAT format)
+	{
+		return D3D12_INPUT_ELEMENT_DESC
+		{
+			name, 0, format, 0, D3D12_APPEND_ALIGNED_ELEMENT,
+			D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0
+		};
+	};
+	D3D12_INPUT_ELEMENT_DESC vertElem[] =
+	{
+		makeVertexInputElement("POSITION", DXGI_FORMAT_R32G32B32_FLOAT),
+		makeVertexInputElement("TEXCOORD", DXGI_FORMAT_R32G32_FLOAT),
+		makeVertexInputElement("NORMAL", DXGI_FORMAT_R32G32B32_FLOAT),
+		makeVertexInputElement("TANGENT", DXGI_FORMAT_R32G32B32_FLOAT),
+		makeVertexInputElement("BITANGENT", DXGI_FORMAT_R32G32B32_FLOAT)
+	};
 
     // Depth-only (2x rate)
     m_DepthPSO[0].SetRootSignature(m_RootSig);
     m_DepthPSO[0].SetRasterizerState(RasterizerDefault);
     m_DepthPSO[0].SetBlendState(BlendNoColorWrite);
-    m_DepthPSO[0].SetDepthStencilState(DepthStateReadWrite);
+    m_DepthPSO[0].SetDepthStencilState(DepthReadWriteStencilReadState);
     m_DepthPSO[0].SetInputLayout(_countof(vertElem), vertElem);
     m_DepthPSO[0].SetPrimitiveTopologyType(D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE);
     m_DepthPSO[0].SetRenderTargetFormats(0, nullptr, DepthFormat);
@@ -1540,7 +1548,11 @@ void D3D12RaytracingMiniEngineSample::RenderScene(UINT cam)
             ScopedTimer _prof(L"Opaque", gfxContext);
             {
                 gfxContext.TransitionResource(*curDepthBuf, D3D12_RESOURCE_STATE_DEPTH_WRITE, true);
-				gfxContext.ClearDepth(*curDepthBuf);
+				
+				if (g_VRDepthStencil == 1)
+				{
+					gfxContext.ClearDepthAndStencil(*curDepthBuf);
+				}
 
                 gfxContext.SetPipelineState(m_DepthPSO[0]);
                 gfxContext.SetDepthStencilTarget(curDepthBuf->GetDSV());
