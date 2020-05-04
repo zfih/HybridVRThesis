@@ -131,6 +131,8 @@ namespace Graphics
     uint32_t g_DisplayHeight = 1080;
     ColorBuffer g_PreDisplayBuffer;
 	
+    BoolVar s_MonoStereoCopyToEye = BoolVar("LOD/Mono Stereo/Copy Center To Eye", true);
+    BoolVar s_MonoStereoRenderCenter = BoolVar("LOD/Mono Stereo/Render Center View", false);
 
     void SetNativeResolution(uint32_t NativeWidth, uint32_t NativeHeight)
     {

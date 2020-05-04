@@ -380,6 +380,8 @@ MRT main(VSOutput vsOutput)
         mrt.Normal = float4(normal, reflection);
     }
 
+    //mrt.Color = float4(vsOutput.position.z, 0, 0, 1);
+
     return mrt;
 }
 

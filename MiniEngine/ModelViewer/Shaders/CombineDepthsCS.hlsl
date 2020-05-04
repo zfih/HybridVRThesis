@@ -16,5 +16,12 @@ float Max(float f1, float f2)
 [numthreads(8, 8, 1)]
 void main( uint3 DTid : SV_DispatchThreadID )
 {
-	CombinedDepth[DTid.xy] = Min(LeftDepth[DTid.xy], RightDepth[DTid.xy]);
+	float leftDepth = LeftDepth[DTid.xy];
+	float rightDepth = RightDepth[DTid.xy];
+
+#if 1
+	CombinedDepth[DTid.xy] = Min(leftDepth, rightDepth);
+#else
+	CombinedDepth[DTid.xy] = leftDepth > rightDepth ? 0 : 1;
+#endif
 }

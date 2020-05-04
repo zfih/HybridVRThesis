@@ -277,8 +277,7 @@ private:
 
 	enum eObjectFilter { kOpaque = 0x1, kCutout = 0x2, kTransparent = 0x4, kAll = 0xF, kNone = 0x0 };
 	void RenderObjects(GraphicsContext& Context, const Matrix4& ViewProjMat, UINT curCam, eObjectFilter Filter = kAll);
-	void RenderCenterViewToEye(GraphicsContext& Ctx,
-	                           Cam::CameraType CameraType);
+	void RenderCenterViewToEye(Cam::CameraType CameraType);
 	void RaytraceDiffuse(GraphicsContext& context, const Math::Camera& camera, ColorBuffer& colorTarget);
 	void RaytraceShadows(GraphicsContext& context, const Math::Camera& camera, ColorBuffer& colorTarget,
 	                     DepthBuffer& depth);
@@ -425,6 +424,7 @@ enum RaytracingMode
 
 EnumVar rayTracingMode("RayTraceMode", RTM_DIFFUSE_WITH_SHADOWMAPS, _countof(rayTracingModes),
                        rayTracingModes);
+
 
 class DescriptorHeapStack
 {
@@ -1106,11 +1106,12 @@ void D3D12RaytracingMiniEngineSample::Startup(void)
 		makeVertexInputElement("TANGENT", DXGI_FORMAT_R32G32B32_FLOAT),
 		makeVertexInputElement("BITANGENT", DXGI_FORMAT_R32G32B32_FLOAT)
 	};
-
+	
 	// Depth-only (2x rate)
 	m_DepthPSO.SetRootSignature(m_RootSig);
 	m_DepthPSO.SetRasterizerState(RasterizerDefault);
 	m_DepthPSO.SetBlendState(BlendNoColorWrite);
+
 	m_DepthPSO.SetDepthStencilState(DepthStateReadWrite);
 	m_DepthPSO.SetInputLayout(_countof(vertElem), vertElem);
 	m_DepthPSO.SetPrimitiveTopologyType(D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE);
@@ -1231,11 +1232,11 @@ void D3D12RaytracingMiniEngineSample::Startup(void)
 		// SubAlbert
 		GraphicsPSO& pso = m_screenTextureData.m_PSO;
 		pso.SetRootSignature(rs);
-		pso.SetRasterizerState(RasterizerDefaultCw);
+		pso.SetRasterizerState(RasterizerDefault); 
 		pso.SetBlendState(BlendTraditional);
 		pso.SetInputLayout(_countof(screenVertElem), screenVertElem);
 		pso.SetPrimitiveTopologyType(D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE);
-		pso.SetRenderTargetFormat(ColorFormat, DXGI_FORMAT_UNKNOWN);
+		pso.SetRenderTargetFormat(ColorFormat, DepthFormat);
 		pso.SetVertexShader(g_pScreenTextureVS, sizeof(g_pScreenTextureVS));
 		pso.SetPixelShader(g_pScreenTexturePS, sizeof(g_pScreenTexturePS));
 		pso.Finalize();
@@ -1332,7 +1333,7 @@ void D3D12RaytracingMiniEngineSample::Startup(void)
 	m_CameraPosArray[4].heading = -1.236f;
 	m_CameraPosArray[4].pitch = 0.0f;
 
-	m_Camera.Setup(1.0f, 500.0f, 3000.0f, false, m_screenTextureData.m_Quad);
+	m_Camera.Setup(100.0f, 500.0f, 3000.0f, false, m_screenTextureData.m_Quad);
 	//m_Camera.SetZRange(1.0f, 10000.0f);
 
 	m_CameraController.reset(new VRCameraController(m_Camera, Vector3(kYUnitVector)));
@@ -1502,6 +1503,11 @@ void D3D12RaytracingMiniEngineSample::CreateQuadVerts()
 	};
 	ScreenTextureData& data = m_screenTextureData;
 	makeQuad(data.m_Quad, data.m_Buffer, L"Quad Vertex Buffer");
+}
+
+std::wstring AppendCameraTypeName(const std::wstring &Name, Cam::CameraType CameraType)
+{
+	return Name + CameraTypeToWString(CameraType);
 }
 
 void D3D12RaytracingMiniEngineSample::RenderObjects(
@@ -1874,16 +1880,17 @@ void D3D12RaytracingMiniEngineSample::RenderCenter(
 	SetupGraphicsState(ctx);
 	RenderPrepass(ctx, Cam::kCenter, camera, Constants);
 
-	ctx.TransitionResource(g_SceneDepthBuffer,
-	                       D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-	ctx.TransitionResource(g_SceneDepthBuffer,
-	                       D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-	ctx.TransitionResource(g_SceneDepthBuffer,
-	                       D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-	ctx.TransitionResource(g_SceneCenterColourDepthBuffer,
-	                       D3D12_RESOURCE_STATE_UNORDERED_ACCESS, true);
-
 	{
+
+		ctx.TransitionResource(g_SceneDepthBuffer,
+		                       D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+		ctx.TransitionResource(g_SceneDepthBuffer,
+		                       D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+		ctx.TransitionResource(g_SceneDepthBuffer,
+		                       D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+		ctx.TransitionResource(g_SceneCenterColourDepthBuffer,
+		                       D3D12_RESOURCE_STATE_UNORDERED_ACCESS, true);
+
 		ComputeContext& cmpContext =
 			ComputeContext::Begin(L"Combine Depth m_Buffers", true);
 
@@ -1906,45 +1913,21 @@ void D3D12RaytracingMiniEngineSample::RenderCenter(
 
 	MainRender(ctx, Cam::kCenter, camera,
 	           Constants, skipDiffusePass, skipShadowMap);
-
-
-	// Albert
-	// TODO(freemedude 09:36 27-04): Where to put this?
-	//RenderCenterViewToEye(ctx, Cam::kRight);
-
+	
 	ctx.Finish();
-	RenderCenterViewToEye(ctx, Cam::kLeft);
+	
+	if (s_MonoStereoCopyToEye)
+	{
+		RenderCenterViewToEye(Cam::kLeft);
+		RenderCenterViewToEye(Cam::kRight);
+
+	}
 }
 
 void D3D12RaytracingMiniEngineSample::RenderCenterViewToEye(
-	GraphicsContext& Ctx,
 	Cam::CameraType CameraType)
 {
-	/*
-	 * 1. Let us be able to render to the desired eye
-	 *		Transitioning to Render Target
-	 *		Set as render target
-	 * 2. Let us render FROM the center camera
-	 *		Transition to PSR
-	 *		Set as PSR
-	 *
-	 * 3. Render the Quad
-	 *		Set vertex buffer
-	 *		Draw(6)
-	 */
-
-	wchar_t* name = nullptr;
-
-	if (CameraType == 0)
-	{
-		name = L"RenderCenterViewToEye LEFT";
-	}
-	else
-	{
-		name = L"RenderCenterViewToEye RIGHT";
-	}
-	GraphicsContext& ctx = GraphicsContext::Begin(name);
-
+	GraphicsContext& ctx = GraphicsContext::Begin(AppendCameraTypeName(L"Render Center View to Eye: ", CameraType));
 
 	ctx.TransitionResource(
 		g_SceneColorBuffer, 
@@ -1969,6 +1952,7 @@ void D3D12RaytracingMiniEngineSample::RenderCenterViewToEye(
 		RS_ScreenTexture::kTextureToRender,
 		0, 
 		g_SceneColorBuffer.GetSubSRV(Cam::kCenter));
+	ctx.SetViewportAndScissor(m_MainViewport, m_MainScissor);
 	ctx.Draw(6);
 
 	ctx.TransitionResource(
