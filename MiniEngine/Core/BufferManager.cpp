@@ -21,9 +21,8 @@
 
 namespace Graphics
 {
-    DepthBuffer g_SceneLeftDepthBuffer;
-    DepthBuffer g_SceneRightDepthBuffer;
-	ColorBuffer g_SceneCenterDepthBuffer;
+    DepthBuffer g_SceneDepthBuffer;
+	ColorBuffer g_SceneCenterColourDepthBuffer;
     ColorBuffer g_SceneColorBuffer;
     ColorBuffer g_PostEffectsBuffer;
     ColorBuffer g_VelocityBuffer;
@@ -109,8 +108,9 @@ void Graphics::InitializeRenderingBuffers( uint32_t bufferWidth, uint32_t buffer
     EsramAllocator esram;
 
     esram.PushStack();
+    {
 
-        g_SceneColorBuffer.CreateArray( L"Main Color Buffers", bufferWidth, bufferHeight, 3, DefaultHdrColorFormat, esram );
+        g_SceneColorBuffer.CreateArray( L"Main Color Buffers", bufferWidth, bufferHeight, 3, DefaultHdrColorFormat, esram, true);
         g_VelocityBuffer.Create( L"Motion Vectors", bufferWidth, bufferHeight, 1, DXGI_FORMAT_R32_UINT );
         g_PostEffectsBuffer.Create( L"Post Effects Buffer", bufferWidth, bufferHeight, 1, DXGI_FORMAT_R32_UINT );
 
@@ -122,9 +122,8 @@ void Graphics::InitializeRenderingBuffers( uint32_t bufferWidth, uint32_t buffer
             g_MinMaxDepth16.Create(L"MinMaxDepth 16x16", bufferWidth4, bufferHeight4, 1, DXGI_FORMAT_R32_UINT, esram );
             g_MinMaxDepth32.Create(L"MinMaxDepth 32x32", bufferWidth5, bufferHeight5, 1, DXGI_FORMAT_R32_UINT, esram );
 
-            g_SceneLeftDepthBuffer.Create( L"Scene Left Depth Buffer", bufferWidth, bufferHeight, DSV_FORMAT, esram );
-			g_SceneRightDepthBuffer.Create(L"Scene Right Depth Buffer", bufferWidth, bufferHeight, DSV_FORMAT, esram);
-			g_SceneCenterDepthBuffer.Create( L"Scene Center Depth Buffer", bufferWidth, bufferHeight, 1, DXGI_FORMAT_R32_FLOAT, esram );
+            g_SceneDepthBuffer.CreateArray( L"Scene Depth Buffer", bufferWidth, bufferHeight, 3, DSV_FORMAT);
+            g_SceneCenterColourDepthBuffer.Create( L"Scene Center Colour Depth Buffer", bufferWidth, bufferHeight, 1, DXGI_FORMAT_R32_FLOAT, esram );
 
             esram.PushStack(); // Begin opaque geometry
 
@@ -232,6 +231,7 @@ void Graphics::InitializeRenderingBuffers( uint32_t bufferWidth, uint32_t buffer
     esram.PopStack(); // End final image
 
     InitContext.Finish();
+    }
 }
 
 void Graphics::ResizeDisplayDependentBuffers(uint32_t /*NativeWidth*/, uint32_t NativeHeight)
@@ -242,8 +242,7 @@ void Graphics::ResizeDisplayDependentBuffers(uint32_t /*NativeWidth*/, uint32_t 
 
 void Graphics::DestroyRenderingBuffers()
 {
-    g_SceneLeftDepthBuffer.Destroy();
-    g_SceneRightDepthBuffer.Destroy();
+    g_SceneDepthBuffer.Destroy();
     g_SceneColorBuffer.Destroy();
     g_VelocityBuffer.Destroy();
     g_OverlayBuffer.Destroy();

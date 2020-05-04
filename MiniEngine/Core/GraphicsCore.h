@@ -83,4 +83,7 @@ namespace Graphics
     extern uint32_t g_DisplayHeight;
 
     extern EnumVar g_VRDepthStencil;
+    extern BoolVar s_MonoStereoCopyToEye;
+    extern BoolVar s_MonoStereoRenderCenter;
+
 }

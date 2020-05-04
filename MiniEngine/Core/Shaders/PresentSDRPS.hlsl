@@ -26,6 +26,11 @@ float3 main(float4 position : SV_Position, float3 uvw : TexCoord0) : SV_Target0
 	uvw.y = 1 - uvw.y;
 	int3 index = uvw * int3(nTextureWidth, nTextureHeight, 1);
 
+	/*if (ColorTex[index].x == 0.0f && ColorTex[index].y == 0.0f && ColorTex[index].z == 0.0f)
+	{
+		index.z = 2;
+	}*/
+
 	float3 LinearRGB = RemoveDisplayProfile(ColorTex[index], LDR_COLOR_FORMAT);
 	return ApplyDisplayProfile(LinearRGB, DISPLAY_PLANE_FORMAT);
 }

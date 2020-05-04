@@ -76,11 +76,9 @@ namespace GameCore
         {
             Graphics::HiddenMeshDepthPrepass();
         }
-
         game.RenderShadowMap();
-        game.RenderScene(0);
-        game.RenderScene(1);
-        game.RenderScene(2);
+        
+        game.RenderScene();
 
         PostEffects::Render();
 
@@ -381,6 +379,7 @@ namespace GameCore
                 Graphics::Resize((UINT)(UINT64)lParam & 0xFFFF, (UINT)(UINT64)lParam >> 16);
                 break;
 
+            case WM_CLOSE:
             case WM_DESTROY:
                 PostQuitMessage(0);
                 break;

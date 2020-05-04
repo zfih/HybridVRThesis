@@ -327,9 +327,8 @@ struct MRT
 MRT main(VSOutput vsOutput)
 {
     MRT mrt;
-	mrt.Color = 0.0;
+	mrt.Color = float4(0,1,0,1);
     mrt.Normal = 0.0;
-
 	if (vsOutput.curCam == 2)
 	{
 		float depth = texCenterDepth[vsOutput.position.xy];
@@ -373,13 +372,15 @@ MRT main(VSOutput vsOutput)
     float3 viewDir = normalize(vsOutput.viewDir);
     colorSum += ApplyDirectionalLight(diffuseAlbedo, specularAlbedo, specularMask, gloss, normal, viewDir, SunDirection, SunColor, vsOutput.shadowCoord);
 
-	mrt.Color = float4(colorSum, 1.0f);
+    mrt.Color = float4(colorSum, 1.0f);
 
     if (AreNormalsNeeded)
     {
         float reflection = specularMask * pow(1.0 - saturate(dot(-viewDir, normal)), 5.0);
         mrt.Normal = float4(normal, reflection);
     }
+
+    //mrt.Color = float4(vsOutput.position.z, 0, 0, 1);
 
     return mrt;
 }

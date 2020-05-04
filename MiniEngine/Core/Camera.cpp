@@ -13,6 +13,7 @@
 
 #include "pch.h"
 #include "Camera.h"
+#include "BufferManager.h"
 #include <cmath>
 
 using namespace Math;
@@ -153,17 +154,17 @@ VRCamera::VRCamera()
 
 void VRCamera::Update()
 {
-    if (VR::GetHMD()) // TODO: Have setting for this we can check
-    {
-        m_HMDPoseMat = VR::GetHMDPos();
+	if (VR::GetHMD()) // TODO: Have setting for this we can check
+	{
+		m_HMDPoseMat = VR::GetHMDPos();
 
-        for (int i = 0; i < VRCamera::COUNT; ++i)
-        {
+		for (int i = 0; i < VRCamera::COUNT; ++i)
+		{
 			m_cameras[i].SetVRViewProjMatrices(m_eyeToHead[i] * m_HMDPoseMat, m_eyeProj[i]);
 			m_cameras[i].SetTransform(AffineTransform(m_eyeToHead[i] * m_HMDPoseMat));
-            m_cameras[i].Update();
-        }
-    }
+			m_cameras[i].Update();
+		}
+	}
 	else
 	{
 		for (int i = 0; i < VRCamera::COUNT; ++i)
@@ -251,7 +252,7 @@ float calcIPD(XMMATRIX leftEyeToHead, XMMATRIX rightEyeToHead)
 }
 
 void VRCamera::Setup(float nearPlane, float midPlane, 
-					 float farPlane, bool reverseZ)
+					 float farPlane, bool reverseZ, Graphics::QuadPos &quad)
 {
 	if (VR::GetHMD()) // TODO: Have setting for this we can check
 	{
@@ -280,4 +281,21 @@ void VRCamera::Setup(float nearPlane, float midPlane,
 		m_cameras[RIGHT].SetZRange(nearPlane, midPlane);
 		m_cameras[CENTER].SetZRange(midPlane - 10.0f, farPlane);
 	}
+
+	this->Update();
+
+	Matrix4 CtoL = m_cameras[LEFT].GetProjMatrix() *
+		m_cameras[LEFT].GetViewMatrix() *
+		Matrix4(XMMatrixInverse(nullptr, m_cameras[CENTER].GetViewMatrix())) *
+		Matrix4(XMMatrixInverse(nullptr, m_cameras[CENTER].GetProjMatrix()));
+	
+	Matrix4 CtoR = m_cameras[LEFT].GetProjMatrix() *
+		m_cameras[LEFT].GetViewMatrix() *
+		Matrix4(XMMatrixInverse(nullptr, m_cameras[CENTER].GetViewMatrix())) *
+		Matrix4(XMMatrixInverse(nullptr, m_cameras[CENTER].GetProjMatrix()));
+	
+	quad.topLeft = Vector4(-1, -1, 0, 1);
+	quad.topRight = Vector4(1, -1, 0, 1);
+	quad.bottomLeft = Vector4(-1, 1, 0, 1);
+	quad.bottomRight = Vector4(1, 1, 0, 1);
 }

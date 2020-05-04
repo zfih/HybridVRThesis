@@ -112,7 +112,10 @@ void CommandListManager::CreateNewCommandList( D3D12_COMMAND_LIST_TYPE Type, ID3
     }
     
     ASSERT_SUCCEEDED( m_Device->CreateCommandList(1, Type, *Allocator, nullptr, MY_IID_PPV_ARGS(List)) );
-    (*List)->SetName(L"CommandList");
+    static int nameCounter = 0;
+    wchar_t nameBuffer[20];
+    swprintf(nameBuffer, sizeof(nameBuffer), L"CommandList %d", nameCounter++);
+    (*List)->SetName(nameBuffer);
 }
 
 uint64_t CommandQueue::ExecuteCommandList( ID3D12CommandList* List )

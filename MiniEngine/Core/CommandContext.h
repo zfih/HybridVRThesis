@@ -137,7 +137,11 @@ public:
     void WriteBuffer( GpuResource& Dest, size_t DestOffset, const void* Data, size_t NumBytes );
     void FillBuffer( GpuResource& Dest, size_t DestOffset, DWParam Value, size_t NumBytes );
 
-    void TransitionResource(GpuResource& Resource, D3D12_RESOURCE_STATES NewState, bool FlushImmediate = false);
+    void TransitionResource(
+        GpuResource& Resource, 
+        D3D12_RESOURCE_STATES NewState, 
+        bool FlushImmediate = false, 
+        UINT subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES);
     void BeginResourceTransition(GpuResource& Resource, D3D12_RESOURCE_STATES NewState, bool FlushImmediate = false);
     void InsertUAVBarrier(GpuResource& Resource, bool FlushImmediate = false);
     void InsertAliasBarrier(GpuResource& Before, GpuResource& After, bool FlushImmediate = false);
@@ -172,6 +176,8 @@ protected:
 
     D3D12_RESOURCE_BARRIER m_ResourceBarrierBuffer[16];
     UINT m_NumBarriersToFlush;
+    
+    D3D12_RESOURCE_BARRIER& GetNextFreeBarrier();
 
     ID3D12DescriptorHeap* m_CurrentDescriptorHeaps[D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES];
 
@@ -198,6 +204,7 @@ public:
     void ClearColor( ColorBuffer& Target );
 	void ClearColor(ColorBuffer& Target, int subRTV);
     void ClearDepth( DepthBuffer& Target );
+    void ClearDepth( DepthBuffer& Target, int subDSV );
     void ClearStencil( DepthBuffer& Target );
     void ClearDepthAndStencil( DepthBuffer& Target );
 

@@ -21,9 +21,8 @@
 
 namespace Graphics
 {
-    extern DepthBuffer g_SceneLeftDepthBuffer;    // D32_FLOAT_S8_UINT
-    extern DepthBuffer g_SceneRightDepthBuffer;    // D32_FLOAT_S8_UINT
-	extern ColorBuffer g_SceneCenterDepthBuffer; // R8_UINT
+    extern DepthBuffer g_SceneDepthBuffer;    // D32_FLOAT_S8_UINT
+	extern ColorBuffer g_SceneCenterColourDepthBuffer; // R8_UINT
     extern ColorBuffer g_SceneColorBuffer;    // R11G11B10_FLOAT
     extern ColorBuffer g_PostEffectsBuffer;    // R32_UINT (to support Read-Modify-Write with a UAV)
     extern ColorBuffer g_OverlayBuffer;        // R8G8B8A8_UNORM
@@ -80,6 +79,15 @@ namespace Graphics
     extern ByteAddressBuffer g_FXAAWorkCounters;
     extern ByteAddressBuffer g_FXAAWorkQueue;
     extern TypedBuffer g_FXAAColorQueue;
+
+	struct QuadPos // TODO: Maybe this should be moved somewhere else
+	{
+		Math::Vector4 topLeft;
+        Math::Vector4 topRight;
+        Math::Vector4 bottomLeft;
+        Math::Vector4 bottomRight;
+	};
+
 
     void InitializeRenderingBuffers(uint32_t NativeWidth, uint32_t NativeHeight );
     void ResizeDisplayDependentBuffers(uint32_t NativeWidth, uint32_t NativeHeight);

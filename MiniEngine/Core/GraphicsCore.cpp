@@ -130,13 +130,15 @@ namespace Graphics
     const char* OnOffLabels[] = { "On", "Off" };
     EnumVar g_VRDepthStencil(
         "VR Depth Stencil", 0, _countof(OnOffLabels), OnOffLabels);
-
+    
     uint32_t g_NativeWidth = 0;
     uint32_t g_NativeHeight = 0;
     uint32_t g_DisplayWidth = 1920;
     uint32_t g_DisplayHeight = 1080;
     ColorBuffer g_PreDisplayBuffer;
 	
+    BoolVar s_MonoStereoCopyToEye = BoolVar("LOD/Mono Stereo/Copy Center To Eye", true);
+    BoolVar s_MonoStereoRenderCenter = BoolVar("LOD/Mono Stereo/Render Center View", false);
 
     void SetNativeResolution(uint32_t NativeWidth, uint32_t NativeHeight)
     {
@@ -282,6 +284,12 @@ static HRESULT EnableExperimentalShaderModels() { return S_OK; }
 // Initialize the DirectX resources required to run.
 void Graphics::Initialize(void)
 {
+    /*ComPtr<ID3D12Debug> spDebugController0;
+    ComPtr<ID3D12Debug1> spDebugController1;
+    D3D12GetDebugInterface(IID_PPV_ARGS(&spDebugController0));
+    spDebugController0->QueryInterface(IID_PPV_ARGS(&spDebugController1));
+    spDebugController1->SetEnableGPUBasedValidation(true);*/
+
     ASSERT(s_SwapChain1 == nullptr, "Graphics has already been initialized");
 
     Microsoft::WRL::ComPtr<ID3D12Device> pDevice;
@@ -496,7 +504,7 @@ void Graphics::Initialize(void)
     s_PresentRS[0].InitAsDescriptorRange(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 0, 2);
     s_PresentRS[1].InitAsConstants(0, 6, D3D12_SHADER_VISIBILITY_ALL);
     s_PresentRS[2].InitAsBufferSRV(2, D3D12_SHADER_VISIBILITY_PIXEL);
-    s_PresentRS[3].InitAsDescriptorRange(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 0, 1);
+	s_PresentRS[3].InitAsDescriptorRange(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 0, 1);
     s_PresentRS.InitStaticSampler(0, SamplerLinearClampDesc);
     s_PresentRS.InitStaticSampler(1, SamplerPointClampDesc);
     s_PresentRS.Finalize(L"Present");
@@ -743,7 +751,7 @@ void Graphics::PreparePresentLDR(void)
     {
         Context.SetPipelineState(PresentSDRPS);
         Context.TransitionResource(UpsampleDest, D3D12_RESOURCE_STATE_RENDER_TARGET);
-        Context.SetRenderTarget(UpsampleDest.GetRTV());
+		Context.SetRenderTarget(UpsampleDest.GetRTV());
         Context.SetViewportAndScissor(0, 0, g_DisplayWidth, g_DisplayHeight);
         Context.Draw(vertCount);
     }
@@ -819,8 +827,8 @@ void Graphics::HiddenMeshDepthPrepass()
     /// Render depth to each eye
 
 	// Get the relevant meshes from OpenVR
-    const StructuredBuffer& BufferLeft = VR::GetHiddenAreaMesh(vr::Eye_Left);
-    const StructuredBuffer& BufferRight = VR::GetHiddenAreaMesh(vr::Eye_Right);
+    StructuredBuffer& BufferLeft = VR::GetHiddenAreaMesh(vr::Eye_Left);
+    StructuredBuffer& BufferRight = VR::GetHiddenAreaMesh(vr::Eye_Right);
 
 	if(BufferLeft.GetElementCount() < 2) // cannot create buffer with size 0, so default is size 1.
 	{
@@ -834,27 +842,27 @@ void Graphics::HiddenMeshDepthPrepass()
     context.SetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
 	// Transition and clear depth
-    context.TransitionResource(g_SceneLeftDepthBuffer, D3D12_RESOURCE_STATE_DEPTH_WRITE);
-    context.TransitionResource(g_SceneRightDepthBuffer, D3D12_RESOURCE_STATE_DEPTH_WRITE);
+    // TODO(freemedude 15:43 04-05): Maybe needs to be per subresource
+    context.TransitionResource(g_SceneDepthBuffer, D3D12_RESOURCE_STATE_DEPTH_WRITE);
     context.TransitionResource(g_DisplayPlane[g_CurrentBuffer], D3D12_RESOURCE_STATE_RENDER_TARGET, true);
-    context.ClearDepthAndStencil(g_SceneLeftDepthBuffer);
-    context.ClearDepthAndStencil(g_SceneRightDepthBuffer);
+    context.ClearDepthAndStencil(g_SceneDepthBuffer);
 
 	// Set pipelinestate
     context.SetRootSignature(HiddenMeshDepthRS);
     context.SetPipelineState(HiddenMeshDepthPSO);
     context.SetStencilRef(0x0);
-    context.SetViewportAndScissor(0, 0, g_SceneLeftDepthBuffer.GetWidth(), g_SceneLeftDepthBuffer.GetHeight());
+    context.SetViewportAndScissor(0, 0, g_SceneDepthBuffer.GetWidth(), g_SceneDepthBuffer.GetHeight());
 
-	// set vertex buffer and depth stencil then draw
-    context.SetVertexBuffer(0, BufferLeft.VertexBufferView());
-    context.SetDepthStencilTarget(g_SceneLeftDepthBuffer.GetDSV());
-    context.Draw(BufferLeft.GetElementCount());
+    auto renderEye = [&](StructuredBuffer& Buffer, Cam::CameraType CameraType)
+    {
+        context.SetVertexBuffer(0, Buffer.VertexBufferView());
+        context.SetDepthStencilTarget(g_SceneDepthBuffer.GetSubDSV(CameraType));
+        context.Draw(Buffer.GetElementCount());
 
-	// repeat for right eye
-    context.SetVertexBuffer(0, BufferRight.VertexBufferView());
-	context.SetDepthStencilTarget(g_SceneRightDepthBuffer.GetDSV());
-    context.Draw(BufferRight.GetElementCount());
+    };
+
+    renderEye(BufferLeft, Cam::kLeft);
+    renderEye(BufferRight, Cam::kRight);
 
     context.Finish();
 }

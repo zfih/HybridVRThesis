@@ -209,7 +209,7 @@ namespace Math
 		void SetCenterProjVals(float midPlane);
 		Matrix4 CustomProj(CameraType cam, float nearFloat, float farFloat);
 		void Setup(float nearPlane, float midPlane,
-				   float farPlane, bool reverseZ);
+				   float farPlane, bool reverseZ, Graphics::QuadPos& quad);
         void Update();
 
         // Public functions for controlling where the camera is and its orientation
