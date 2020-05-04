@@ -836,12 +836,12 @@ void Graphics::HiddenMeshDepthPrepass()
 	// Transition and clear depth
     context.TransitionResource(g_SceneDepthBuffer, D3D12_RESOURCE_STATE_DEPTH_WRITE);
     context.TransitionResource(g_DisplayPlane[g_CurrentBuffer], D3D12_RESOURCE_STATE_RENDER_TARGET, true);
-    context.ClearDepth(g_SceneDepthBuffer);
+    context.ClearDepthAndStencil(g_SceneDepthBuffer);
 
 	// Set pipelinestate
     context.SetRootSignature(HiddenMeshDepthRS);
     context.SetPipelineState(HiddenMeshDepthPSO);
-    context.SetStencilRef(0xFF);
+    context.SetStencilRef(0x0);
     context.SetViewportAndScissor(0, 0, g_SceneDepthBuffer.GetWidth(), g_SceneDepthBuffer.GetHeight());
 
 	// set vertex buffer and depth stencil then draw
@@ -864,8 +864,6 @@ void Graphics::Present(void)
     else
         PreparePresentLDR();
 
-	// TODO: MOVE TO APPROPRITE PLACE IN PIPE - HERE FOR TESTING
-    VR::Sync();
 
     g_CurrentBuffer = (g_CurrentBuffer + 1) % SWAP_CHAIN_BUFFER_COUNT;
 
@@ -908,6 +906,9 @@ void Graphics::Present(void)
     TemporalEffects::Update((uint32_t)s_FrameIndex);
 
     SetNativeResolution(g_NativeWidth, g_NativeHeight);
+
+	// TODO: MOVE TO APPROPRITE PLACE IN PIPE - HERE FOR TESTING
+    VR::Sync();
 }
 
 uint64_t Graphics::GetFrameCount(void)

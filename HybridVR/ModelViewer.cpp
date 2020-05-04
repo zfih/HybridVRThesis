@@ -1568,7 +1568,7 @@ void D3D12RaytracingMiniEngineSample::RenderScene(UINT cam)
 	RenderLightShadows(gfxContext, cam);
 
 	{
-		gfxContext.SetStencilRef(0xFF);
+		gfxContext.SetStencilRef(0x0);
 		
 		ScopedTimer _prof(L"Z PrePass", gfxContext);
 
@@ -1583,7 +1583,7 @@ void D3D12RaytracingMiniEngineSample::RenderScene(UINT cam)
 				auto fuckyou = g_VRDepthStencil;
 				if (g_VRDepthStencil == 1)
 				{
-					gfxContext.ClearDepth(g_SceneDepthBuffer);
+					gfxContext.ClearDepthAndStencil(g_SceneDepthBuffer);
 				}
 
 				gfxContext.SetPipelineState(m_DepthPSO[0]);
