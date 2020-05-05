@@ -965,13 +965,14 @@ void D3D12RaytracingMiniEngineSample::Startup(void)
 		makeVertexInputElement("TANGENT", DXGI_FORMAT_R32G32B32_FLOAT),
 		makeVertexInputElement("BITANGENT", DXGI_FORMAT_R32G32B32_FLOAT)
 	};
-	
+
 	// Depth-only (2x rate)
 	m_DepthPSO.SetRootSignature(m_RootSig);
 	m_DepthPSO.SetRasterizerState(RasterizerDefault);
 	m_DepthPSO.SetBlendState(BlendNoColorWrite);
 
-	m_DepthPSO.SetDepthStencilState(DepthReadWriteStencilReadState);
+	// TODO(freemedude 09:10 05-05): Possibly wrong DS State
+	m_DepthPSO.SetDepthStencilState(DepthStateReadWrite);
 	m_DepthPSO.SetInputLayout(_countof(vertElem), vertElem);
 	m_DepthPSO.SetPrimitiveTopologyType(D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE);
 	m_DepthPSO.SetRenderTargetFormats(0, nullptr, DepthFormat);
@@ -1731,9 +1732,6 @@ void D3D12RaytracingMiniEngineSample::RenderEye(
 		GraphicsContext::Begin(L"Scene Render " + CameraTypeToWString(CameraType));
 	Camera& camera = *m_Camera[CameraType];
 
-	// TODO(freemedude 09:41 27-04): Figure out proper placement
-	ParticleEffects::Update(ctx.GetComputeContext(), Graphics::GetFrameTime());
-
 	SetupGraphicsState(ctx);
 	RenderPrepass(ctx, CameraType, camera, Constants);
 	
@@ -1879,7 +1877,7 @@ void D3D12RaytracingMiniEngineSample::RenderPrepass(
 			// instead of the entire thing
 			if (g_VRDepthStencil == 1)
 			{
-				Ctx.ClearDepthAndStencil(g_SceneDepthBuffer);
+				Ctx.ClearDepthAndStencil(g_SceneDepthBuffer, CameraType);
 			}
 			//Ctx.ClearDepth(g_SceneDepthBuffer, CameraType);
 

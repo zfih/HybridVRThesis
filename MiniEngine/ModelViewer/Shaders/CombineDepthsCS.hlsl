@@ -19,9 +19,5 @@ void main( uint3 DTid : SV_DispatchThreadID )
 	float leftDepth = LeftDepth[DTid.xy];
 	float rightDepth = RightDepth[DTid.xy];
 
-#if 1
 	CombinedDepth[DTid.xy] = Min(leftDepth, rightDepth);
-#else
-	CombinedDepth[DTid.xy] = leftDepth > rightDepth ? 0 : 1;
-#endif
 }
