@@ -972,7 +972,7 @@ void D3D12RaytracingMiniEngineSample::Startup(void)
 	m_DepthPSO.SetBlendState(BlendNoColorWrite);
 
 	// TODO(freemedude 09:10 05-05): Possibly wrong DS State
-	m_DepthPSO.SetDepthStencilState(DepthStateReadWrite);
+	m_DepthPSO.SetDepthStencilState(DepthReadWriteStencilReadState);
 	m_DepthPSO.SetInputLayout(_countof(vertElem), vertElem);
 	m_DepthPSO.SetPrimitiveTopologyType(D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE);
 	m_DepthPSO.SetRenderTargetFormats(0, nullptr, DepthFormat);
@@ -1021,13 +1021,12 @@ void D3D12RaytracingMiniEngineSample::Startup(void)
 	m_WaveTileCountPSO.SetPixelShader(g_pWaveTileCountPS, sizeof(g_pWaveTileCountPS));
 	m_WaveTileCountPSO.Finalize();
 
-	m_ComputeRootSig.Reset(3, 0);
+	m_ComputeRootSig.Reset(2, 0);
 	m_ComputeRootSig[0].InitAsDescriptorRange(
-		D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 0, 1, D3D12_SHADER_VISIBILITY_ALL);
+		D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 0, 3, D3D12_SHADER_VISIBILITY_ALL);
 	m_ComputeRootSig[1].InitAsDescriptorRange(
-		D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 1, D3D12_SHADER_VISIBILITY_ALL);
-	m_ComputeRootSig[2].InitAsDescriptorRange(
-		D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 2, 1, D3D12_SHADER_VISIBILITY_ALL);
+		D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 0, 1, D3D12_SHADER_VISIBILITY_ALL);
+
 
 	m_ComputeRootSig.Finalize(L"D3D12RaytracingMiniEngineSampleCompute",
 	                          D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
@@ -1779,9 +1778,11 @@ void D3D12RaytracingMiniEngineSample::RenderCenter(
 		cmpContext.SetDynamicDescriptor(
 			0, 0, g_SceneDepthBuffer.GetSubSRV(Cam::kLeft));
 		cmpContext.SetDynamicDescriptor(
-			1, 0, g_SceneDepthBuffer.GetSubSRV(Cam::kRight));
+			0, 1, g_SceneDepthBuffer.GetSubSRV(Cam::kRight));
 		cmpContext.SetDynamicDescriptor(
-			2, 0, g_SceneCenterColourDepthBuffer.GetUAV());
+			0, 2, g_SceneDepthBuffer.GetStencilSRV());
+		cmpContext.SetDynamicDescriptor(
+			1, 0, g_SceneCenterColourDepthBuffer.GetUAV());
 
 		cmpContext.Dispatch2D(
 			g_SceneDepthBuffer.GetWidth(),
