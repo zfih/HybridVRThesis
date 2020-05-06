@@ -31,6 +31,7 @@ float3 main(float4 position : SV_Position, float3 uvw : TexCoord0) : SV_Target0
 		index.z = 2;
 	}*/
 
-	float3 LinearRGB = RemoveDisplayProfile(ColorTex[index], LDR_COLOR_FORMAT);
-	return ApplyDisplayProfile(LinearRGB, DISPLAY_PLANE_FORMAT);
+	/*float3 LinearRGB = RemoveDisplayProfile(ColorTex[index], LDR_COLOR_FORMAT);
+	return ApplyDisplayProfile(LinearRGB, DISPLAY_PLANE_FORMAT);*/
+	return ColorTex[index];
 }

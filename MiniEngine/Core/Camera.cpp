@@ -254,6 +254,8 @@ float calcIPD(XMMATRIX leftEyeToHead, XMMATRIX rightEyeToHead)
 void VRCamera::Setup(float nearPlane, float midPlane, 
 					 float farPlane, bool reverseZ, Graphics::QuadPos &quad)
 {
+	const float epsilon = 300.0f;
+
 	if (VR::GetHMD()) // TODO: Have setting for this we can check
 	{
 		m_HMDPoseMat = VR::GetHMDPos();
@@ -273,13 +275,13 @@ void VRCamera::Setup(float nearPlane, float midPlane,
 		m_cameras[CENTER].ReverseZ(reverseZ);
 		m_eyeToHead[CENTER] = XMMatrixTranslation(0, 0, m_Zc);
 		SetCenterProjVals(midPlane);
-		m_eyeProj[CENTER] = CustomProj(CENTER, midPlane, farPlane);
+		m_eyeProj[CENTER] = CustomProj(CENTER, midPlane - epsilon, farPlane);
 	}
 	else
 	{
 		m_cameras[LEFT].SetZRange(nearPlane, midPlane);
 		m_cameras[RIGHT].SetZRange(nearPlane, midPlane);
-		m_cameras[CENTER].SetZRange(midPlane - 10.0f, farPlane);
+		m_cameras[CENTER].SetZRange(midPlane - epsilon, farPlane);
 	}
 
 	this->Update();
