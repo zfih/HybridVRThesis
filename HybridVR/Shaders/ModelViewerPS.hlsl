@@ -348,7 +348,6 @@ MRT main(VSOutput vsOutput)
 		}
         else if (depth > 0.0f)
         {
-            //monoStereoBlend = 1.0f - (vsOutput.position.z / 2);
             monoStereoBlend = 1.0f - (depth / 0.001f);
         }
 	}

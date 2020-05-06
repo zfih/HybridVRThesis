@@ -254,7 +254,7 @@ float calcIPD(XMMATRIX leftEyeToHead, XMMATRIX rightEyeToHead)
 void VRCamera::Setup(float nearPlane, float midPlane, 
 					 float farPlane, bool reverseZ, Graphics::QuadPos &quad)
 {
-	const float epsilon = 300.0f;
+	const float epsilon = 50.0f;
 
 	if (VR::GetHMD()) // TODO: Have setting for this we can check
 	{

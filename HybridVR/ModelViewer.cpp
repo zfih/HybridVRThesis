@@ -1004,7 +1004,7 @@ void D3D12RaytracingMiniEngineSample::Startup(void)
 
 	// Full color pass
 	m_ModelPSO = m_DepthPSO;
-	m_ModelPSO.SetBlendState(BlendTraditional);
+	m_ModelPSO.SetBlendState(BlendAdditive);
 	m_ModelPSO.SetDepthStencilState(DepthStateTestEqual);
 	DXGI_FORMAT formats[]{ColorFormat, NormalFormat};
 	m_ModelPSO.SetRenderTargetFormats(_countof(formats), formats, DepthFormat);
@@ -1193,7 +1193,7 @@ void D3D12RaytracingMiniEngineSample::Startup(void)
 	m_CameraPosArray[4].heading = -1.236f;
 	m_CameraPosArray[4].pitch = 0.0f;
 
-	m_Camera.Setup(1.0f, 500.0f, 3000.0f, false, m_screenTextureData.m_Quad);
+	m_Camera.Setup(1.0f, 150.0f, 3000.0f, false, m_screenTextureData.m_Quad);
 	//m_Camera.SetZRange(1.0f, 10000.0f);
 
 	m_CameraController.reset(new VRCameraController(m_Camera, Vector3(kYUnitVector)));
