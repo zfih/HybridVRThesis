@@ -56,6 +56,7 @@ namespace Graphics
 void CameraController::Update( float deltaTime )
 {
     (deltaTime);
+    m_TargetCamera.Update();
 
     float timeScale = Graphics::DebugZoom == 0 ? 1.0f : Graphics::DebugZoom == 1 ? 0.5f : 0.25f;
 

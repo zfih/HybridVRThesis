@@ -91,65 +91,8 @@ void Camera::UpdateProjMatrix( void )
         ) );
 }
 
-float testMonoStereoG(float m, float a, float b, float Zc) // TODO: Clean up test functions.
-{
-	return Pow(m - Zc, -1.0f) * (a * m + Zc) + b;
-}
-
-void testCenterProjVals(VRCamera::projectionValues L, VRCamera::projectionValues R, float tLX, float tRX, float midPlane, float Zc, OUT VRCamera::projectionValues& C)
-{
-	C.left = Max(
-		testMonoStereoG(midPlane, L.right, tLX, Zc),
-		testMonoStereoG(midPlane, R.right, tRX, Zc));
-
-	C.right = Min(
-		testMonoStereoG(midPlane, L.left, tLX, Zc),
-		testMonoStereoG(midPlane, R.left, tRX, Zc));
-
-	C.top = Max(
-		testMonoStereoG(midPlane, L.bottom, 0, Zc),
-		testMonoStereoG(midPlane, R.bottom, 0, Zc));
-
-	C.bottom = Max(
-		testMonoStereoG(midPlane, L.top, 0, Zc),
-		testMonoStereoG(midPlane, R.top, 0, Zc));
-}
-
-Matrix4 testProj(float left, float right, float top, float bottom, float nearFloat, float farFloat)
-{
-	float idx = 1.0f / (right - left);
-	float idy = 1.0f / (bottom - top);
-	float Q1 = nearFloat / (farFloat - nearFloat);
-	float Q2 = Q1 * farFloat;
-	float sx = right + left;
-	float sy = bottom + top;
-
-	return Matrix4(
-		Vector4(2 * idx,  0.0f,     0.0f, 0.0f),
-		Vector4(0.0f,     2 * idy,  0.0f, 0.0f),
-		Vector4(sx * idx, sy * idy, Q1,  -1.0f),
-		Vector4(0.0f,     0.0f,     Q2,   0.0f)
-	);
-}
-
-void testFunc()
-{
-	float IPD = 0.064;
-	VRCamera::projectionValues L, R, C;
-	L = { -1.391937, 1.247409, -1.464287, 1.468819 };
-	R = { -1.246557, 1.398447, -1.472458, 1.465505 };
-	float Zc = Min(IPD / (2 * L.left), -IPD / (2 * R.right));
-	// The paper calls these tL, tR, and tC, but we don't
-	Vector3 vL = (-IPD / 2, 0, 0);
-	Vector3 vR = (IPD / 2, 0, 0);
-	Vector3 vC = (0, 0, Zc);
-	float midPlane = 1.0f;
-	testCenterProjVals(L, R, vL.GetX(), vR.GetX(), midPlane, Zc, C);
-}
-
 VRCamera::VRCamera()
 {
-	testFunc();
 }
 
 void VRCamera::Update()
@@ -251,7 +194,6 @@ float calcIPD(XMMATRIX leftEyeToHead, XMMATRIX rightEyeToHead)
 	return Sqrt(Pow(x, 2.0f) + Pow(y, 2.0f) + Pow(z, 2.0f));
 }
 
-
 void VRCamera::Setup(float nearPlane, float midPlane,
 	float farPlane, bool reverseZ, ScreenTextureData& Data)
 {
@@ -287,28 +229,53 @@ void VRCamera::Setup(float nearPlane, float midPlane,
 
 	Matrix4 MonoToStereoMappings[num_eyes];
 
-	MonoToStereoMappings[LEFT] = m_cameras[LEFT].GetProjMatrix() *
-		m_cameras[LEFT].GetViewMatrix() *
-		m_cameras[CENTER].GetViewMatrix().Inverse() *
-		m_cameras[CENTER].GetProjMatrix().Inverse();
+	MonoToStereoMappings[LEFT] = 
+		m_cameras[LEFT].GetProjMatrix() 
+		*
+		m_cameras[LEFT].GetViewMatrix() 
+		*
+		m_cameras[CENTER].GetViewMatrix().Inverse() 
+		*
+		m_cameras[CENTER].GetProjMatrix().Inverse()
+		;
 
-	MonoToStereoMappings[RIGHT] = m_cameras[RIGHT].GetProjMatrix() *
-		m_cameras[RIGHT].GetViewMatrix() *
-		m_cameras[CENTER].GetViewMatrix().Inverse() *
-		m_cameras[CENTER].GetProjMatrix().Inverse();
+	MonoToStereoMappings[RIGHT] =
+		m_cameras[RIGHT].GetProjMatrix()
+		*
+		m_cameras[RIGHT].GetViewMatrix()
+		*
+		m_cameras[CENTER].GetViewMatrix().Inverse()
+		*
+		m_cameras[CENTER].GetProjMatrix().Inverse()
+		;
 	
 #define UNPACKV4(v) v.GetX(), v.GetY(), v.GetZ(), v.GetW()
 
 	auto createScreenQuad = [&](CameraType Camera, LPCWSTR ResourceName ) -> void
 	{
-		StructuredBuffer& buffer = Data.m_Buffer[Camera];
+		Matrix4 mapping = MonoToStereoMappings[Camera];
 
-		Matrix4 &mapping = MonoToStereoMappings[Camera];
+		/*if (Camera == LEFT)
+		{
+			mapping = mapping * Matrix4::MakeTranslate({0.0275, 0, 0});
+		}
+		else
+		{
+			mapping = mapping * Matrix4::MakeTranslate({-0.0275, 0, 0});
+		}*/
 
-		const Vector4 tl = /*MonoToStereo * */Vector4(-1, 1, 1, 1);
-		const Vector4 tr = /*MonoToStereo * */Vector4(1, 1, 1, 1);
-		const Vector4 bl =/* MonoToStereo * */Vector4(-1, -1, 1, 1);
-		const Vector4 br = /*MonoToStereo * */Vector4(1, -1, 1, 1);
+		float depth = 1;
+		Vector4 tl = mapping * Vector4(-1, 1, depth, 1);
+		tl /= tl.GetW();
+
+		Vector4 tr = mapping * Vector4(1, 1, depth, 1);
+		tr /= tr.GetW();
+
+		Vector4 bl = mapping * Vector4(-1, -1, depth, 1);
+		bl /= bl.GetW();
+		
+		Vector4 br = mapping * Vector4(1, -1, depth, 1);
+		br /= br.GetW();
 
 		float vertices[] =
 		{
@@ -338,9 +305,10 @@ void VRCamera::Setup(float nearPlane, float midPlane,
 		};
 
 		const int floatsPerVertex = 6;
-		const int verts = _countof(vertices) / floatsPerVertex;
+		const int vertexCount = _countof(vertices) / floatsPerVertex;
 
-		buffer.Create(ResourceName, verts, floatsPerVertex * sizeof(float), vertices);
+		Data.m_Buffer[Camera]
+			.Create(ResourceName, vertexCount, floatsPerVertex * sizeof(float), vertices);
 	};
 
 	createScreenQuad(LEFT, L"ScreenTexture Quad buffer LEFT");

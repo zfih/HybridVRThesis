@@ -72,6 +72,10 @@ namespace Math
         static INLINE Matrix4 MakeScale( float scale ) { return Matrix4(XMMatrixScaling(scale, scale, scale)); }
         static INLINE Matrix4 MakeScale( Vector3 scale ) { return Matrix4(XMMatrixScalingFromVector(scale)); }
 
+        static INLINE Matrix4 MakeTranslate( float offset ) { return Matrix4(XMMatrixTranslation(offset, offset, offset)); }
+        static INLINE Matrix4 MakeTranslate( Vector3 offset ) { return Matrix4(XMMatrixTranslationFromVector(offset)); }
+
+        static INLINE Matrix4 Identity() { return Matrix4(XMMatrixIdentity()); }
 
     private:
         XMMATRIX m_mat;
