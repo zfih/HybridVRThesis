@@ -86,6 +86,17 @@ namespace Math
 
     };
 
+    struct ScreenTextureData
+    {
+        // Screen Texture quad buffers
+        StructuredBuffer m_Buffer[2];
+
+        // Render to Quad PSO
+        GraphicsPSO m_PSO;
+
+        RootSignature m_RootSignature;
+    };
+
     class Camera : public BaseCamera
     {
     public:
@@ -179,6 +190,8 @@ namespace Math
     		COUNT
     	};
 
+        static const int num_eyes = 2;
+
         // Initialize vector of count cameras, we never want more or less
 		// and we want them to be initialized.
         std::vector<Camera> m_cameras = std::vector<Camera>(COUNT);
@@ -209,7 +222,7 @@ namespace Math
 		void SetCenterProjVals(float midPlane);
 		Matrix4 CustomProj(CameraType cam, float nearFloat, float farFloat);
 		void Setup(float nearPlane, float midPlane,
-				   float farPlane, bool reverseZ, Graphics::QuadPos& quad);
+				   float farPlane, bool reverseZ, ScreenTextureData& ScreenTextureData);
         void Update();
 
         // Public functions for controlling where the camera is and its orientation

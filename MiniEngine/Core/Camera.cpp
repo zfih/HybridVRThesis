@@ -251,8 +251,9 @@ float calcIPD(XMMATRIX leftEyeToHead, XMMATRIX rightEyeToHead)
 	return Sqrt(Pow(x, 2.0f) + Pow(y, 2.0f) + Pow(z, 2.0f));
 }
 
-void VRCamera::Setup(float nearPlane, float midPlane, 
-					 float farPlane, bool reverseZ, Graphics::QuadPos &quad)
+
+void VRCamera::Setup(float nearPlane, float midPlane,
+	float farPlane, bool reverseZ, ScreenTextureData& Data)
 {
 	if (VR::GetHMD()) // TODO: Have setting for this we can check
 	{
@@ -284,18 +285,64 @@ void VRCamera::Setup(float nearPlane, float midPlane,
 
 	this->Update();
 
-	Matrix4 CtoL = m_cameras[LEFT].GetProjMatrix() *
+	Matrix4 MonoToStereoMappings[num_eyes];
+
+	MonoToStereoMappings[LEFT] = m_cameras[LEFT].GetProjMatrix() *
 		m_cameras[LEFT].GetViewMatrix() *
-		Matrix4(XMMatrixInverse(nullptr, m_cameras[CENTER].GetViewMatrix())) *
-		Matrix4(XMMatrixInverse(nullptr, m_cameras[CENTER].GetProjMatrix()));
+		m_cameras[CENTER].GetViewMatrix().Inverse() *
+		m_cameras[CENTER].GetProjMatrix().Inverse();
+
+	MonoToStereoMappings[RIGHT] = m_cameras[RIGHT].GetProjMatrix() *
+		m_cameras[RIGHT].GetViewMatrix() *
+		m_cameras[CENTER].GetViewMatrix().Inverse() *
+		m_cameras[CENTER].GetProjMatrix().Inverse();
 	
-	Matrix4 CtoR = m_cameras[LEFT].GetProjMatrix() *
-		m_cameras[LEFT].GetViewMatrix() *
-		Matrix4(XMMatrixInverse(nullptr, m_cameras[CENTER].GetViewMatrix())) *
-		Matrix4(XMMatrixInverse(nullptr, m_cameras[CENTER].GetProjMatrix()));
-	
-	quad.topLeft = Vector4(-1, -1, 0, 1);
-	quad.topRight = Vector4(1, -1, 0, 1);
-	quad.bottomLeft = Vector4(-1, 1, 0, 1);
-	quad.bottomRight = Vector4(1, 1, 0, 1);
+#define UNPACKV4(v) v.GetX(), v.GetY(), v.GetZ(), v.GetW()
+
+	auto createScreenQuad = [&](CameraType Camera, LPCWSTR ResourceName ) -> void
+	{
+		StructuredBuffer& buffer = Data.m_Buffer[Camera];
+
+		Matrix4 &mapping = MonoToStereoMappings[Camera];
+
+		const Vector4 tl = /*MonoToStereo * */Vector4(-1, 1, 1, 1);
+		const Vector4 tr = /*MonoToStereo * */Vector4(1, 1, 1, 1);
+		const Vector4 bl =/* MonoToStereo * */Vector4(-1, -1, 1, 1);
+		const Vector4 br = /*MonoToStereo * */Vector4(1, -1, 1, 1);
+
+		float vertices[] =
+		{
+			// TL
+			UNPACKV4(tl), // Position
+			0, 0,         // UV
+
+			// BL
+			UNPACKV4(bl), // Position
+			0, 1,        // UV
+
+			// TR
+			UNPACKV4(tr), // Position
+			1, 0,       // UV
+
+			// TR
+			UNPACKV4(tr), // Position
+			1, 0,       // UV
+
+			// BL
+			UNPACKV4(bl), // Position
+			0, 1,        // UV
+
+			// BR
+			UNPACKV4(br), // Position
+			1, 1,       // UV
+		};
+
+		const int floatsPerVertex = 6;
+		const int verts = _countof(vertices) / floatsPerVertex;
+
+		buffer.Create(ResourceName, verts, floatsPerVertex * sizeof(float), vertices);
+	};
+
+	createScreenQuad(LEFT, L"ScreenTexture Quad buffer LEFT");
+	createScreenQuad(RIGHT,  L"ScreenTexture Quad buffer RIGHT");
 }

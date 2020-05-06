@@ -55,6 +55,9 @@ namespace Math
         INLINE Vector4 GetZ() const { return Vector4(m_mat.r[2]); }
         INLINE Vector4 GetW() const { return Vector4(m_mat.r[3]); }
 
+        INLINE Matrix4 Inverse() const { return Matrix4(XMMatrixInverse(nullptr, m_mat)); }
+
+
         INLINE void SetX(Vector4 x) { m_mat.r[0] = x; }
         INLINE void SetY(Vector4 y) { m_mat.r[1] = y; }
         INLINE void SetZ(Vector4 z) { m_mat.r[2] = z; }

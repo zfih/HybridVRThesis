@@ -183,8 +183,6 @@ public:
 
 	void SetCameraToPredefinedPosition(int cameraPosition);
 
-	void CreateQuadVerts();
-
 private:
 	void RenderColor(
 		GraphicsContext& Ctx,
@@ -228,20 +226,7 @@ private:
 	                     DepthBuffer& depth);
 	void RaytraceReflections(GraphicsContext& context, const Math::Camera& camera, ColorBuffer& colorTarget,
 	                         DepthBuffer& depth, ColorBuffer& normals);
-	// Albert
-	struct ScreenTextureData
-	{
-		// Screen Texture quad buffers
-		StructuredBuffer m_Buffer;
 
-		// Left and right eye quads
-		QuadPos m_Quad;
-
-		// Render to Quad PSO
-		GraphicsPSO m_PSO;
-
-		RootSignature m_RootSignature;
-	} m_screenTextureData;
 
 
 	VRCamera m_Camera;
@@ -291,6 +276,8 @@ private:
 	UINT m_CameraPosArrayCurrentPosition;
 };
 
+
+ScreenTextureData g_ScreenTextureData;
 
 int wmain(int argc, wchar_t** argv)
 {
@@ -1079,7 +1066,7 @@ void D3D12RaytracingMiniEngineSample::Startup(void)
 		};
 
 		// Root signature configuration
-		RootSignature& rs = m_screenTextureData.m_RootSignature;
+		RootSignature& rs = g_ScreenTextureData.m_RootSignature;
 		rs.Reset(RS_ScreenTexture::kCount, 1);
 		rs[RS_ScreenTexture::kTextureToRender].InitAsDescriptorRange(
 			D3D12_DESCRIPTOR_RANGE_TYPE_SRV,
@@ -1091,7 +1078,7 @@ void D3D12RaytracingMiniEngineSample::Startup(void)
 		            D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
 
 		// SubAlbert
-		GraphicsPSO& pso = m_screenTextureData.m_PSO;
+		GraphicsPSO& pso = g_ScreenTextureData.m_PSO;
 		pso.SetRootSignature(rs);
 		pso.SetRasterizerState(RasterizerDefault); 
 		pso.SetBlendState(BlendTraditional);
@@ -1194,9 +1181,9 @@ void D3D12RaytracingMiniEngineSample::Startup(void)
 	m_CameraPosArray[4].heading = -1.236f;
 	m_CameraPosArray[4].pitch = 0.0f;
 
-	m_Camera.Setup(1.0f, 500.0f, 3000.0f, false, m_screenTextureData.m_Quad);
+	m_Camera.Setup(1.0f, 500.0f, 3000.0f, false, g_ScreenTextureData);
 	//m_Camera.SetZRange(1.0f, 10000.0f);
-
+	
 	m_CameraController.reset(new VRCameraController(m_Camera, Vector3(kYUnitVector)));
 
 	MotionBlur::Enable = false;         //true;
@@ -1213,7 +1200,6 @@ void D3D12RaytracingMiniEngineSample::Startup(void)
 	m_ExtraTextures[4] = Lighting::m_LightGrid.GetSRV();
 	m_ExtraTextures[5] = Lighting::m_LightGridBitMask.GetSRV();
 
-	CreateQuadVerts();
 }
 
 void D3D12RaytracingMiniEngineSample::Cleanup(void)
@@ -1307,41 +1293,6 @@ void D3D12RaytracingMiniEngineSample::Update(float deltaT)
 	m_MainScissor.bottom = (LONG)g_SceneColorBuffer.GetHeight();
 }
 
-void D3D12RaytracingMiniEngineSample::CreateQuadVerts()
-{
-	auto makeQuad = [](QuadPos& Quad, StructuredBuffer& Buffer, LPCWSTR Name)
-	{
-		__declspec(align(16)) const float vertices[] =
-		{
-			// TL
-			-1, 1,  1, 1, // Position // TODO: Does the Quad need to be divided by w?
-			0, 0,         // UV
-
-			// BL
-			-1, -1,  1, 1, // Position
-			0, 1,        // UV
-
-			// TR
-			1, 1, 1, 1, // Position
-			1, 0,       // UV
-
-			// TR
-			1, 1, 1, 1, // Position
-			1, 0,       // UV
-			
-			// BL
-			-1, -1, 1, 1, // Position
-			0, 1,        // UV
-
-			// BR
-			1, -1, 1, 1, // Position
-			1, 1,       // UV
-		};
-		Buffer.Create(Name, 6, 6 * sizeof(float), vertices);
-	};
-	ScreenTextureData& data = m_screenTextureData;
-	makeQuad(data.m_Quad, data.m_Buffer, L"Quad Vertex Buffer");
-}
 
 std::wstring AppendCameraTypeName(const std::wstring &Name, Cam::CameraType CameraType)
 {
@@ -1819,12 +1770,12 @@ void D3D12RaytracingMiniEngineSample::RenderCenterViewToEye(
 		Cam::kCenter);
 	ctx.SetRenderTarget(g_SceneColorBuffer.GetSubRTV(CameraType));
 
-	ctx.SetPipelineState(m_screenTextureData.m_PSO);
-	ctx.SetRootSignature(m_screenTextureData.m_RootSignature);
+	ctx.SetPipelineState(g_ScreenTextureData.m_PSO);
+	ctx.SetRootSignature(g_ScreenTextureData.m_RootSignature);
 
 	ctx.SetPrimitiveTopology((D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST));
 
-	ctx.SetVertexBuffer(0, m_screenTextureData.m_Buffer.VertexBufferView());
+	ctx.SetVertexBuffer(0, g_ScreenTextureData.m_Buffer[CameraType].VertexBufferView());
 
 	ctx.SetDynamicDescriptor(
 		RS_ScreenTexture::kTextureToRender,
