@@ -201,23 +201,19 @@ namespace Math
 		XMMATRIX m_eyeToHead[CameraType::COUNT];
 		XMMATRIX m_eyeProj[CameraType::COUNT];
 		
-		struct projectionValues
+		struct ProjectionValues
 		{
 			float left;
 			float right;
 			float top;
 			float bottom;
 		};
-		projectionValues m_projVals[CameraType::COUNT];
+		ProjectionValues m_projVals[CameraType::COUNT];
 		float m_IPD;
 		float m_Zc;
 
         Camera* operator[](const UINT i) noexcept { return &m_cameras[i]; }
     	
-		inline float MonoStereoG(float m, float a, float b)
-		{
-			return Pow(m - m_Zc, -1.0f) * (a * m + m_Zc) + b;
-		}
 		void GetHMDProjVals(vr::EVREye eye);
 		void SetCenterProjVals(float midPlane);
 		Matrix4 CustomProj(CameraType cam, float nearFloat, float farFloat);

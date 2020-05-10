@@ -77,6 +77,8 @@ namespace Math
 
         static INLINE Matrix4 Identity() { return Matrix4(XMMatrixIdentity()); }
 
+        static INLINE Matrix4 Transpose(Matrix4 mat) { return Matrix4(XMMatrixTranspose(mat)); }
+
     private:
         XMMATRIX m_mat;
     };
