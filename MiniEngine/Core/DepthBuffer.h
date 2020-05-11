@@ -59,7 +59,7 @@ public:
         DXGI_FORMAT Format, EsramAllocator& Allocator);
 
     const D3D12_CPU_DESCRIPTOR_HANDLE& GetSubDSV(int i) const { return m_DSVSubHandles[i]; }
-
+    const D3D12_CPU_DESCRIPTOR_HANDLE& GetSubSRV(int i) const { return m_SRVSubHandles[i]; }
 
     // Get pre-created CPU-visible descriptor handles
     const D3D12_CPU_DESCRIPTOR_HANDLE& GetDSV() const { return m_hDSV[0]; }
@@ -83,4 +83,5 @@ private:
     D3D12_CPU_DESCRIPTOR_HANDLE m_hStencilSRV;
 
     std::vector<D3D12_CPU_DESCRIPTOR_HANDLE> m_DSVSubHandles;
+    std::vector<D3D12_CPU_DESCRIPTOR_HANDLE> m_SRVSubHandles;
 };

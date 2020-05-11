@@ -19,8 +19,8 @@ namespace SSAO
 {
     void Initialize( void );
     void Shutdown( void );
-    void Render(GraphicsContext& Context, const float* ProjMat, float NearClipDist, float FarClipDist );
-    void Render(GraphicsContext& Context, const Math::Camera& camera );
+    void Render(GraphicsContext& Context, const float* ProjMat, float NearClipDist, float FarClipDist, UINT CurCam );
+    void Render(GraphicsContext& Context, const Math::Camera& camera, UINT CurCam );
 
     extern BoolVar Enable;
     extern BoolVar DebugDraw;

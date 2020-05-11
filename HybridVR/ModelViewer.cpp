@@ -1502,7 +1502,7 @@ void D3D12RaytracingMiniEngineSample::RenderScene(UINT cam)
 		}
 	}
 
-	SSAO::Render(gfxContext, *m_Camera[cam]);
+	SSAO::Render(gfxContext, *m_Camera[cam], cam);
 
 	if (!skipDiffusePass)
 	{
