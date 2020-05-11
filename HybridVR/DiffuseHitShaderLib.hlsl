@@ -219,6 +219,12 @@ void CalculateUVDerivatives(float3 normal, float3 dpdu, float3 dpdv, float3 p, f
     ddY = abs(mul(inverse, pointOffset));
 }
 
+float3 ApplySRGBCurve(float3 x)
+{
+    // Approximately pow(x, 1.0 / 2.2)
+    return x < 0.0031308 ? 12.92 * x : 1.055 * pow(x, 1.0 / 2.4) - 0.055;
+}
+
 [shader("closesthit")]
 void Hit(inout RayPayload payload, in BuiltInTriangleIntersectionAttributes attr)
 {
@@ -331,6 +337,8 @@ void Hit(inout RayPayload payload, in BuiltInTriangleIntersectionAttributes attr
         viewDir,
         SunDirection,
         SunColor);
+
+    outputColor = ApplySRGBCurve(outputColor);
 
     // TODO: Should be passed in via material info
     if (IsReflection)
