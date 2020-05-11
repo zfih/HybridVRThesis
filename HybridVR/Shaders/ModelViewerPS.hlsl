@@ -72,6 +72,12 @@ cbuffer MaterialInfo : register(b1)
 SamplerState sampler0 : register(s0);
 SamplerComparisonState shadowSampler : register(s1);
 
+float3 ApplySRGBCurve(float3 x)
+{
+    // Approximately pow(x, 1.0 / 2.2)
+    return x < 0.0031308 ? 12.92 * x : 1.055 * pow(x, 1.0 / 2.4) - 0.055;
+}
+
 void AntiAliasSpecular(inout float3 texNormal, inout float gloss)
 {
     float normalLenSq = dot(texNormal, texNormal);
@@ -364,7 +370,7 @@ MRT main(VSOutput vsOutput)
     float3 viewDir = normalize(vsOutput.viewDir);
     colorSum += ApplyDirectionalLight(diffuseAlbedo, specularAlbedo, specularMask, gloss, normal, viewDir, SunDirection, SunColor, vsOutput.shadowCoord);
 
-	mrt.Color = colorSum;
+	mrt.Color = ApplySRGBCurve(colorSum);
 
     if (AreNormalsNeeded)
     {
