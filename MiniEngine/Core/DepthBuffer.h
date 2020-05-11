@@ -62,7 +62,6 @@ public:
     const D3D12_CPU_DESCRIPTOR_HANDLE& GetReadOnlySubDSV(int i) const { return m_DSVReadOnlySubHandles[i]; }
     const D3D12_CPU_DESCRIPTOR_HANDLE& GetSubSRV(int i) const { return m_SRVSubHandles[i]; }
 
-
     // Get pre-created CPU-visible descriptor handles
     const D3D12_CPU_DESCRIPTOR_HANDLE& GetDSV() const { return m_hDSV[0]; }
     const D3D12_CPU_DESCRIPTOR_HANDLE& GetDSV_DepthReadOnly() const { return m_hDSV[1]; }

@@ -175,7 +175,7 @@ void VR::Submit(ColorBuffer buffer_array)
 	
 	vr::Texture_t texture = {
 		(void*)&d3d12TextureData, vr::TextureType_DirectX12,
-		vr::ColorSpace_Linear};
+		vr::ColorSpace_Gamma};
 
 	auto err = vr::VRCompositor()->Submit(vr::Eye_Left, &texture, &g_Bounds,
 		vr::Submit_Default);
@@ -204,11 +204,11 @@ void VR::Submit(ColorBuffer buffer_left, ColorBuffer buffer_right)
 
 	vr::Texture_t leftEyeTexture = {
 		(void*)&d3d12LeftEyeTexture, vr::TextureType_DirectX12,
-		vr::ColorSpace_Linear };
+		vr::ColorSpace_Gamma };
 
 	vr::Texture_t rightEyeTexture = {
 		(void*)&d3d12RightEyeTexture, vr::TextureType_DirectX12,
-		vr::ColorSpace_Linear };
+		vr::ColorSpace_Gamma };
 
 	
 	vr::VRCompositor()->Submit(vr::Eye_Left, &leftEyeTexture, &g_Bounds,
