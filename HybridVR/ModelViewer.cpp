@@ -921,7 +921,7 @@ void D3D12RaytracingMiniEngineSample::Startup(void)
 
 	g_SceneNormalBuffer.CreateArray(L"Main Normal Buffer", g_SceneColorBuffer.GetWidth(),
 	                                g_SceneColorBuffer.GetHeight(), 3,
-	                                DXGI_FORMAT_R11G11B10_FLOAT);
+	                                DXGI_FORMAT_R8G8B8A8_UNORM);
 
 	g_pRaytracingDescriptorHeap = std::unique_ptr<DescriptorHeapStack>(
 		new DescriptorHeapStack(*g_Device, 200, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, 0));
