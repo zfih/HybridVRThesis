@@ -335,14 +335,21 @@ MRT main(VSOutput vsOutput)
     MRT mrt;
 	mrt.Color = float4(0,1,0,1);
     mrt.Normal = 0.0;
+    
+    float monoStereoBlend = 1.0f;
+
 	if (vsOutput.curCam == 2)
 	{
 		float depth = texCenterDepth[vsOutput.position.xy];
-		if (depth > 0.0f)
+        if (depth > 0.001f)
 		{
 			mrt.Color = float4(0, 0, 0, 0);
 			return mrt;
 		}
+        else if (depth > 0.0f)
+        {
+            monoStereoBlend = 1.0f - (depth / 0.001f);
+        }
 	}
 
     uint2 pixelPos = uint2(vsOutput.position.xy);
@@ -378,7 +385,7 @@ MRT main(VSOutput vsOutput)
     float3 viewDir = normalize(vsOutput.viewDir);
     colorSum += ApplyDirectionalLight(diffuseAlbedo, specularAlbedo, specularMask, gloss, normal, viewDir, SunDirection, SunColor, vsOutput.shadowCoord);
 
-    mrt.Color = float4(ApplySRGBCurve(colorSum), 1.0f);
+    mrt.Color = float4(ApplySRGBCurve(colorSum), monoStereoBlend);
 
     if (AreNormalsNeeded)
     {

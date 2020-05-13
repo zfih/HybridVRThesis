@@ -339,13 +339,15 @@ void Hit(inout RayPayload payload, in BuiltInTriangleIntersectionAttributes attr
         SunColor);
 
     outputColor = ApplySRGBCurve(outputColor);
+    float alpha;
 
     // TODO: Should be passed in via material info
     if (IsReflection)
     {
         float reflectivity = normals[int3(DispatchRaysIndex().xy, g_dynamic.curCam)].w;
 		outputColor = g_screenOutput[int3(DispatchRaysIndex().xy, g_dynamic.curCam)].rgb + reflectivity * outputColor;
+        alpha = g_screenOutput[int3(DispatchRaysIndex().xy, g_dynamic.curCam)].a;
     }
 
-	g_screenOutput[int3(DispatchRaysIndex().xy, g_dynamic.curCam)] = float4(outputColor, 1);
+	g_screenOutput[int3(DispatchRaysIndex().xy, g_dynamic.curCam)] = float4(outputColor, alpha);
 }
