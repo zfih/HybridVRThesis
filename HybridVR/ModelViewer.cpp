@@ -416,16 +416,11 @@ void InitializeViews(const Model& model)
 		g_pRaytracingDescriptorHeap->AllocateDescriptor(srvHandle, srvDescriptorIndex);
 
 		// TODO(freemedude 14:51 24-04): Verify that GetDepthSRV does not need to be PER buffer.
-		Graphics::g_Device->CopyDescriptorsSimple(1, srvHandle, g_SceneDepthBuffer.GetSubSRV(0),
+		Graphics::g_Device->CopyDescriptorsSimple(1, srvHandle, g_SceneDepthBuffer.GetDepthSRV(),
 		                                          D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 		g_DepthAndNormalsTable = g_pRaytracingDescriptorHeap->GetGpuHandle(srvDescriptorIndex);
 
 		UINT unused;
-		g_pRaytracingDescriptorHeap->AllocateDescriptor(srvHandle, unused); // Should this be unused?
-		Graphics::g_Device->CopyDescriptorsSimple(1, srvHandle,
-		                                          g_SceneDepthBuffer.GetSubSRV(1),
-		                                          D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
-
 		g_pRaytracingDescriptorHeap->AllocateDescriptor(srvHandle, unused);
 		Graphics::g_Device->CopyDescriptorsSimple(1, srvHandle, g_SceneNormalBuffer.GetSRV(),
 		                                          D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
@@ -858,6 +853,12 @@ void InitializeStateObjects(const Model& model, UINT numMeshes)
 	srvDescriptorRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
 	srvDescriptorRange.Flags = D3D12_DESCRIPTOR_RANGE_FLAG_NONE;*/
 
+	D3D12_DESCRIPTOR_RANGE1 reflDescriptorRange = {};
+	reflDescriptorRange.BaseShaderRegister = 13;
+	reflDescriptorRange.NumDescriptors = 1;
+	reflDescriptorRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_UAV;
+	reflDescriptorRange.Flags = D3D12_DESCRIPTOR_RANGE_FLAG_NONE;
+
 	CD3DX12_ROOT_PARAMETER1 globalRootSignatureParameters[8];
 	globalRootSignatureParameters[0].InitAsDescriptorTable(1, &sceneBuffersDescriptorRange);
 	globalRootSignatureParameters[1].InitAsConstantBufferView(0);
@@ -1004,7 +1005,7 @@ void D3D12RaytracingMiniEngineSample::Startup(void)
 
 	// Full color pass
 	m_ModelPSO = m_DepthPSO;
-	m_ModelPSO.SetBlendState(BlendTraditional);
+	m_ModelPSO.SetBlendState(BlendAdditive);
 	m_ModelPSO.SetDepthStencilState(DepthStateTestEqual);
 	DXGI_FORMAT formats[]{ColorFormat, NormalFormat};
 	m_ModelPSO.SetRenderTargetFormats(_countof(formats), formats, DepthFormat);
@@ -1921,6 +1922,7 @@ void D3D12RaytracingMiniEngineSample::MainRender(
 			                       D3D12_RESOURCE_STATE_RENDER_TARGET, true);
 
 			Ctx.ClearColor(g_SceneColorBuffer, CameraType);
+			Ctx.ClearColor(g_SceneNormalBuffer, CameraType);
 		}
 	}
 

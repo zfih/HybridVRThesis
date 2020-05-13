@@ -61,7 +61,16 @@ void RayGen()
         FLT_MAX };
 
     RayPayload payload;
-    payload.SkipShading = false;
+    if (g_screenOutput[int3(xy, g_dynamic.curCam)].r == 0 && 
+        g_screenOutput[int3(xy, g_dynamic.curCam)].g == 0 && 
+        g_screenOutput[int3(xy, g_dynamic.curCam)].b == 0)
+    {
+        payload.SkipShading = true;
+    }
+    else
+    {
+        payload.SkipShading = false;
+    }
     payload.RayHitT = FLT_MAX;
     TraceRay(g_accel, RAY_FLAG_CULL_BACK_FACING_TRIANGLES, ~0,0,1,0, rayDesc, payload);
 }
