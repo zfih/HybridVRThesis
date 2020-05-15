@@ -286,12 +286,11 @@ void VRCamera::Setup(float nearPlane, float midPlane,
 
 		if (Camera == LEFT)
 		{
-			//mapping = mapping * Matrix4::MakeTranslate({0.0275, 0, 0});
+			// NOTE! 0.01 is hard coded based on Lasses IPD of 63.32 mm
 			mapping = mapping * Matrix4::MakeTranslate({ 0.01, 0, 0 });
 		}
 		else
 		{
-			//mapping = mapping * Matrix4::MakeTranslate({-0.0275, 0, 0});
 			mapping = mapping * Matrix4::MakeTranslate({ -0.01, 0, 0 });
 		}
 

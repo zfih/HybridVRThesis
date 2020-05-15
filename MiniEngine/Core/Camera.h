@@ -244,8 +244,9 @@ namespace Math
         }
         void SetPosition(Vector3 worldPos)
         {	
-            m_cameras[LEFT].SetPosition(worldPos + m_cameras[LEFT].GetRotation() * Vector3 { -10.0f, 0.0f, 0.0f });
-            m_cameras[RIGHT].SetPosition(worldPos + m_cameras[RIGHT].GetRotation() * Vector3 { 10.0f, 0.0f, 0.0f });
+            // NOTE! 0.6332 (63.32 mm) is what Lasse has set his IPD to on his HP WMR
+            m_cameras[LEFT].SetPosition(worldPos + m_cameras[LEFT].GetRotation() * Vector3 { -0.6332f, 0.0f, 0.0f });
+            m_cameras[RIGHT].SetPosition(worldPos + m_cameras[RIGHT].GetRotation() * Vector3 { 0.6332f, 0.0f, 0.0f });
             m_cameras[CENTER].SetPosition(worldPos);
         }
         void SetTransform(const AffineTransform& xform)
