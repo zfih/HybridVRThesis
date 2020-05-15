@@ -12,7 +12,7 @@
 //
 
 #pragma once
-#include "../../HybridVR/CameraType.h"
+#include "CameraType.h"
 #include "DepthBuffer.h"
 
 namespace Math { class Camera;  }

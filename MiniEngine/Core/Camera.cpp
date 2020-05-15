@@ -101,7 +101,7 @@ void VRCamera::Update()
 	{
 		m_HMDPoseMat = VR::GetHMDPos();
 
-		for (int i = 0; i < VRCamera::COUNT; ++i)
+		for (int i = 0; i < Cam::kCount; ++i)
 		{
 			m_cameras[i].SetVRViewProjMatrices(m_eyeToHead[i] * m_HMDPoseMat, m_eyeProj[i]);
 			m_cameras[i].SetTransform(AffineTransform(m_eyeToHead[i] * m_HMDPoseMat));
@@ -110,7 +110,7 @@ void VRCamera::Update()
 	}
 	else
 	{
-		for (int i = 0; i < VRCamera::COUNT; ++i)
+		for (int i = 0; i < Cam::kCount; ++i)
 		{
 			m_cameras[i].Update();
 		}
@@ -133,9 +133,9 @@ void VRCamera::SetCenterProjVals(float midPlane)
 	float tLX = -m_IPD / 2;
 	float tRX = m_IPD / 2;
 
-	ProjectionValues &c = m_projVals[CENTER];
-	ProjectionValues &l = m_projVals[LEFT];
-	ProjectionValues &r = m_projVals[RIGHT];
+	ProjectionValues &c = m_projVals[Cam::kCenter];
+	ProjectionValues &l = m_projVals[Cam::kLeft];
+	ProjectionValues &r = m_projVals[Cam::kRight];
 
 #if (0)
 	c.left = Max(
@@ -173,7 +173,8 @@ void VRCamera::SetCenterProjVals(float midPlane)
 #endif
 }
 
-Matrix4 VRCamera::CustomProj(CameraType cam, float nearFloat, float farFloat)
+Matrix4 VRCamera::CustomProj(Cam::CameraType cam, 
+	float nearFloat, float farFloat)
 {
 	float idx = 1.0f / (m_projVals[cam].right - m_projVals[cam].left);
 	float idy = 1.0f / (m_projVals[cam].bottom - m_projVals[cam].top);
@@ -228,63 +229,65 @@ void VRCamera::Setup(float nearPlane, float midPlane,
 	{
 		m_HMDPoseMat = VR::GetHMDPos();
 
-		for (int i = 0; i < VRCamera::COUNT - 1; i++)
+		for (int i = 0; i < Cam::kCount - 1; i++)
 		{
 			m_cameras[i].ReverseZ(reverseZ);
 			m_eyeToHead[i] = VR::GetEyeToHeadTransform(vr::EVREye(i));
 			GetHMDProjVals(vr::EVREye(i));
-			m_eyeProj[i] = CustomProj(CameraType(i), nearPlane, midPlane);
+			m_eyeProj[i] = CustomProj(Cam::CameraType(i), nearPlane, midPlane);
 		}
 
 		m_IPD = calcIPD(m_eyeToHead[0], m_eyeToHead[1]);
-		m_Zc = Min(m_IPD / (2 * m_projVals[LEFT].left), 
-			      -m_IPD / (2 * m_projVals[RIGHT].right));
+		m_Zc = Min(m_IPD / (2 * m_projVals[Cam::kLeft].left),
+			      -m_IPD / (2 * m_projVals[Cam::kRight].right));
 
-		m_cameras[CENTER].ReverseZ(reverseZ);
-		m_eyeToHead[CENTER] = XMMatrixTranslation(0, 0, m_Zc);
+		m_cameras[Cam::kCenter].ReverseZ(reverseZ);
+		m_eyeToHead[Cam::kCenter] = XMMatrixTranslation(0, 0, m_Zc);
 		SetCenterProjVals(midPlane);
-		m_eyeProj[CENTER] = CustomProj(CENTER, midPlane - BlendRegionSize, farPlane);
+		m_eyeProj[Cam::kCenter] = 
+			CustomProj(Cam::kCenter, midPlane - BlendRegionSize, farPlane);
 	}
 	else
 	{
-		m_cameras[LEFT].SetZRange(nearPlane, midPlane);
-		m_cameras[RIGHT].SetZRange(nearPlane, midPlane);
-		m_cameras[CENTER].SetZRange(midPlane - BlendRegionSize, farPlane);
+		m_cameras[Cam::kLeft].SetZRange(nearPlane, midPlane);
+		m_cameras[Cam::kRight].SetZRange(nearPlane, midPlane);
+		m_cameras[Cam::kCenter].SetZRange(midPlane - BlendRegionSize, farPlane);
 	}
 
 	this->Update();
 
 	Matrix4 MonoToStereoMappings[num_eyes];
 
-	MonoToStereoMappings[LEFT] =
-		m_cameras[LEFT].GetProjMatrix() 
+	MonoToStereoMappings[Cam::kLeft] =
+		m_cameras[Cam::kLeft].GetProjMatrix()
 		*
-		m_cameras[LEFT].GetViewMatrix() 
+		m_cameras[Cam::kLeft].GetViewMatrix()
 		*
 		/*Matrix4::MakeTranslate({ 10, 0, -1 })
 		**/
-		m_cameras[CENTER].GetViewMatrix().Inverse()
+		m_cameras[Cam::kCenter].GetViewMatrix().Inverse()
 		*
-		m_cameras[CENTER].GetProjMatrix().Inverse()
+		m_cameras[Cam::kCenter].GetProjMatrix().Inverse()
 		;
 
-	MonoToStereoMappings[RIGHT] =
-		m_cameras[RIGHT].GetProjMatrix()
+	MonoToStereoMappings[Cam::kRight] =
+		m_cameras[Cam::kRight].GetProjMatrix()
 		*
-		m_cameras[RIGHT].GetViewMatrix()
+		m_cameras[Cam::kRight].GetViewMatrix()
 		*
-		m_cameras[CENTER].GetViewMatrix().Inverse()
+		m_cameras[Cam::kCenter].GetViewMatrix().Inverse()
 		*
-		m_cameras[CENTER].GetProjMatrix().Inverse()
+		m_cameras[Cam::kCenter].GetProjMatrix().Inverse()
 		;
 	
 #define UNPACKV4(v) v.GetX(), v.GetY(), v.GetZ(), v.GetW()
 
-	auto createScreenQuad = [&](CameraType Camera, LPCWSTR ResourceName ) -> void
+	auto createScreenQuad = [&](Cam::CameraType Camera, 
+		LPCWSTR ResourceName ) -> void
 	{
 		Matrix4 mapping = MonoToStereoMappings[Camera];
 
-		if (Camera == LEFT)
+		if (Camera == Cam::kLeft)
 		{
 			// NOTE! 0.01 is hard coded based on Lasses IPD of 63.32 mm
 			mapping = mapping * Matrix4::MakeTranslate({ 0.01, 0, 0 });
@@ -337,8 +340,8 @@ void VRCamera::Setup(float nearPlane, float midPlane,
 		const int floatsPerVertex = 6;
 		const int vertexCount = _countof(vertices) / floatsPerVertex;
 
-		Data.m_Buffer[Camera]
-			.Create(ResourceName, vertexCount, floatsPerVertex * sizeof(float), vertices);
+		Data.m_Buffer[Camera].Create(ResourceName, vertexCount, 
+			floatsPerVertex * sizeof(float), vertices);
 
 		Data.m_QuadPos[Camera].topLeft = tl;
 		Data.m_QuadPos[Camera].topRight = tr;
@@ -346,6 +349,6 @@ void VRCamera::Setup(float nearPlane, float midPlane,
 		Data.m_QuadPos[Camera].bottomRight = br;
 	};
 
-	createScreenQuad(LEFT, L"ScreenTexture Quad buffer LEFT");
-	createScreenQuad(RIGHT,  L"ScreenTexture Quad buffer RIGHT");
+	createScreenQuad(Cam::kLeft, L"ScreenTexture Quad buffer LEFT");
+	createScreenQuad(Cam::kRight,  L"ScreenTexture Quad buffer RIGHT");
 }

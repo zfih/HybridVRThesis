@@ -16,6 +16,7 @@
 #include "VectorMath.h"
 #include "Math/Frustum.h"
 #include "VR.h"
+#include "CameraType.h"
 
 namespace Math
 {
@@ -184,24 +185,16 @@ namespace Math
     public:
         VRCamera();
 
-    	enum CameraType
-    	{
-    		LEFT = 0,
-    		RIGHT,
-    		CENTER,
-    		COUNT
-    	};
-
         static const int num_eyes = 2;
 
         // Initialize vector of count cameras, we never want more or less
 		// and we want them to be initialized.
-        std::vector<Camera> m_cameras = std::vector<Camera>(COUNT);
+        std::vector<Camera> m_cameras = std::vector<Camera>(Cam::kCount);
         Camera* m_centerCamera;
 
 		XMMATRIX m_HMDPoseMat;
-		XMMATRIX m_eyeToHead[CameraType::COUNT];
-		XMMATRIX m_eyeProj[CameraType::COUNT];
+		XMMATRIX m_eyeToHead[Cam::kCount];
+		XMMATRIX m_eyeProj[Cam::kCount];
 		
 		struct ProjectionValues
 		{
@@ -210,7 +203,7 @@ namespace Math
 			float top;
 			float bottom;
 		};
-		ProjectionValues m_projVals[CameraType::COUNT];
+		ProjectionValues m_projVals[Cam::kCount];
 		float m_IPD;
 		float m_Zc;
 
@@ -218,7 +211,7 @@ namespace Math
     	
 		void GetHMDProjVals(vr::EVREye eye);
 		void SetCenterProjVals(float midPlane);
-		Matrix4 CustomProj(CameraType cam, float nearFloat, float farFloat);
+		Matrix4 CustomProj(Cam::CameraType cam, float nearFloat, float farFloat);
 		void Setup(float nearPlane, float midPlane,
 				   float farPlane, bool reverseZ, ScreenTextureData& ScreenTextureData);
         void Update();
@@ -226,34 +219,40 @@ namespace Math
         // Public functions for controlling where the camera is and its orientation
         void SetEyeAtUp(Vector3 eye, Vector3 at, Vector3 up)
         {
-            m_cameras[LEFT].SetEyeAtUp(eye, at, up);
-            m_cameras[RIGHT].SetEyeAtUp(eye, at, up);
-            m_cameras[CENTER].SetEyeAtUp(eye, at, up);
+            m_cameras[Cam::kLeft].SetEyeAtUp(eye, at, up);
+            m_cameras[Cam::kRight].SetEyeAtUp(eye, at, up);
+            m_cameras[Cam::kCenter].SetEyeAtUp(eye, at, up);
         }
         void SetLookDirection(Vector3 forward, Vector3 up)
         {
-            m_cameras[LEFT].SetLookDirection(forward, up);
-            m_cameras[RIGHT].SetLookDirection(forward, up);
-            m_cameras[CENTER].SetLookDirection(forward, up);
+            m_cameras[Cam::kLeft].SetLookDirection(forward, up);
+            m_cameras[Cam::kRight].SetLookDirection(forward, up);
+            m_cameras[Cam::kCenter].SetLookDirection(forward, up);
         }
         void SetRotation(Quaternion basisRotation)
         {
-            m_cameras[LEFT].SetRotation(basisRotation);
-            m_cameras[RIGHT].SetRotation(basisRotation);
-            m_cameras[CENTER].SetRotation(basisRotation);
+            m_cameras[Cam::kLeft].SetRotation(basisRotation);
+            m_cameras[Cam::kRight].SetRotation(basisRotation);
+            m_cameras[Cam::kCenter].SetRotation(basisRotation);
         }
         void SetPosition(Vector3 worldPos)
         {	
             // NOTE! 0.6332 (63.32 mm) is what Lasse has set his IPD to on his HP WMR
-            m_cameras[LEFT].SetPosition(worldPos + m_cameras[LEFT].GetRotation() * Vector3 { -0.6332f, 0.0f, 0.0f });
-            m_cameras[RIGHT].SetPosition(worldPos + m_cameras[RIGHT].GetRotation() * Vector3 { 0.6332f, 0.0f, 0.0f });
-            m_cameras[CENTER].SetPosition(worldPos);
+            m_cameras[Cam::kLeft].SetPosition(
+                worldPos + 
+                m_cameras[Cam::kLeft].GetRotation() *
+                Vector3 { -0.6332f, 0.0f, 0.0f });
+            m_cameras[Cam::kRight].SetPosition(
+                worldPos + 
+                m_cameras[Cam::kRight].GetRotation() *
+                Vector3 { 0.6332f, 0.0f, 0.0f });
+            m_cameras[Cam::kCenter].SetPosition(worldPos);
         }
         void SetTransform(const AffineTransform& xform)
         {
-            m_cameras[LEFT].SetTransform(xform);
-            m_cameras[RIGHT].SetTransform(xform);
-            m_cameras[CENTER].SetTransform(xform);
+            m_cameras[Cam::kLeft].SetTransform(xform);
+            m_cameras[Cam::kRight].SetTransform(xform);
+            m_cameras[Cam::kCenter].SetTransform(xform);
 
             SetPosition(xform.GetTranslation());
         }
@@ -275,45 +274,45 @@ namespace Math
         // Controls the view-to-projection matrix
         void SetPerspectiveMatrix(float verticalFovRadians, float aspectHeightOverWidth, float nearZClip, float farZClip)
         {
-            m_cameras[LEFT].SetPerspectiveMatrix(verticalFovRadians, aspectHeightOverWidth, nearZClip, farZClip);
-            m_cameras[RIGHT].SetPerspectiveMatrix(verticalFovRadians, aspectHeightOverWidth, nearZClip, farZClip);
-            m_cameras[CENTER].SetPerspectiveMatrix(verticalFovRadians, aspectHeightOverWidth, nearZClip, farZClip);
+            m_cameras[Cam::kLeft].SetPerspectiveMatrix(verticalFovRadians, aspectHeightOverWidth, nearZClip, farZClip);
+            m_cameras[Cam::kRight].SetPerspectiveMatrix(verticalFovRadians, aspectHeightOverWidth, nearZClip, farZClip);
+            m_cameras[Cam::kCenter].SetPerspectiveMatrix(verticalFovRadians, aspectHeightOverWidth, nearZClip, farZClip);
         }
         void SetFOV(float verticalFovInRadians)
         {
-            m_cameras[LEFT].SetFOV(verticalFovInRadians);
-            m_cameras[RIGHT].SetFOV(verticalFovInRadians);
-            m_cameras[CENTER].SetFOV(verticalFovInRadians);
+            m_cameras[Cam::kLeft].SetFOV(verticalFovInRadians);
+            m_cameras[Cam::kRight].SetFOV(verticalFovInRadians);
+            m_cameras[Cam::kCenter].SetFOV(verticalFovInRadians);
         }
         void SetAspectRatio(float heightOverWidth)
         {
-            m_cameras[LEFT].SetAspectRatio(heightOverWidth);
-            m_cameras[RIGHT].SetAspectRatio(heightOverWidth);
-            m_cameras[CENTER].SetAspectRatio(heightOverWidth);
+            m_cameras[Cam::kLeft].SetAspectRatio(heightOverWidth);
+            m_cameras[Cam::kRight].SetAspectRatio(heightOverWidth);
+            m_cameras[Cam::kCenter].SetAspectRatio(heightOverWidth);
         }
         void SetZRange(float nearZ, float farZ)
         {
-            m_cameras[LEFT].SetZRange(nearZ, farZ);
-            m_cameras[RIGHT].SetZRange(nearZ, farZ);
-            m_cameras[CENTER].SetZRange(nearZ, farZ);
+            m_cameras[Cam::kLeft].SetZRange(nearZ, farZ);
+            m_cameras[Cam::kRight].SetZRange(nearZ, farZ);
+            m_cameras[Cam::kCenter].SetZRange(nearZ, farZ);
         }
         void ReverseZ(bool enable)
         {
-            m_cameras[LEFT].ReverseZ(enable);
-            m_cameras[RIGHT].ReverseZ(enable);
-            m_cameras[CENTER].ReverseZ(enable);
+            m_cameras[Cam::kLeft].ReverseZ(enable);
+            m_cameras[Cam::kRight].ReverseZ(enable);
+            m_cameras[Cam::kCenter].ReverseZ(enable);
         }
         void UpdateVRPoseMat(XMMATRIX poseMat)
         {
-            m_cameras[LEFT].UpdateVRPoseMat(poseMat);
-            m_cameras[RIGHT].UpdateVRPoseMat(poseMat);
-            m_cameras[CENTER].UpdateVRPoseMat(poseMat);
+            m_cameras[Cam::kLeft].UpdateVRPoseMat(poseMat);
+            m_cameras[Cam::kRight].UpdateVRPoseMat(poseMat);
+            m_cameras[Cam::kCenter].UpdateVRPoseMat(poseMat);
         }
         void SetVRViewProjMatrices(XMMATRIX view, XMMATRIX proj)
         {
-            m_cameras[LEFT].SetVRViewProjMatrices(view, proj);
-            m_cameras[RIGHT].SetVRViewProjMatrices(view, proj);
-            m_cameras[CENTER].SetVRViewProjMatrices(view, proj);
+            m_cameras[Cam::kLeft].SetVRViewProjMatrices(view, proj);
+            m_cameras[Cam::kRight].SetVRViewProjMatrices(view, proj);
+            m_cameras[Cam::kCenter].SetVRViewProjMatrices(view, proj);
         }
 
         float GetFOV() const { return m_centerCamera->GetFOV(); }

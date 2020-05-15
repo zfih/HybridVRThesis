@@ -70,7 +70,6 @@
 
 #include "CameraType.h"
 
-
 #include "RaytracingHlslCompat.h"
 #include "ModelViewerRayTracing.h"
 
