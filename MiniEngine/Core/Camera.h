@@ -91,6 +91,8 @@ namespace Math
         // Screen Texture quad buffers
         StructuredBuffer m_Buffer[2];
 
+        Graphics::QuadPos m_QuadPos[2];
+
         // Render to Quad PSO
         GraphicsPSO m_PSO;
 

@@ -137,7 +137,7 @@ void VRCamera::SetCenterProjVals(float midPlane)
 	ProjectionValues &l = m_projVals[LEFT];
 	ProjectionValues &r = m_projVals[RIGHT];
 
-#if (1)
+#if (0)
 	c.left = Max(
 		g(midPlane, l.right, tLX),
 		g(midPlane, r.right, tRX));
@@ -182,21 +182,21 @@ Matrix4 VRCamera::CustomProj(CameraType cam, float nearFloat, float farFloat)
 	float sx = m_projVals[cam].right + m_projVals[cam].left;
 	float sy = m_projVals[cam].bottom + m_projVals[cam].top;
 
-	/*return Matrix4(
+	return Matrix4(
 		Vector4(2 * idx,  0.0f,     0.0f,  0.0f),
 		Vector4(0.0f,     2 * idy,  0.0f,  0.0f),
 		Vector4(sx * idx, sy * idy, Q1,   -1.0f),
 		Vector4(0.0f,     0.0f,     Q2,    0.0f)
-	);*/
+	);
 
-	float idz = 1.0f / (farFloat - nearFloat);
+	/*float idz = 1.0f / (farFloat - nearFloat);
 
 	return Matrix4::Transpose(Matrix4(
 		Vector4(2 * idx, 0.0f, 0.0f, 0.0f),
 		Vector4(0.0f, 2 * idy, 0.0f, 0.0f),
 		Vector4(sx * idx, sy * idy, -farFloat * idz, -1.0f),
 		Vector4(0.0f, 0.0f, -farFloat * nearFloat * idz, 0.0f)
-	));
+	));*/
 }
 
 float calcIPD(XMMATRIX leftEyeToHead, XMMATRIX rightEyeToHead)
@@ -253,19 +253,19 @@ void VRCamera::Setup(float nearPlane, float midPlane,
 
 	Matrix4 MonoToStereoMappings[num_eyes];
 
-	MonoToStereoMappings[RIGHT] =
+	MonoToStereoMappings[LEFT] =
 		m_cameras[LEFT].GetProjMatrix() 
 		*
 		m_cameras[LEFT].GetViewMatrix() 
 		*
-		Matrix4::MakeTranslate({ 10, 0, -1 })
-		*
+		/*Matrix4::MakeTranslate({ 10, 0, -1 })
+		**/
 		m_cameras[CENTER].GetViewMatrix().Inverse()
 		*
 		m_cameras[CENTER].GetProjMatrix().Inverse()
 		;
 
-	MonoToStereoMappings[LEFT] =
+	MonoToStereoMappings[RIGHT] =
 		m_cameras[RIGHT].GetProjMatrix()
 		*
 		m_cameras[RIGHT].GetViewMatrix()
@@ -281,14 +281,16 @@ void VRCamera::Setup(float nearPlane, float midPlane,
 	{
 		Matrix4 mapping = MonoToStereoMappings[Camera];
 
-		/*if (Camera == LEFT)
+		if (Camera == LEFT)
 		{
-			mapping = mapping * Matrix4::MakeTranslate({0.0275, 0, 0});
+			//mapping = mapping * Matrix4::MakeTranslate({0.0275, 0, 0});
+			mapping = mapping * Matrix4::MakeTranslate({ 0.01, 0, 0 });
 		}
 		else
 		{
-			mapping = mapping * Matrix4::MakeTranslate({-0.0275, 0, 0});
-		}*/
+			//mapping = mapping * Matrix4::MakeTranslate({-0.0275, 0, 0});
+			mapping = mapping * Matrix4::MakeTranslate({ -0.01, 0, 0 });
+		}
 
 		float depth = 1;
 		Vector4 tl = mapping * Vector4(-1, 1, depth, 1);
@@ -335,6 +337,11 @@ void VRCamera::Setup(float nearPlane, float midPlane,
 
 		Data.m_Buffer[Camera]
 			.Create(ResourceName, vertexCount, floatsPerVertex * sizeof(float), vertices);
+
+		Data.m_QuadPos[Camera].topLeft = tl;
+		Data.m_QuadPos[Camera].topRight = tr;
+		Data.m_QuadPos[Camera].bottomLeft = bl;
+		Data.m_QuadPos[Camera].bottomRight = br;
 	};
 
 	createScreenQuad(LEFT, L"ScreenTexture Quad buffer LEFT");

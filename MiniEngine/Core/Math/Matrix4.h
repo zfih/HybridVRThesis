@@ -74,6 +74,10 @@ namespace Math
 
         static INLINE Matrix4 MakeTranslate( float offset ) { return Matrix4(XMMatrixTranslation(offset, offset, offset)); }
         static INLINE Matrix4 MakeTranslate( Vector3 offset ) { return Matrix4(XMMatrixTranslationFromVector(offset)); }
+        
+        static INLINE Matrix4 MakeRotateX( float angle ) { return Matrix4(XMMatrixRotationX(angle)); }
+        static INLINE Matrix4 MakeRotateY( float angle ) { return Matrix4(XMMatrixRotationY(angle)); }
+        static INLINE Matrix4 MakeRotateZ( float angle ) { return Matrix4(XMMatrixRotationZ(angle)); }
 
         static INLINE Matrix4 Identity() { return Matrix4(XMMatrixIdentity()); }
 

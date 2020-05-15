@@ -1780,6 +1780,19 @@ void D3D12RaytracingMiniEngineSample::RenderCenterViewToEye(
 		RS_ScreenTexture::kTextureToRender,
 		0, 
 		g_SceneColorBuffer.GetSubSRV(Cam::kCenter));
+
+	D3D12_VIEWPORT centerViewport(m_MainViewport);
+	centerViewport.Width *= 0.5f *
+		Min(g_ScreenTextureData.m_QuadPos[Cam::kLeft].bottomRight.GetX() -
+			g_ScreenTextureData.m_QuadPos[Cam::kLeft].bottomLeft.GetX(),
+			g_ScreenTextureData.m_QuadPos[Cam::kRight].bottomRight.GetX() -
+			g_ScreenTextureData.m_QuadPos[Cam::kRight].bottomLeft.GetX());
+	centerViewport.Height *= 0.5f *
+		Min(g_ScreenTextureData.m_QuadPos[Cam::kLeft].topRight.GetY() -
+			g_ScreenTextureData.m_QuadPos[Cam::kLeft].bottomLeft.GetY(),
+			g_ScreenTextureData.m_QuadPos[Cam::kRight].topRight.GetY() -
+			g_ScreenTextureData.m_QuadPos[Cam::kRight].bottomLeft.GetY());
+
 	ctx.SetViewportAndScissor(m_MainViewport, m_MainScissor);
 	ctx.Draw(6);
 
