@@ -91,65 +91,8 @@ void Camera::UpdateProjMatrix( void )
         ) );
 }
 
-float testMonoStereoG(float m, float a, float b, float Zc) // TODO: Clean up test functions.
-{
-	return Pow(m - Zc, -1.0f) * (a * m + Zc) + b;
-}
-
-void testCenterProjVals(VRCamera::projectionValues L, VRCamera::projectionValues R, float tLX, float tRX, float midPlane, float Zc, OUT VRCamera::projectionValues& C)
-{
-	C.left = Max(
-		testMonoStereoG(midPlane, L.right, tLX, Zc),
-		testMonoStereoG(midPlane, R.right, tRX, Zc));
-
-	C.right = Min(
-		testMonoStereoG(midPlane, L.left, tLX, Zc),
-		testMonoStereoG(midPlane, R.left, tRX, Zc));
-
-	C.top = Max(
-		testMonoStereoG(midPlane, L.bottom, 0, Zc),
-		testMonoStereoG(midPlane, R.bottom, 0, Zc));
-
-	C.bottom = Max(
-		testMonoStereoG(midPlane, L.top, 0, Zc),
-		testMonoStereoG(midPlane, R.top, 0, Zc));
-}
-
-Matrix4 testProj(float left, float right, float top, float bottom, float nearFloat, float farFloat)
-{
-	float idx = 1.0f / (right - left);
-	float idy = 1.0f / (bottom - top);
-	float Q1 = nearFloat / (farFloat - nearFloat);
-	float Q2 = Q1 * farFloat;
-	float sx = right + left;
-	float sy = bottom + top;
-
-	return Matrix4(
-		Vector4(2 * idx,  0.0f,     0.0f, 0.0f),
-		Vector4(0.0f,     2 * idy,  0.0f, 0.0f),
-		Vector4(sx * idx, sy * idy, Q1,  -1.0f),
-		Vector4(0.0f,     0.0f,     Q2,   0.0f)
-	);
-}
-
-void testFunc()
-{
-	float IPD = 0.064;
-	VRCamera::projectionValues L, R, C;
-	L = { -1.391937, 1.247409, -1.464287, 1.468819 };
-	R = { -1.246557, 1.398447, -1.472458, 1.465505 };
-	float Zc = Min(IPD / (2 * L.left), -IPD / (2 * R.right));
-	// The paper calls these tL, tR, and tC, but we don't
-	Vector3 vL = (-IPD / 2, 0, 0);
-	Vector3 vR = (IPD / 2, 0, 0);
-	Vector3 vC = (0, 0, Zc);
-	float midPlane = 1.0f;
-	testCenterProjVals(L, R, vL.GetX(), vR.GetX(), midPlane, Zc, C);
-}
-
 VRCamera::VRCamera()
 {
-	testFunc();
 }
 
 void VRCamera::Update()
@@ -182,37 +125,52 @@ void VRCamera::GetHMDProjVals(vr::EVREye eye)
 
 void VRCamera::SetCenterProjVals(float midPlane)
 {
+	auto g = [&](float m, float a, float b)
+	{
+		return Pow(m - m_Zc, -1.0f) * (a * m + m_Zc) + b;
+	};
+
 	float tLX = -m_IPD / 2;
 	float tRX = m_IPD / 2;
 
-	m_projVals[CENTER].right = Max(
-		//TODO: What is tLX in the mono stereo paper?
-		MonoStereoG(midPlane, m_projVals[LEFT].right, tLX),
-		MonoStereoG(midPlane, m_projVals[RIGHT].right, tRX));
+	ProjectionValues &c = m_projVals[CENTER];
+	ProjectionValues &l = m_projVals[LEFT];
+	ProjectionValues &r = m_projVals[RIGHT];
 
-	m_projVals[CENTER].left = Min(
-		MonoStereoG(midPlane, m_projVals[LEFT].left, tLX),
-		MonoStereoG(midPlane, m_projVals[RIGHT].left, tRX));
+#if (0)
+	c.left = Max(
+		g(midPlane, l.right, tLX),
+		g(midPlane, r.right, tRX));
+	
+	c.right = Min(
+		g(midPlane, l.left, tLX),
+		g(midPlane, r.left, tRX));
 
-	m_projVals[CENTER].bottom = Max(
-		MonoStereoG(midPlane, m_projVals[LEFT].bottom, 0),
-		MonoStereoG(midPlane, m_projVals[RIGHT].bottom, 0));
+	c.bottom = Min(
+		g(midPlane, l.top, 0),
+		g(midPlane, r.top, 0));
 
-	m_projVals[CENTER].top = Max(
-		MonoStereoG(midPlane, m_projVals[LEFT].top, 0),
-		MonoStereoG(midPlane, m_projVals[RIGHT].top, 0));
+	c.top = Max(
+		g(midPlane, l.bottom, 0),
+		g(midPlane, r.bottom, 0));
 
-	/*m_projVals[CENTER].left = 
-		Max(m_projVals[LEFT].left, m_projVals[RIGHT].left);
+#else
+	c.left = Min(
+		g(midPlane, l.left, tLX),
+		g(midPlane, r.left, tRX));
 
-	m_projVals[CENTER].right = 
-		Min(m_projVals[LEFT].right, m_projVals[RIGHT].right);
+	c.right = Max(
+		g(midPlane, l.right, tLX),
+		g(midPlane, r.right, tRX));
 
-	m_projVals[CENTER].top = 
-		Min(m_projVals[LEFT].top, m_projVals[RIGHT].top);
+	c.bottom = Max(
+		g(midPlane, l.bottom, 0),
+		g(midPlane, r.bottom, 0));
 
-	m_projVals[CENTER].bottom = 
-		Max(m_projVals[LEFT].bottom, m_projVals[RIGHT].bottom);*/
+	c.top = Min(
+		g(midPlane, l.top, 0),
+		g(midPlane, r.top, 0));
+#endif
 }
 
 Matrix4 VRCamera::CustomProj(CameraType cam, float nearFloat, float farFloat)
@@ -230,6 +188,15 @@ Matrix4 VRCamera::CustomProj(CameraType cam, float nearFloat, float farFloat)
 		Vector4(sx * idx, sy * idy, Q1,   -1.0f),
 		Vector4(0.0f,     0.0f,     Q2,    0.0f)
 	);
+
+	/*float idz = 1.0f / (farFloat - nearFloat);
+
+	return Matrix4::Transpose(Matrix4(
+		Vector4(2 * idx, 0.0f, 0.0f, 0.0f),
+		Vector4(0.0f, 2 * idy, 0.0f, 0.0f),
+		Vector4(sx * idx, sy * idy, -farFloat * idz, -1.0f),
+		Vector4(0.0f, 0.0f, -farFloat * nearFloat * idz, 0.0f)
+	));*/
 }
 
 float calcIPD(XMMATRIX leftEyeToHead, XMMATRIX rightEyeToHead)
@@ -251,8 +218,8 @@ float calcIPD(XMMATRIX leftEyeToHead, XMMATRIX rightEyeToHead)
 	return Sqrt(Pow(x, 2.0f) + Pow(y, 2.0f) + Pow(z, 2.0f));
 }
 
-void VRCamera::Setup(float nearPlane, float midPlane, 
-					 float farPlane, bool reverseZ, Graphics::QuadPos &quad)
+void VRCamera::Setup(float nearPlane, float midPlane,
+	float farPlane, bool reverseZ, ScreenTextureData& Data)
 {
 	//TODO: Maybe find a better value.
 	const float BlendRegionSize = midPlane / 3.0f;
@@ -270,8 +237,8 @@ void VRCamera::Setup(float nearPlane, float midPlane,
 		}
 
 		m_IPD = calcIPD(m_eyeToHead[0], m_eyeToHead[1]);
-		m_Zc = Min(m_IPD / (2 * m_projVals[0].left), 
-			      -m_IPD / (2 * m_projVals[1].right));
+		m_Zc = Min(m_IPD / (2 * m_projVals[LEFT].left), 
+			      -m_IPD / (2 * m_projVals[RIGHT].right));
 
 		m_cameras[CENTER].ReverseZ(reverseZ);
 		m_eyeToHead[CENTER] = XMMatrixTranslation(0, 0, m_Zc);
@@ -287,18 +254,99 @@ void VRCamera::Setup(float nearPlane, float midPlane,
 
 	this->Update();
 
-	Matrix4 CtoL = m_cameras[LEFT].GetProjMatrix() *
-		m_cameras[LEFT].GetViewMatrix() *
-		Matrix4(XMMatrixInverse(nullptr, m_cameras[CENTER].GetViewMatrix())) *
-		Matrix4(XMMatrixInverse(nullptr, m_cameras[CENTER].GetProjMatrix()));
+	Matrix4 MonoToStereoMappings[num_eyes];
+
+	MonoToStereoMappings[LEFT] =
+		m_cameras[LEFT].GetProjMatrix() 
+		*
+		m_cameras[LEFT].GetViewMatrix() 
+		*
+		/*Matrix4::MakeTranslate({ 10, 0, -1 })
+		**/
+		m_cameras[CENTER].GetViewMatrix().Inverse()
+		*
+		m_cameras[CENTER].GetProjMatrix().Inverse()
+		;
+
+	MonoToStereoMappings[RIGHT] =
+		m_cameras[RIGHT].GetProjMatrix()
+		*
+		m_cameras[RIGHT].GetViewMatrix()
+		*
+		m_cameras[CENTER].GetViewMatrix().Inverse()
+		*
+		m_cameras[CENTER].GetProjMatrix().Inverse()
+		;
 	
-	Matrix4 CtoR = m_cameras[LEFT].GetProjMatrix() *
-		m_cameras[LEFT].GetViewMatrix() *
-		Matrix4(XMMatrixInverse(nullptr, m_cameras[CENTER].GetViewMatrix())) *
-		Matrix4(XMMatrixInverse(nullptr, m_cameras[CENTER].GetProjMatrix()));
-	
-	quad.topLeft = Vector4(-1, -1, 0, 1);
-	quad.topRight = Vector4(1, -1, 0, 1);
-	quad.bottomLeft = Vector4(-1, 1, 0, 1);
-	quad.bottomRight = Vector4(1, 1, 0, 1);
+#define UNPACKV4(v) v.GetX(), v.GetY(), v.GetZ(), v.GetW()
+
+	auto createScreenQuad = [&](CameraType Camera, LPCWSTR ResourceName ) -> void
+	{
+		Matrix4 mapping = MonoToStereoMappings[Camera];
+
+		if (Camera == LEFT)
+		{
+			//mapping = mapping * Matrix4::MakeTranslate({0.0275, 0, 0});
+			mapping = mapping * Matrix4::MakeTranslate({ 0.01, 0, 0 });
+		}
+		else
+		{
+			//mapping = mapping * Matrix4::MakeTranslate({-0.0275, 0, 0});
+			mapping = mapping * Matrix4::MakeTranslate({ -0.01, 0, 0 });
+		}
+
+		float depth = 1;
+		Vector4 tl = mapping * Vector4(-1, 1, depth, 1);
+		tl /= tl.GetW();
+
+		Vector4 tr = mapping * Vector4(1, 1, depth, 1);
+		tr /= tr.GetW();
+
+		Vector4 bl = mapping * Vector4(-1, -1, depth, 1);
+		bl /= bl.GetW();
+		
+		Vector4 br = mapping * Vector4(1, -1, depth, 1);
+		br /= br.GetW();
+
+		float vertices[] =
+		{
+			// TL
+			UNPACKV4(tl), // Position
+			0, 0,         // UV
+
+			// BL
+			UNPACKV4(bl), // Position
+			0, 1,        // UV
+
+			// TR
+			UNPACKV4(tr), // Position
+			1, 0,       // UV
+
+			// TR
+			UNPACKV4(tr), // Position
+			1, 0,       // UV
+
+			// BL
+			UNPACKV4(bl), // Position
+			0, 1,        // UV
+
+			// BR
+			UNPACKV4(br), // Position
+			1, 1,       // UV
+		};
+
+		const int floatsPerVertex = 6;
+		const int vertexCount = _countof(vertices) / floatsPerVertex;
+
+		Data.m_Buffer[Camera]
+			.Create(ResourceName, vertexCount, floatsPerVertex * sizeof(float), vertices);
+
+		Data.m_QuadPos[Camera].topLeft = tl;
+		Data.m_QuadPos[Camera].topRight = tr;
+		Data.m_QuadPos[Camera].bottomLeft = bl;
+		Data.m_QuadPos[Camera].bottomRight = br;
+	};
+
+	createScreenQuad(LEFT, L"ScreenTexture Quad buffer LEFT");
+	createScreenQuad(RIGHT,  L"ScreenTexture Quad buffer RIGHT");
 }

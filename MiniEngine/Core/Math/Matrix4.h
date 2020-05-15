@@ -55,6 +55,9 @@ namespace Math
         INLINE Vector4 GetZ() const { return Vector4(m_mat.r[2]); }
         INLINE Vector4 GetW() const { return Vector4(m_mat.r[3]); }
 
+        INLINE Matrix4 Inverse() const { return Matrix4(XMMatrixInverse(nullptr, m_mat)); }
+
+
         INLINE void SetX(Vector4 x) { m_mat.r[0] = x; }
         INLINE void SetY(Vector4 y) { m_mat.r[1] = y; }
         INLINE void SetZ(Vector4 z) { m_mat.r[2] = z; }
@@ -69,6 +72,16 @@ namespace Math
         static INLINE Matrix4 MakeScale( float scale ) { return Matrix4(XMMatrixScaling(scale, scale, scale)); }
         static INLINE Matrix4 MakeScale( Vector3 scale ) { return Matrix4(XMMatrixScalingFromVector(scale)); }
 
+        static INLINE Matrix4 MakeTranslate( float offset ) { return Matrix4(XMMatrixTranslation(offset, offset, offset)); }
+        static INLINE Matrix4 MakeTranslate( Vector3 offset ) { return Matrix4(XMMatrixTranslationFromVector(offset)); }
+        
+        static INLINE Matrix4 MakeRotateX( float angle ) { return Matrix4(XMMatrixRotationX(angle)); }
+        static INLINE Matrix4 MakeRotateY( float angle ) { return Matrix4(XMMatrixRotationY(angle)); }
+        static INLINE Matrix4 MakeRotateZ( float angle ) { return Matrix4(XMMatrixRotationZ(angle)); }
+
+        static INLINE Matrix4 Identity() { return Matrix4(XMMatrixIdentity()); }
+
+        static INLINE Matrix4 Transpose(Matrix4 mat) { return Matrix4(XMMatrixTranspose(mat)); }
 
     private:
         XMMATRIX m_mat;
