@@ -18,6 +18,7 @@
 #include "RootSignature.h"
 #include "SamplerManager.h"
 #include "GraphicsCommon.h"
+#include "GpuBuffer.h"
 
 class ColorBuffer;
 class DepthBuffer;
@@ -88,4 +89,7 @@ namespace Graphics
     }
     extern EnumVar g_TMPMode;
     extern EnumVar g_VRDepthStencil;
+
+    extern StructuredBuffer &ScreenQuadVB;
+    extern StructuredBuffer &ScreenQuadIB;
 }
