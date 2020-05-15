@@ -749,7 +749,9 @@ void Graphics::CompositeOverlays( GraphicsContext& Context )
     Context.SetDynamicDescriptor(0, 0, g_OverlayBuffer.GetSRV());
     Context.SetPipelineState(s_BlendUIPSO);
     Context.SetConstants(1, 1.0f / g_NativeWidth, 1.0f / g_NativeHeight);
-    Context.Draw(12);
+    Context.SetVertexBuffer(0, ScreenQuadVB.VertexBufferView());
+    Context.SetIndexBuffer(ScreenQuadIB.IndexBufferView());
+    Context.DrawIndexed(12);
 }
 
 void Graphics::SubmitToVRHMD(bool isArray)
