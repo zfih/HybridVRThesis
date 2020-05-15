@@ -1621,6 +1621,12 @@ void D3D12RaytracingMiniEngineSample::RenderColor(
 		m_MainViewport, m_MainScissor);
 
 	RenderObjects(Ctx, Camera.GetViewProjMatrix(), CameraType, kOpaque);
+
+	if (!ShowWaveTileCounts)
+	{
+		Ctx.SetPipelineState(m_CutoutModelPSO);
+		RenderObjects(Ctx, m_Camera[CameraType]->GetViewProjMatrix(), CameraType, kCutout);
+	}
 }
 
 
