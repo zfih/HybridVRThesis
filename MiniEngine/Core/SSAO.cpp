@@ -49,7 +49,7 @@ namespace SSAO
     // This is necessary to filter out pixel shimmer due to bilateral upsampling with too much lost resolution.  High
     // frequency detail can sometimes not be reconstructed, and the noise filter fills in the missing pixels with the
     // result of the higher resolution SSAO.
-    NumVar g_NoiseFilterTolerance("Graphics/SSAO/Noise Filter Threshold (log10)", -0.0f, -8.0f, 0.0f, 0.25f);
+    NumVar g_NoiseFilterTolerance("Graphics/SSAO/Noise Filter Threshold (log10)", -2.0f, -8.0f, 0.0f, 0.25f);
     NumVar g_BlurTolerance("Graphics/SSAO/Blur Tolerance (log10)", -5.0f, -8.0f, -1.0f, 0.25f);
     NumVar g_UpsampleTolerance("Graphics/SSAO/Upsample Tolerance (log10)", -7.0f, -12.0f, -1.0f, 0.5f);
 
@@ -64,7 +64,7 @@ namespace SSAO
     // is determined by the surface normal (such as with IBL), you might not want this side effect.
     NumVar Accentuation("Graphics/SSAO/Accentuation", 0.1f, 0.0f, 1.0f, 0.1f);
 
-    IntVar HierarchyDepth("Graphics/SSAO/Hierarchy Depth", 4, 1, 4);
+    IntVar HierarchyDepth("Graphics/SSAO/Hierarchy Depth", 3, 1, 4);
 }
 
 namespace
