@@ -30,6 +30,7 @@
 #include "ParticleEffectManager.h"
 #include "GraphRenderer.h"
 #include "TemporalEffects.h"
+#include "GpuBuffer.h"
 
 // This macro determines whether to detect if there is an HDR display and enable HDR10 output.
 // Currently, with HDR display enabled, the pixel magnfication functionality is broken.
@@ -203,6 +204,11 @@ namespace Graphics
     enum DebugZoomLevel { kDebugZoomOff, kDebugZoom2x, kDebugZoom4x, kDebugZoom8x, kDebugZoom16x, kDebugZoomCount };
     const char* DebugZoomLabels[] = { "Off", "2x Zoom", "4x Zoom", "8x Zoom", "16x Zoom" };
     EnumVar DebugZoom("Graphics/Display/Magnify Pixels", kDebugZoomOff, kDebugZoomCount, DebugZoomLabels);
+
+    StructuredBuffer &ScreenQuadVB = StructuredBuffer();
+    StructuredBuffer &ScreenQuadIB = StructuredBuffer();
+    StructuredBuffer &ScreenQuadCenterVB = StructuredBuffer();
+    StructuredBuffer &ScreenQuadCenterIB = StructuredBuffer();
 }
 
 void Graphics::Resize(uint32_t width, uint32_t height)
@@ -500,6 +506,73 @@ void Graphics::Initialize(void)
     // Common state was moved to GraphicsCommon.*
     InitializeCommonState();
 
+    float vertices[] =
+    {
+        // Position    // UV
+        -1, -1, 0, 1,  0, 0, 0,
+        -1,  1, 0, 1,  0, 1, 0,
+         0, -1, 0, 1,  1, 0, 0,
+         0,  1, 0, 1,  1, 1, 0,
+         0, -1, 0, 1,  0, 0, 1,
+         0,  1, 0, 1,  0, 1, 1,
+         1, -1, 0, 1,  1, 0, 1,
+         1,  1, 0, 1,  1, 1, 1
+    };
+
+    int floatsPerVertex = 7;
+    int vertexCount = _countof(vertices) / floatsPerVertex;
+
+    ScreenQuadVB.Create(L"Screen Quad Vertex Buffer", vertexCount, 
+        floatsPerVertex * sizeof(float), vertices);
+
+    const float div3 = (1.0f / 3.0f);
+    float debugVertices[] =
+    {
+        // Position       // UV
+        -1,    -1, 0, 1,  0, 0, 0,
+        -1,     1, 0, 1,  0, 1, 0,
+        -div3, -1, 0, 1,  1, 0, 0,
+        -div3,  1, 0, 1,  1, 1, 0,
+        -div3, -1, 0, 1,  0, 0, 1,
+        -div3,  1, 0, 1,  0, 1, 1,
+         div3, -1, 0, 1,  1, 0, 1,
+         div3,  1, 0, 1,  1, 1, 1,
+         div3, -1, 0, 1,  0, 0, 2,
+         div3,  1, 0, 1,  0, 1, 2,
+         1,    -1, 0, 1,  1, 0, 2,
+         1,     1, 0, 1,  1, 1, 2
+    };
+
+    floatsPerVertex = 7;
+    vertexCount = _countof(debugVertices) / floatsPerVertex;
+
+    ScreenQuadCenterVB.Create(L"Screen Quad Vertex Buffer", vertexCount,
+        floatsPerVertex * sizeof(float), debugVertices);
+    
+    __declspec(align(16)) UINT indices[] =
+    {
+        0, 1, 2,
+        1, 3, 2,
+        4, 5, 6,
+        5, 7, 6
+    };
+
+    ScreenQuadIB.Create(L"Screen Quad Index Buffer", _countof(indices), 
+        sizeof(UINT), indices);
+
+    __declspec(align(16)) UINT debugIndices[] =
+    {
+        0, 1,  2,
+        1, 3,  2,
+        4, 5,  6,
+        5, 7,  6,
+        8, 9,  10,
+        9, 11, 10
+    };
+
+    ScreenQuadCenterIB.Create(L"Screen Quad Index Buffer", 
+        _countof(debugIndices), sizeof(UINT), debugIndices);
+
     s_PresentRS.Reset(4, 2);
     s_PresentRS[0].InitAsDescriptorRange(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 0, 2);
     s_PresentRS[1].InitAsConstants(0, 6, D3D12_SHADER_VISIBILITY_ALL);
@@ -507,7 +580,18 @@ void Graphics::Initialize(void)
 	s_PresentRS[3].InitAsDescriptorRange(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 0, 1);
     s_PresentRS.InitStaticSampler(0, SamplerLinearClampDesc);
     s_PresentRS.InitStaticSampler(1, SamplerPointClampDesc);
-    s_PresentRS.Finalize(L"Present");
+    s_PresentRS.Finalize(L"Present", 
+        D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
+
+    D3D12_INPUT_ELEMENT_DESC vertElem[] =
+    {
+        { "POSITION", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0,
+        D3D12_APPEND_ALIGNED_ELEMENT,
+        D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+        { "TEXCOORD", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0,
+        D3D12_APPEND_ALIGNED_ELEMENT,
+        D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 }
+    };
 
     // Initialize PSOs
     s_BlendUIPSO.SetRootSignature(s_PresentRS);
@@ -515,7 +599,7 @@ void Graphics::Initialize(void)
     s_BlendUIPSO.SetBlendState( BlendPreMultiplied );
     s_BlendUIPSO.SetDepthStencilState( DepthStateDisabled );
     s_BlendUIPSO.SetSampleMask(0xFFFFFFFF);
-    s_BlendUIPSO.SetInputLayout(0, nullptr);
+    s_BlendUIPSO.SetInputLayout(_countof(vertElem), vertElem);
     s_BlendUIPSO.SetPrimitiveTopologyType(D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE);
     s_BlendUIPSO.SetVertexShader( g_pScreenQuadVS, sizeof(g_pScreenQuadVS) );
     s_BlendUIPSO.SetPixelShader( g_pBufferCopyPS, sizeof(g_pBufferCopyPS) );
@@ -526,7 +610,7 @@ void Graphics::Initialize(void)
     HiddenMeshDepthRS[0].InitAsDescriptorRange(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 0, 1);
     HiddenMeshDepthRS.Finalize(L"Hidden Mesh", D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
 
-    D3D12_INPUT_ELEMENT_DESC vertElem[] =
+    D3D12_INPUT_ELEMENT_DESC vertElem2[] =
     {
         {
             "POSITION", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 
@@ -539,7 +623,7 @@ void Graphics::Initialize(void)
     HiddenMeshDepthPSO.SetRasterizerState(RasterizerTwoSided);
     HiddenMeshDepthPSO.SetBlendState(BlendNoColorWrite);
     HiddenMeshDepthPSO.SetDepthStencilState(DepthReadWriteStencilWriteState);
-    HiddenMeshDepthPSO.SetInputLayout(_countof(vertElem), vertElem);
+    HiddenMeshDepthPSO.SetInputLayout(_countof(vertElem2), vertElem2);
     HiddenMeshDepthPSO.SetPrimitiveTopologyType(D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE);
     HiddenMeshDepthPSO.SetVertexShader(g_pHiddenMeshVS, sizeof(g_pHiddenMeshVS));
     HiddenMeshDepthPSO.SetPixelShader(g_pHiddenMeshPS, sizeof(g_pHiddenMeshPS));
@@ -712,7 +796,18 @@ void Graphics::CompositeOverlays( GraphicsContext& Context )
     Context.SetDynamicDescriptor(0, 0, g_OverlayBuffer.GetSRV());
     Context.SetPipelineState(s_BlendUIPSO);
     Context.SetConstants(1, 1.0f / g_NativeWidth, 1.0f / g_NativeHeight);
-    Context.Draw(18);
+    if (s_MonoStereoRenderCenter)
+    {
+        Context.SetVertexBuffer(0, ScreenQuadCenterVB.VertexBufferView());
+        Context.SetIndexBuffer(ScreenQuadCenterIB.IndexBufferView());
+        Context.DrawIndexed(18);
+    }
+    else
+    {
+        Context.SetVertexBuffer(0, ScreenQuadVB.VertexBufferView());
+        Context.SetIndexBuffer(ScreenQuadIB.IndexBufferView());
+        Context.DrawIndexed(12);
+    }
 }
 
 void Graphics::SubmitToVRHMD(bool isArray)
@@ -753,7 +848,18 @@ void Graphics::PreparePresentLDR(void)
         Context.TransitionResource(UpsampleDest, D3D12_RESOURCE_STATE_RENDER_TARGET);
 		Context.SetRenderTarget(UpsampleDest.GetRTV());
         Context.SetViewportAndScissor(0, 0, g_DisplayWidth, g_DisplayHeight);
-        Context.Draw(vertCount);
+        if (s_MonoStereoRenderCenter)
+        {
+            Context.SetVertexBuffer(0, ScreenQuadCenterVB.VertexBufferView());
+            Context.SetIndexBuffer(ScreenQuadCenterIB.IndexBufferView());
+            Context.DrawIndexed(18);
+        }
+        else
+        {
+            Context.SetVertexBuffer(0, ScreenQuadVB.VertexBufferView());
+            Context.SetIndexBuffer(ScreenQuadIB.IndexBufferView());
+            Context.DrawIndexed(12);
+        }
     }
     /*else if (UpsampleFilter == kBicubic)
     {

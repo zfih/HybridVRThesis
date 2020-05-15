@@ -18,6 +18,7 @@
 #include "RootSignature.h"
 #include "SamplerManager.h"
 #include "GraphicsCommon.h"
+#include "GpuBuffer.h"
 
 class ColorBuffer;
 class DepthBuffer;
@@ -86,4 +87,8 @@ namespace Graphics
     extern BoolVar s_MonoStereoCopyToEye;
     extern BoolVar s_MonoStereoRenderCenter;
 
+    extern StructuredBuffer &ScreenQuadVB;
+    extern StructuredBuffer &ScreenQuadIB;
+    extern StructuredBuffer &ScreenQuadCenterVB;
+    extern StructuredBuffer &ScreenQuadCenterIB;
 }
