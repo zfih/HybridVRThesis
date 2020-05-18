@@ -1894,7 +1894,13 @@ void D3D12RaytracingMiniEngineSample::RenderUI(class GraphicsContext& gfxContext
 		(1000000.0f);
 	TextContext text(gfxContext);
 	text.Begin();
-	text.DrawFormattedString("\nMillion Primary Rays/s: %7.3f", primaryRaysPerSec);
+	//text.DrawFormattedString("\nMillion Primary Rays/s: %7.3f", primaryRaysPerSec);
+	Vector3 camPos = m_Camera[0]->GetPosition(); // TODO: Add camera enum
+	text.DrawFormattedString("\nCam pos: %f, %f, %f",
+		float(camPos.GetX()), float(camPos.GetY()), float(camPos.GetZ()));
+	text.DrawFormattedString("\nCam rot: %f, %f",
+		m_CameraController.get()->GetCurrentHeading(),
+		m_CameraController.get()->GetCurrentPitch());
 	text.End();
 }
 
