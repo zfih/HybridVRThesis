@@ -15,6 +15,8 @@
 #include "CameraController.h"
 #include "Camera.h"
 #include "GameInput.h"
+#include <iostream>
+#include <fstream>
 
 using namespace Math;
 using namespace GameCore;

@@ -115,6 +115,7 @@ void VRCamera::Update()
 			m_cameras[i].Update();
 		}
 	}
+	BaseCamera::Update();
 }
 
 void VRCamera::GetHMDProjVals(vr::EVREye eye)
