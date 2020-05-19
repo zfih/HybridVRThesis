@@ -187,6 +187,7 @@ namespace Math
 		XMMATRIX m_HMDPoseMat;
 		XMMATRIX m_eyeToHead[CameraType::COUNT - 1]; // - 1 because we don't do center
 		XMMATRIX m_eyeProj[CameraType::COUNT - 1];
+        Vector3 VROffset;
 
         Camera* operator[](const UINT i) noexcept { return &m_cameras[i]; }
     	
@@ -300,6 +301,11 @@ namespace Math
         float GetNearClip() const { return m_centerCamera->GetNearClip(); }
         float GetFarClip() const { return m_centerCamera->GetFarClip(); }
         float GetClearDepth() const { return m_centerCamera->GetClearDepth(); }*/
+
+        void AddVROffset(float x, float y, float z)
+        {
+            VROffset += Vector3(Matrix4(m_HMDPoseMat) * Vector4(x, y, z, 0));
+        }
     };
 	
 } // namespace Math
