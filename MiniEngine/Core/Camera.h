@@ -182,7 +182,7 @@ namespace Math
         // Initialize vector of count cameras, we never want more or less
 		// and we want them to be initialized.
         std::vector<Camera> m_cameras = std::vector<Camera>(COUNT);
-        Camera* m_centerCamera;
+        //Camera* m_centerCamera;
 
 		XMMATRIX m_HMDPoseMat;
 		XMMATRIX m_eyeToHead[CameraType::COUNT - 1]; // - 1 because we don't do center
@@ -199,24 +199,28 @@ namespace Math
             m_cameras[LEFT].SetEyeAtUp(eye, at, up);
             m_cameras[RIGHT].SetEyeAtUp(eye, at, up);
             m_cameras[CENTER].SetEyeAtUp(eye, at, up);
+            BaseCamera::SetEyeAtUp(eye, at, up);
         }
         void SetLookDirection(Vector3 forward, Vector3 up)
         {
             m_cameras[LEFT].SetLookDirection(forward, up);
             m_cameras[RIGHT].SetLookDirection(forward, up);
             m_cameras[CENTER].SetLookDirection(forward, up);
+            BaseCamera::SetLookDirection(forward, up);
         }
         void SetRotation(Quaternion basisRotation)
         {
             m_cameras[LEFT].SetRotation(basisRotation);
             m_cameras[RIGHT].SetRotation(basisRotation);
             m_cameras[CENTER].SetRotation(basisRotation);
+            BaseCamera::SetRotation(basisRotation);
         }
         void SetPosition(Vector3 worldPos)
         {	
             m_cameras[LEFT].SetPosition(worldPos + m_cameras[LEFT].GetRotation() * Vector3 { -10.0f, 0.0f, 0.0f });
             m_cameras[RIGHT].SetPosition(worldPos + m_cameras[RIGHT].GetRotation() * Vector3 { 10.0f, 0.0f, 0.0f });
             m_cameras[CENTER].SetPosition(worldPos);
+            BaseCamera::SetPosition(worldPos);
         }
         void SetTransform(const AffineTransform& xform)
         {
@@ -225,21 +229,23 @@ namespace Math
             m_cameras[CENTER].SetTransform(xform);
 
             SetPosition(xform.GetTranslation());
+
+            BaseCamera::SetTransform(xform);
         }
 
-        const Quaternion GetRotation() const { return m_centerCamera->GetRotation(); }
-        const Vector3 GetRightVec() const { return m_centerCamera->GetRightVec(); }
-        const Vector3 GetUpVec() const { return m_centerCamera->GetUpVec(); }
-        const Vector3 GetForwardVec() const { return m_centerCamera->GetForwardVec(); }
-        const Vector3 GetPosition() const { return m_centerCamera->GetPosition(); }
+        //const Quaternion GetRotation() const { return m_centerCamera->GetRotation(); }
+        //const Vector3 GetRightVec() const { return m_centerCamera->GetRightVec(); }
+        //const Vector3 GetUpVec() const { return m_centerCamera->GetUpVec(); }
+        //const Vector3 GetForwardVec() const { return m_centerCamera->GetForwardVec(); }
+        //const Vector3 GetPosition() const { return m_centerCamera->GetPosition(); }
 
-        // Accessors for reading the various matrices and frusta
-        const Matrix4& GetViewMatrix() const { return m_centerCamera->GetViewMatrix(); }
-        const Matrix4& GetProjMatrix() const { return m_centerCamera->GetProjMatrix(); }
-        const Matrix4& GetViewProjMatrix() const { return m_centerCamera->GetViewProjMatrix(); }
-        const Matrix4& GetReprojectionMatrix() const { return m_centerCamera->GetReprojectionMatrix(); }
-        const Frustum& GetViewSpaceFrustum() const { return m_centerCamera->GetViewSpaceFrustum(); }
-        const Frustum& GetWorldSpaceFrustum() const { return m_centerCamera->GetWorldSpaceFrustum(); }
+        //// Accessors for reading the various matrices and frusta
+        //const Matrix4& GetViewMatrix() const { return m_centerCamera->GetViewMatrix(); }
+        //const Matrix4& GetProjMatrix() const { return m_centerCamera->GetProjMatrix(); }
+        //const Matrix4& GetViewProjMatrix() const { return m_centerCamera->GetViewProjMatrix(); }
+        //const Matrix4& GetReprojectionMatrix() const { return m_centerCamera->GetReprojectionMatrix(); }
+        //const Frustum& GetViewSpaceFrustum() const { return m_centerCamera->GetViewSpaceFrustum(); }
+        //const Frustum& GetWorldSpaceFrustum() const { return m_centerCamera->GetWorldSpaceFrustum(); }
 
         // Controls the view-to-projection matrix
         void SetPerspectiveMatrix(float verticalFovRadians, float aspectHeightOverWidth, float nearZClip, float farZClip)
@@ -247,30 +253,35 @@ namespace Math
             m_cameras[LEFT].SetPerspectiveMatrix(verticalFovRadians, aspectHeightOverWidth, nearZClip, farZClip);
             m_cameras[RIGHT].SetPerspectiveMatrix(verticalFovRadians, aspectHeightOverWidth, nearZClip, farZClip);
             m_cameras[CENTER].SetPerspectiveMatrix(verticalFovRadians, aspectHeightOverWidth, nearZClip, farZClip);
+            Camera::SetPerspectiveMatrix(verticalFovRadians, aspectHeightOverWidth, nearZClip, farZClip);
         }
         void SetFOV(float verticalFovInRadians)
         {
             m_cameras[LEFT].SetFOV(verticalFovInRadians);
             m_cameras[RIGHT].SetFOV(verticalFovInRadians);
             m_cameras[CENTER].SetFOV(verticalFovInRadians);
+            Camera::SetFOV(verticalFovInRadians);
         }
         void SetAspectRatio(float heightOverWidth)
         {
             m_cameras[LEFT].SetAspectRatio(heightOverWidth);
             m_cameras[RIGHT].SetAspectRatio(heightOverWidth);
             m_cameras[CENTER].SetAspectRatio(heightOverWidth);
+            Camera::SetAspectRatio(heightOverWidth);
         }
         void SetZRange(float nearZ, float farZ)
         {
             m_cameras[LEFT].SetZRange(nearZ, farZ);
             m_cameras[RIGHT].SetZRange(nearZ, farZ);
             m_cameras[CENTER].SetZRange(nearZ, farZ);
+            Camera::SetZRange(nearZ, farZ);
         }
         void ReverseZ(bool enable)
         {
             m_cameras[LEFT].ReverseZ(enable);
             m_cameras[RIGHT].ReverseZ(enable);
             m_cameras[CENTER].ReverseZ(enable);
+            Camera::ReverseZ(enable);
         }
         void UpdateVRPoseMat(XMMATRIX poseMat)
         {
@@ -285,10 +296,10 @@ namespace Math
             m_cameras[CENTER].SetVRViewProjMatrices(view, proj);
         }
 
-        float GetFOV() const { return m_centerCamera->GetFOV(); }
+        /*float GetFOV() const { return m_centerCamera->GetFOV(); }
         float GetNearClip() const { return m_centerCamera->GetNearClip(); }
         float GetFarClip() const { return m_centerCamera->GetFarClip(); }
-        float GetClearDepth() const { return m_centerCamera->GetClearDepth(); }
+        float GetClearDepth() const { return m_centerCamera->GetClearDepth(); }*/
     };
 	
 } // namespace Math
