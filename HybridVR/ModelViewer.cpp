@@ -62,6 +62,9 @@
 #include "RaytracingHlslCompat.h"
 #include "ModelViewerRayTracing.h"
 
+#include <iostream>
+#include <fstream>
+
 using namespace GameCore;
 using namespace Math;
 using namespace Graphics;
@@ -157,6 +160,11 @@ private:
 	                     DepthBuffer& depth);
 	void RaytraceReflections(GraphicsContext& context, const Math::Camera& camera, ColorBuffer& colorTarget,
 	                         DepthBuffer& depth, ColorBuffer& normals);
+
+	void SaveCamPos();
+	void LoadCamPos();
+	const char* m_CamPosFilename = "SavedCamPos.txt";
+	const int m_CamPosCount = 5;
 
 	VRCamera m_Camera;
 	std::auto_ptr<VRCameraController> m_CameraController;
@@ -1003,6 +1011,8 @@ void D3D12RaytracingMiniEngineSample::Startup(void)
 	m_CameraPosArray[4].heading = -1.236f;
 	m_CameraPosArray[4].pitch = 0.0f;
 
+	LoadCamPos();
+
 	m_Camera.Setup(false);
     m_Camera.SetZRange(1.0f, 10000.0f);
 
@@ -1078,6 +1088,14 @@ void D3D12RaytracingMiniEngineSample::Update(float deltaT)
 	{
 		m_CameraPosArrayCurrentPosition = (m_CameraPosArrayCurrentPosition + 1) % c_NumCameraPositions;
 		SetCameraToPredefinedPosition(m_CameraPosArrayCurrentPosition);
+	}
+	else if (GameInput::IsFirstPressed(GameInput::kKey_f3))
+	{
+		SaveCamPos();
+	}
+	else if (GameInput::IsFirstPressed(GameInput::kKey_f4))
+	{
+		LoadCamPos();
 	}
 
 	if (!freezeCamera)
@@ -1895,8 +1913,9 @@ void D3D12RaytracingMiniEngineSample::RenderUI(class GraphicsContext& gfxContext
 	TextContext text(gfxContext);
 	text.Begin();
 	//text.DrawFormattedString("\nMillion Primary Rays/s: %7.3f", primaryRaysPerSec);
-	Vector3 camPos = m_Camera[0]->GetPosition(); // TODO: Add camera enum
-	text.DrawFormattedString("\nCam pos: %f, %f, %f",
+	Vector3 camPos = m_Camera.GetPosition();
+	text.DrawFormattedString("\nCam %d pos: %f, %f, %f",
+		m_CameraPosArrayCurrentPosition,
 		float(camPos.GetX()), float(camPos.GetY()), float(camPos.GetZ()));
 	text.DrawFormattedString("\nCam rot: %f, %f",
 		m_CameraController.get()->GetCurrentHeading(),
@@ -1939,4 +1958,76 @@ void D3D12RaytracingMiniEngineSample::Raytrace(class GraphicsContext& gfxContext
 
 	// Clear the gfxContext's descriptor heap since ray tracing changes this underneath the sheets
 	gfxContext.SetDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, nullptr);
+}
+
+void D3D12RaytracingMiniEngineSample::SaveCamPos()
+{
+	{
+		std::ifstream file(m_CamPosFilename);
+
+		if (file.good())
+		{
+			int msgboxID = MessageBox(
+				NULL,
+				L"Please make sure you are not \
+				overwriting a needed camera position",
+				L"Confirm Save",
+				MB_ICONEXCLAMATION | MB_OKCANCEL
+			);
+
+			if (msgboxID == IDCANCEL)
+			{
+				return;
+			}
+		}
+	}
+
+	std::ofstream file(m_CamPosFilename, std::ios::trunc);
+
+	for (int i = 0; i < m_CamPosCount; i++)
+	{
+		if (i == m_CameraPosArrayCurrentPosition)
+		{
+			Vector3 camPos = m_Camera.GetPosition();
+
+			file << camPos.GetX() << "\n" 
+				 << camPos.GetY() << "\n" 
+				 << camPos.GetZ() << "\n" 
+				 << m_CameraController.get()->GetCurrentHeading() << "\n" 
+				 << m_CameraController.get()->GetCurrentPitch() << "\n";
+		}
+		else
+		{
+			Vector3 camPos = m_CameraPosArray[i].position;
+
+			file << camPos.GetX() << "\n" 
+				 << camPos.GetY() << "\n" 
+				 << camPos.GetZ() << "\n" 
+				 << m_CameraPosArray[i].heading << "\n" 
+				 << m_CameraPosArray[i].pitch << "\n";
+		}
+	}
+	file.close();
+}
+
+void D3D12RaytracingMiniEngineSample::LoadCamPos()
+{
+	std::ifstream file(m_CamPosFilename);
+
+	if (file.good())
+	{
+		for (int i = 0; i < m_CamPosCount; i++)
+		{
+			std::string x, y, z, h, p;
+			std::getline(file, x);
+			std::getline(file, y);
+			std::getline(file, z);
+			std::getline(file, h);
+			std::getline(file, p);
+			m_CameraPosArray[i].position =
+				Vector3(atof(x.c_str()), atof(y.c_str()), atof(z.c_str()));
+			m_CameraPosArray[i].heading = atof(h.c_str());
+			m_CameraPosArray[i].pitch = atof(p.c_str());
+		}
+	}
 }
