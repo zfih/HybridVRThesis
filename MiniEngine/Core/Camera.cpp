@@ -103,8 +103,10 @@ void VRCamera::Update()
 
 		for (int i = 0; i < Cam::kCount; ++i)
 		{
-			m_cameras[i].SetVRViewProjMatrices(m_eyeToHead[i] * m_HMDPoseMat, m_eyeProj[i]);
-			m_cameras[i].SetTransform(AffineTransform(m_eyeToHead[i] * m_HMDPoseMat));
+			m_cameras[i].SetVRViewProjMatrices(m_eyeToHead[i] * m_HMDPoseMat
+				* XMMatrixTranslationFromVector(VROffset), m_eyeProj[i]);
+			m_cameras[i].SetTransform(AffineTransform(m_eyeToHead[i] * 
+				m_HMDPoseMat * XMMatrixTranslationFromVector(VROffset)));
 			m_cameras[i].Update();
 		}
 	}
@@ -225,7 +227,7 @@ void VRCamera::Setup(float nearPlane, float midPlane,
 {
 	//TODO: Maybe find a better value.
 	const float BlendRegionSize = midPlane / 3.0f;
-
+    VROffset = Vector3(0, 0, 0);
 	if (VR::GetHMD()) // TODO: Have setting for this we can check
 	{
 		m_HMDPoseMat = VR::GetHMDPos();

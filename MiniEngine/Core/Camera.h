@@ -195,6 +195,7 @@ namespace Math
 		XMMATRIX m_HMDPoseMat;
 		XMMATRIX m_eyeToHead[Cam::kCount];
 		XMMATRIX m_eyeProj[Cam::kCount];
+        Vector3 VROffset;
 		
 		struct ProjectionValues
 		{
@@ -330,6 +331,11 @@ namespace Math
         float GetNearClip() const { return m_centerCamera->GetNearClip(); }
         float GetFarClip() const { return m_centerCamera->GetFarClip(); }
         float GetClearDepth() const { return m_centerCamera->GetClearDepth(); }*/
+
+        void AddVROffset(float x, float y, float z)
+        {
+            VROffset += Vector3(Matrix4(m_HMDPoseMat) * Vector4(x, y, z, 0));
+        }
     };
 	
 } // namespace Math
