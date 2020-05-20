@@ -550,7 +550,7 @@ void Graphics::Initialize(void)
     // Initialize PSOs
     s_BlendUIPSO.SetRootSignature(s_PresentRS);
     s_BlendUIPSO.SetRasterizerState( RasterizerTwoSided );
-    s_BlendUIPSO.SetBlendState( BlendPreMultiplied );
+    s_BlendUIPSO.SetBlendState(BlendAdditive);
     s_BlendUIPSO.SetDepthStencilState( DepthStateDisabled );
     s_BlendUIPSO.SetSampleMask(0xFFFFFFFF);
     s_BlendUIPSO.SetInputLayout(_countof(vertElem), vertElem);
@@ -913,6 +913,7 @@ void Graphics::HiddenMeshDepthPrepass()
 void Graphics::Present(void)
 {
     ImGui::BuildGUI();
+    ImGui::RenderGUI();
 	
     if (g_bEnableHDROutput)
         PreparePresentHDR();
@@ -923,8 +924,6 @@ void Graphics::Present(void)
     g_CurrentBuffer = (g_CurrentBuffer + 1) % SWAP_CHAIN_BUFFER_COUNT;
 
     UINT PresentInterval = s_EnableVSync ? std::min(4, (int)Round(s_FrameTime * 60.0f)) : 0;
-
-    ImGui::RenderGUI();
 	
     s_SwapChain1->Present(PresentInterval, 0);
 
