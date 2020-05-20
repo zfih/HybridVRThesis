@@ -18,6 +18,7 @@
 #include "GameInput.h"
 #include "BufferManager.h"
 #include "CommandContext.h"
+#include "DearImGuiRenderer.h"
 #include "ImGui/imgui.h"
 #include "ImGui/imgui_impl_win32.h"
 #include "ImGui/imgui_impl_dx12.h"
@@ -71,7 +72,11 @@ namespace GameCore
         float DeltaTime = Graphics::GetFrameTime();
     
         GameInput::Update(DeltaTime);
-        EngineTuning::Update(DeltaTime);
+
+    	if(!ImGui::g_useImGui)
+    	{
+            EngineTuning::Update(DeltaTime);
+    	}
         
         game.Update(DeltaTime);
 
@@ -102,17 +107,25 @@ namespace GameCore
             MipsContext.Finish();
         }
 
-        //GraphicsContext& UiContext = GraphicsContext::Begin(L"Render UI");
-        //UiContext.TransitionResource(g_OverlayBuffer, D3D12_RESOURCE_STATE_RENDER_TARGET, true);
-        //UiContext.ClearColor(g_OverlayBuffer);
-        //UiContext.SetRenderTarget(g_OverlayBuffer.GetRTV());
-        //UiContext.SetViewportAndScissor(0, 0, g_OverlayBuffer.GetWidth(), g_OverlayBuffer.GetHeight());
-        //game.RenderUI(UiContext);
+    	if(!ImGui::g_useImGui)
+    	{
+			GraphicsContext& UiContext = GraphicsContext::Begin(L"Render UI");
+			UiContext.TransitionResource(g_OverlayBuffer, D3D12_RESOURCE_STATE_RENDER_TARGET, true);
+			UiContext.ClearColor(g_OverlayBuffer);
+			UiContext.SetRenderTarget(g_OverlayBuffer.GetRTV());
+			UiContext.SetViewportAndScissor(0, 0, g_OverlayBuffer.GetWidth(), g_OverlayBuffer.GetHeight());
+			game.RenderUI(UiContext);
 
-        //EngineTuning::Display( UiContext, 10.0f, 40.0f, 1900.0f, 1040.0f );
+			EngineTuning::Display( UiContext, 10.0f, 40.0f, 1900.0f, 1040.0f );
 
-        //UiContext.Finish();
-
+			UiContext.Finish();
+    	}
+        else
+        {
+            ImGui::BuildGUI();
+            ImGui::RenderGUI();
+        }
+    	
         Graphics::Present();
 
         return !game.IsDone();

@@ -20,6 +20,7 @@ namespace Graphics
 namespace ImGui
 {
     UserDescriptorHeap g_descHeap = UserDescriptorHeap{ D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, 1 };
+    BoolVar g_useImGui = { "Use ImGui", true };
 }
 
 void ImGui::Initialize()
@@ -69,6 +70,14 @@ void ImGui::BuildGUI()
     ImGui::Text("This is the first test window yay");
 
     ImGui::SliderFloat("Test floaaaat", &f, 0.0f, 10000.0f);
+
+    { // use imgui
+
+	    bool useImGui = g_useImGui;
+	    ImGui::Checkbox("Use ImGui", &useImGui);
+	    g_useImGui = useImGui;
+    	
+    }
 
     ImGui::End();
 }
