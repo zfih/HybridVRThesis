@@ -15,6 +15,9 @@
 
 #include "pch.h"
 #include "VR.h"
+#include "ImGui/imgui.h"
+#include "ImGui/imgui_impl_win32.h"
+#include "ImGui/imgui_impl_dx12.h"
 
 namespace GameCore
 {

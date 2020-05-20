@@ -1066,6 +1066,7 @@ void D3D12RaytracingMiniEngineSample::Update(float deltaT)
 	if (GameInput::IsFirstPressed(GameInput::kKey_f))
 	{
 		freezeCamera = !freezeCamera;
+		GameInput::g_MouseLock = !GameInput::g_MouseLock;
 	}
 
 	if (GameInput::IsFirstPressed(GameInput::kKey_f1))

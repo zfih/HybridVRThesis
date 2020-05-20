@@ -31,6 +31,7 @@
 #include "GraphRenderer.h"
 #include "TemporalEffects.h"
 #include "GpuBuffer.h"
+#include "DearImGuiRenderer.h"
 
 // This macro determines whether to detect if there is an HDR display and enable HDR10 output.
 // Currently, with HDR display enabled, the pixel magnfication functionality is broken.
@@ -651,6 +652,8 @@ void Graphics::Initialize(void)
     GraphRenderer::Initialize();
     ParticleEffects::Initialize(kMaxNativeWidth, kMaxNativeHeight);
     TextRenderer::Initialize();
+
+    ImGui::Initialize();
 }
 
 void Graphics::Terminate( void )
@@ -680,7 +683,8 @@ void Graphics::Shutdown( void )
     GraphRenderer::Shutdown();
     ParticleEffects::Shutdown();
     TextureManager::Shutdown();
-
+    ImGui::Shutdown();
+	
     for (UINT i = 0; i < SWAP_CHAIN_BUFFER_COUNT; ++i)
         g_DisplayPlane[i].Destroy();
 
@@ -907,7 +911,9 @@ void Graphics::HiddenMeshDepthPrepass()
 }
 
 void Graphics::Present(void)
-{	
+{
+    ImGui::BuildGUI();
+	
     if (g_bEnableHDROutput)
         PreparePresentHDR();
     else
@@ -918,6 +924,8 @@ void Graphics::Present(void)
 
     UINT PresentInterval = s_EnableVSync ? std::min(4, (int)Round(s_FrameTime * 60.0f)) : 0;
 
+    ImGui::RenderGUI();
+	
     s_SwapChain1->Present(PresentInterval, 0);
 
     // Test robustness to handle spikes in CPU time
