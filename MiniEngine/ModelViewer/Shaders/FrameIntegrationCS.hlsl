@@ -30,22 +30,32 @@ void FullResPass(uint3 DTid, uint cam)
 	HighResImage.GetDimensions(nTextureWidth, nTextureHeight, elements);
 	float3 uv = float3(DTid.x / nTextureWidth, DTid.y / nTextureHeight, cam);
 
-	float3 colour = (2 * RemoveSRGBCurve(HighResImage[uint3(DTid.xy, cam)])) - RemoveSRGBCurve(LowResImage.SampleLevel(Sampler, uv, 0));
+	float3 colour = (2 * RemoveSRGBCurve(HighResImage[uint3(DTid.xy, cam)])) 
+		- RemoveSRGBCurve(LowResImage.SampleLevel(Sampler, uv, 0));
 	if (colour.x > 1.0f)
 	{
-		Residuals[uint3(DTid.xy, cam)] = float3(colour.x - 1.0f, Residuals[uint3(DTid.xy, cam)].y, Residuals[uint3(DTid.xy, cam)].z);
+		Residuals[uint3(DTid.xy, cam)] = float3(
+			colour.x - 1.0f, 
+			Residuals[uint3(DTid.xy, cam)].y, 
+			Residuals[uint3(DTid.xy, cam)].z);
 		colour.x = 1.0f;
 	}
 
 	if (colour.y > 1.0f)
 	{
-		Residuals[uint3(DTid.xy, cam)] = float3(Residuals[uint3(DTid.xy, cam)].x, colour.y - 1.0f, Residuals[uint3(DTid.xy, cam)].z);
+		Residuals[uint3(DTid.xy, cam)] = float3(
+			Residuals[uint3(DTid.xy, cam)].x, 
+			colour.y - 1.0f, 
+			Residuals[uint3(DTid.xy, cam)].z);
 		colour.y = 1.0f;
 	}
 
 	if (colour.z > 1.0f)
 	{
-		Residuals[uint3(DTid.xy, cam)] = float3(Residuals[uint3(DTid.xy, cam)].x, Residuals[uint3(DTid.xy, cam)].y, colour.z - 1.0f);
+		Residuals[uint3(DTid.xy, cam)] = float3(
+			Residuals[uint3(DTid.xy, cam)].x, 
+			Residuals[uint3(DTid.xy, cam)].y, 
+			colour.z - 1.0f);
 		colour.z = 1.0f;
 	}
 
@@ -60,12 +70,15 @@ void LowResPass(uint3 DTid, uint cam)
 	HighResImage.GetDimensions(nTextureWidth, nTextureHeight, elements);
 	float3 uv = float3(DTid.x / nTextureWidth, DTid.y / nTextureHeight, cam);
 
-	float3 sampledColour = RemoveSRGBCurve(LowResImage.SampleLevel(Sampler, uv, 0));
-	float3 contrast = abs(HighResImage[uint3(DTid.xy, cam)] - sampledColour) / (HighResImage[uint3(DTid.xy, cam)] + sampledColour);
-	float3 s = float3(1, 1, 1);
+	float3 sampledColour = 
+		RemoveSRGBCurve(LowResImage.SampleLevel(Sampler, uv, 0));
+	float3 contrast = abs(HighResImage[uint3(DTid.xy, cam)] - sampledColour) 
+		/ (HighResImage[uint3(DTid.xy, cam)] + sampledColour);
+	float3 s = float3(5, 5, 5); // TODO: Test if this is scene or HMD dependent
 	float3 weight = exp(-s * contrast);
 
-	HighResImage[uint3(DTid.xy, cam)] = ApplySRGBCurve(weight * sampledColour + Residuals[uint3(DTid.xy, cam)]);
+	HighResImage[uint3(DTid.xy, cam)] =
+		ApplySRGBCurve(sampledColour + weight * Residuals[uint3(DTid.xy, cam)]);
 }
 
 [numthreads(8, 8, 1)]
