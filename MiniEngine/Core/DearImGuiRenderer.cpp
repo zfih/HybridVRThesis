@@ -1,5 +1,7 @@
 #include "pch.h"
 #include "DearImGuiRenderer.h"
+
+#include "../../HybridVR/ForwardPlusLighting.h"
 #include "GameCore.h"
 #include "GraphicsCore.h"
 #include "CommandContext.h"
@@ -36,6 +38,7 @@ void ImGui::Initialize()
     ImGuiIO& io = ImGui::GetIO();
     (void)io; // What?
 
+	// TODO: fix blend.. We are currently see-through
     ImGui::StyleColorsDark();
     //ImGui::StyleColorsLight();
     //ImGui::StyleColorsClassic();
@@ -59,25 +62,226 @@ void ImGui::BuildGUI()
 
     ImGui::NewFrame();
 
-    bool open = true;
+    ImGui::ShowDemoWindow(0);
+
+    // We specify a default position/size in case there's no data in the .ini file. Typically this isn't required! We only do it to make the Demo applications a little more welcoming.
+    ImGui::SetNextWindowPos(ImVec2(20, 20), ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowSize(ImVec2(450, 580), ImGuiCond_FirstUseEver);
 	
-    ImGui::ShowDemoWindow(&open);
+    ImGui::Begin("Engine Tuning");
+
+    const float indent = 10.0f;
+
+	if (ImGui::CollapsingHeader("Application", ImGuiTreeNodeFlags_CollapsingHeader | ImGuiTreeNodeFlags_Framed))
+    { // Application
+        ImGui::Indent(5);
+		
+        if (ImGui::CollapsingHeader("Forward+", ImGuiTreeNodeFlags_CollapsingHeader | ImGuiTreeNodeFlags_Framed))
+        { // Application/Forward+
+            ImGui::Indent(indent);
+        	// ==================
+
+			// Light Grid Dim
+            ImGui::Text("Light Grid Dim");
+
+        	int lightGrid = Lighting::LightGridDim;
+			        	
+            ImGui::RadioButton("8", &lightGrid, 8); ImGui::SameLine();
+            ImGui::RadioButton("16", &lightGrid, 16); ImGui::SameLine();
+            ImGui::RadioButton("24", &lightGrid, 24); ImGui::SameLine();
+            ImGui::RadioButton("32", &lightGrid, 32);
+
+            Lighting::LightGridDim = lightGrid;
+
+        	// TODO: Fix cyclic dependencies... Maybe forward declare?
+        	// Show wave tile counts
+            /*bool useImGui = ShowWaveTileCounts;
+            ImGui::Checkbox("Use ImGui", &useImGui);
+            g_useImGui = useImGui;*/
+
+        	// ===================
+            ImGui::Indent(-indent);
+        } // Application/Forward+
+		
+        if (ImGui::CollapsingHeader("Lighting", ImGuiTreeNodeFlags_CollapsingHeader | ImGuiTreeNodeFlags_Framed))
+        { // Application/Lighting
+            ImGui::Indent(indent);
+            // ==================
+
+
+
+            // ===================
+            ImGui::Indent(-indent);
+        } // Application/Lighting
+
+        if (ImGui::CollapsingHeader("Raytracing", ImGuiTreeNodeFlags_CollapsingHeader | ImGuiTreeNodeFlags_Framed))
+        { // Application/Raytracing
+            ImGui::Indent(indent);
+            // ==================
+
+
+
+            // ===================
+            ImGui::Indent(-indent);
+        } // Application/Raytracing
+
+        ImGui::Indent(-indent);
+    } // Application
+
+    if (ImGui::CollapsingHeader("Graphics", ImGuiTreeNodeFlags_CollapsingHeader | ImGuiTreeNodeFlags_Framed))
+    { // Graphics
+        ImGui::Indent(indent);
+        // ==================
+
+        if (ImGui::CollapsingHeader("AA", ImGuiTreeNodeFlags_CollapsingHeader | ImGuiTreeNodeFlags_Framed))
+        { // Graphics/AA
+            ImGui::Indent(indent);
+            // ==================
+
+            if (ImGui::CollapsingHeader("FXAA", ImGuiTreeNodeFlags_CollapsingHeader | ImGuiTreeNodeFlags_Framed))
+            { // Graphics/AA/FXAA
+                ImGui::Indent(indent);
+                // ==================
+
+
+
+                // ===================
+                ImGui::Indent(-indent);
+            } // Graphics/AA/FXAA
+        	
+            if (ImGui::CollapsingHeader("TAA", ImGuiTreeNodeFlags_CollapsingHeader | ImGuiTreeNodeFlags_Framed))
+            { // Graphics/AA/TAA
+                ImGui::Indent(indent);
+                // ==================
+
+
+
+                // ===================
+                ImGui::Indent(-indent);
+            } // Graphics/AA/TAA
+        	
+            // ===================
+            ImGui::Indent(-indent);
+        } // Graphics/AA
+
+        if (ImGui::CollapsingHeader("Bloom", ImGuiTreeNodeFlags_CollapsingHeader | ImGuiTreeNodeFlags_Framed))
+        { // Graphics/Bloom
+            ImGui::Indent(indent);
+            // ==================
+
+
+
+            // ===================
+            ImGui::Indent(-indent);
+        } // Graphics/Bloom
+
+        if (ImGui::CollapsingHeader("Depth of Field", ImGuiTreeNodeFlags_CollapsingHeader | ImGuiTreeNodeFlags_Framed))
+        { // Graphics/DoF
+            ImGui::Indent(indent);
+            // ==================
+
+
+
+            // ===================
+            ImGui::Indent(-indent);
+        } // Graphics/DoF
+
+        if (ImGui::CollapsingHeader("Display", ImGuiTreeNodeFlags_CollapsingHeader | ImGuiTreeNodeFlags_Framed))
+        { // Graphics/Display
+            ImGui::Indent(indent);
+            // ==================
+
+
+
+            // ===================
+            ImGui::Indent(-indent);
+        } // Graphics/Display
+
+        if (ImGui::CollapsingHeader("HDR", ImGuiTreeNodeFlags_CollapsingHeader | ImGuiTreeNodeFlags_Framed))
+        { // Graphics/HDR
+            ImGui::Indent(indent);
+            // ==================
+
+
+
+            // ===================
+            ImGui::Indent(-indent);
+        } // Graphics/HDR
+
+        if (ImGui::CollapsingHeader("Motion Blur", ImGuiTreeNodeFlags_CollapsingHeader | ImGuiTreeNodeFlags_Framed))
+        { // Graphics/MB
+            ImGui::Indent(indent);
+            // ==================
+
+
+
+            // ===================
+            ImGui::Indent(-indent);
+        } // Graphics/MB
+
+        if (ImGui::CollapsingHeader("Particle Effects", ImGuiTreeNodeFlags_CollapsingHeader | ImGuiTreeNodeFlags_Framed))
+        { // Graphics/PE
+            ImGui::Indent(indent);
+            // ==================
+
+
+
+            // ===================
+            ImGui::Indent(-indent);
+        } // Graphics/PE
+
+        if (ImGui::CollapsingHeader("SSAO", ImGuiTreeNodeFlags_CollapsingHeader | ImGuiTreeNodeFlags_Framed))
+        { // Graphics/SSAO
+            ImGui::Indent(indent);
+            // ==================
+
+
+
+            // ===================
+            ImGui::Indent(-indent);
+        } // Graphics/SSAO
+
+        // ===================
+        ImGui::Indent(-indent);
+    } // Graphics
+
+	if (ImGui::CollapsingHeader("Timing", ImGuiTreeNodeFlags_CollapsingHeader | ImGuiTreeNodeFlags_Framed))
+    { // Timing
+        ImGui::Indent(indent);
+        // ==================
+
+
+
+        // ===================
+        ImGui::Indent(-indent);
+    } // Timing
+
+    if (ImGui::CollapsingHeader("VR", ImGuiTreeNodeFlags_CollapsingHeader | ImGuiTreeNodeFlags_Framed))
+    { // VR
+        ImGui::Indent(indent);
+        // ==================
+
+    	// Depth
+
+
+        // ===================
+        ImGui::Indent(-indent);
+    } // VR
 	
-    static float f = 0.0f;
+    { // Other
 
-    ImGui::Begin("TEST WINDOW 1");
-
-    ImGui::Text("This is the first test window yay");
-
-    ImGui::SliderFloat("Test floaaaat", &f, 0.0f, 10000.0f);
-
-    { // use imgui
-
-	    bool useImGui = g_useImGui;
-	    ImGui::Checkbox("Use ImGui", &useImGui);
-	    g_useImGui = useImGui;
+    	// Test?
     	
+    	// Load/Save Settings
+    	
+		{ // use imgui
+	        bool useImGui = g_useImGui;
+	        ImGui::Checkbox("Use ImGui", &useImGui);
+	        g_useImGui = useImGui;
+		} // use imgui
     }
+	
+
 
     ImGui::End();
 }
