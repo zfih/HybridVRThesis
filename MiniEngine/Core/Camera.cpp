@@ -226,7 +226,7 @@ void VRCamera::Setup(float nearPlane, float midPlane,
 	float farPlane, bool reverseZ, ScreenTextureData& Data)
 {
 	//TODO: Maybe find a better value.
-	const float BlendRegionSize = midPlane / 3.0f;
+	const float BlendRegionSize = midPlane / 1.1f;
     VROffset = Vector3(0, 0, 0);
 	if (VR::GetHMD()) // TODO: Have setting for this we can check
 	{
@@ -290,14 +290,20 @@ void VRCamera::Setup(float nearPlane, float midPlane,
 	{
 		Matrix4 mapping = MonoToStereoMappings[Camera];
 
+		// NOTE! translation is hard coded based on Lasses IPD of 63.32 mm
+		float translation = 0.022f - (midPlane / 20000.0f);
+		if (translation < 0.005f)
+		{
+			translation = 0.005f;
+		}
+
 		if (Camera == Cam::kLeft)
 		{
-			// NOTE! 0.01 is hard coded based on Lasses IPD of 63.32 mm
-			mapping = mapping * Matrix4::MakeTranslate({ 0.01, 0, 0 });
+			mapping = mapping * Matrix4::MakeTranslate({ translation, 0, 0 });
 		}
 		else
 		{
-			mapping = mapping * Matrix4::MakeTranslate({ -0.01, 0, 0 });
+			mapping = mapping * Matrix4::MakeTranslate({ -translation, 0, 0 });
 		}
 
 		float depth = 1;
