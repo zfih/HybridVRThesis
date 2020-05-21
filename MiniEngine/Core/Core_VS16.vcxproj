@@ -142,6 +142,7 @@
     <ClInclude Include="ReadbackBuffer.h" />
     <ClInclude Include="RootSignature.h" />
     <ClInclude Include="SamplerManager.h" />
+    <ClInclude Include="Settings.h" />
     <ClInclude Include="ShadowBuffer.h" />
     <ClInclude Include="ShadowCamera.h" />
     <ClInclude Include="SSAO.h" />

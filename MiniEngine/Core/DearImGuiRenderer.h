@@ -9,7 +9,6 @@
 namespace ImGui
 {
 	extern UserDescriptorHeap g_descHeap;
-	extern BoolVar g_useImGui;
 	
 	void Initialize();
 	void BuildGUI();

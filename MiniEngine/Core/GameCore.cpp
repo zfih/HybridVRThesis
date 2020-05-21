@@ -23,6 +23,7 @@
 #include "ImGui/imgui_impl_win32.h"
 #include "ImGui/imgui_impl_dx12.h"
 #include "PostEffects.h"
+#include "Settings.h"
 #include "VR.h"
 
 #if WINAPI_FAMILY_PARTITION(WINAPI_PARTITION_DESKTOP)
@@ -73,7 +74,7 @@ namespace GameCore
     
         GameInput::Update(DeltaTime);
 
-    	if(!ImGui::g_useImGui)
+    	if(!Settings::UseImGui)
     	{
             EngineTuning::Update(DeltaTime);
     	}
@@ -107,7 +108,7 @@ namespace GameCore
             MipsContext.Finish();
         }
 
-    	if(!ImGui::g_useImGui)
+    	if(!Settings::UseImGui)
     	{
 			GraphicsContext& UiContext = GraphicsContext::Begin(L"Render UI");
 			UiContext.TransitionResource(g_OverlayBuffer, D3D12_RESOURCE_STATE_RENDER_TARGET, true);
