@@ -63,5 +63,22 @@ namespace Settings
 	extern NumVar BloomUpsampleFactor;
 	extern BoolVar HighQualityBloom;
 	// Bloom
+
+	// DOF
+	extern BoolVar DOF_Enable;
+	extern BoolVar DOF_EnablePreFilter;
+	extern BoolVar MedianFilter;
+	extern BoolVar MedianAlpha;
+	extern NumVar FocalDepth;
+	extern NumVar FocalRange;
+	extern NumVar ForegroundRange;
+	extern NumVar AntiSparkleWeight;
+	extern const char* DebugLabels[];
+	extern EnumVar DOF_DebugMode;
+	extern BoolVar DebugTiles;
+	extern BoolVar ForceSlow;
+	extern BoolVar ForceFast;
+	// DOF
+
 	
 }

@@ -475,7 +475,7 @@ void PostEffects::Render( void )
 
     Context.TransitionResource(g_SceneColorBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 
-    if (Settings::EnableHDR && !SSAO::DebugDraw && !(DepthOfField::Enable && DepthOfField::DebugMode >= 3))
+    if (Settings::EnableHDR && !SSAO::DebugDraw && !(Settings::DOF_Enable && Settings::DOF_DebugMode >= 3))
         ProcessHDR(Context);
     else
         ProcessLDR(Context);

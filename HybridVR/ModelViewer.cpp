@@ -1587,7 +1587,7 @@ void D3D12RaytracingMiniEngineSample::RenderScene(UINT cam)
 		                        g_LinearDepth[FrameIndex]);
 
 		// Until I work out how to couple these two, it's "either-or".
-		if (DepthOfField::Enable)
+		if (Settings::DOF_Enable)
 			DepthOfField::Render(gfxContext, m_Camera[cam]->GetNearClip(), m_Camera[cam]->GetFarClip());
 		else
 			MotionBlur::RenderObjectBlur(gfxContext, g_VelocityBuffer);

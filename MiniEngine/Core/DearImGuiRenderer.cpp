@@ -277,8 +277,73 @@ void ImGui::BuildGUI()
             ImGui::Indent(indent);
             // ==================
 
+            
+                //BoolVar DOF_Enable("Graphics/Depth of Field/Enable", false);
+                //BoolVar DOF_EnablePreFilter("Graphics/Depth of Field/PreFilter", true);
+                //BoolVar MedianFilter("Graphics/Depth of Field/Median Filter", true);
+                //BoolVar MedianAlpha("Graphics/Depth of Field/Median Alpha", false);
+                //NumVar FocalDepth("Graphics/Depth of Field/Focal Center", 0.1f, 0.0f, 1.0f, 0.01f);
+                //NumVar FocalRange("Graphics/Depth of Field/Focal Radius", 0.1f, 0.0f, 1.0f, 0.01f);
+                //NumVar ForegroundRange("Graphics/Depth of Field/FG Range", 100.0f, 10.0f, 1000.0f, 10.0f);
+                //NumVar AntiSparkleWeight("Graphics/Depth of Field/AntiSparkle", 1.0f, 0.0f, 10.0f, 1.0f);
+                //const char* DebugLabels[] = { "Off", "Foreground", "Background", "FG Alpha", "CoC" };
+                //EnumVar DOF_DebugMode("Graphics/Depth of Field/Debug Mode", 0, _countof(DebugLabels), DebugLabels);
+                //BoolVar DebugTiles("Graphics/Depth of Field/Debug Tiles", false);
+                //BoolVar ForceSlow("Graphics/Depth of Field/Force Slow Path", false);
+                //BoolVar ForceFast("Graphics/Depth of Field/Force Fast Path", false);
 
+            bool enable = Settings::DOF_Enable;
+            ImGui::Checkbox("Enable Depth Of Field", &enable);
+            Settings::DOF_Enable = enable;
 
+            bool enableFilter = Settings::DOF_EnablePreFilter;
+            ImGui::Checkbox("Enable PreFilter", &enableFilter);
+            Settings::DOF_EnablePreFilter = enableFilter;
+
+            bool medianFilter = Settings::MedianFilter;
+            ImGui::Checkbox("Median Filter", &medianFilter);
+            Settings::MedianFilter = medianFilter;
+
+            bool medianAlpha = Settings::MedianAlpha;
+            ImGui::Checkbox("Median Alpha", &medianAlpha);
+            Settings::MedianAlpha = medianAlpha;
+
+            float focalDepth = Settings::FocalDepth;
+            ImGui::SliderFloat("Focal Depth", &focalDepth, 0.0f, 1.0f, "%.3f");
+            Settings::FocalDepth = focalDepth;
+
+            float focalRange = Settings::FocalRange;
+            ImGui::SliderFloat("Focal Radius", &focalRange, 0.0f, 1.0f, "%.3f");
+            Settings::FocalRange = focalRange;
+
+            float fgRange = Settings::ForegroundRange;
+            ImGui::SliderFloat("FG Range", &fgRange, 10.0f, 1000.0f, "%.0f");
+            Settings::ForegroundRange = fgRange;
+
+            ImGui::Text("Debug Mode");
+        	
+            int debugMode = Settings::DOF_DebugMode;
+
+            ImGui::RadioButton("Off", &debugMode, 0); ImGui::SameLine();
+            ImGui::RadioButton("Foreground", &debugMode, 1); ImGui::SameLine();
+            ImGui::RadioButton("Background", &debugMode,2); ImGui::SameLine();
+            ImGui::RadioButton("FG Alpha", &debugMode, 3); ImGui::SameLine();
+            ImGui::RadioButton("CoC", &debugMode, 4);
+
+            Settings::DOF_DebugMode = debugMode;
+
+            bool debugTile = Settings::DebugTiles;
+            ImGui::Checkbox("Debug Tiles", &debugTile);
+            Settings::DebugTiles = debugTile;
+
+            bool forceSlow = Settings::ForceSlow;
+            ImGui::Checkbox("Force Slow", &forceSlow);
+            Settings::ForceSlow = forceSlow;
+
+            bool forceFast = Settings::ForceFast;
+            ImGui::Checkbox("Force Fast", &forceFast);
+            Settings::ForceFast = forceFast;
+        	
             // ===================
             ImGui::Indent(-indent);
         } // Graphics/DoF
@@ -411,8 +476,6 @@ void ImGui::BuildGUI()
 		} // use imgui
     }
 	
-
-
     ImGui::End();
 }
 

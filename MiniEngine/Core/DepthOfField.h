@@ -17,8 +17,6 @@
 
 namespace DepthOfField
 {
-    extern BoolVar Enable;
-
     void Initialize( void );
     void Shutdown( void );
 
