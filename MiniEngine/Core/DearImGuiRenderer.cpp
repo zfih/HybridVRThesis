@@ -458,8 +458,41 @@ void ImGui::BuildGUI()
             ImGui::Indent(indent);
             // ==================
 
+            bool checkbox = Settings::Particles_Enable;
+            ImGui::Checkbox("Enable Particles", &checkbox);
+            Settings::Particles_Enable = checkbox;
 
+            bool pause = Settings::PauseSim;
+            ImGui::Checkbox("Pause Simulation", &pause);
+            Settings::PauseSim = pause;
 
+            bool tiled = Settings::EnableTiledRendering;
+            ImGui::Checkbox("Tiled Rendering", &tiled);
+            Settings::EnableTiledRendering = tiled;
+
+            bool spriteSort = Settings::EnableSpriteSort;
+            ImGui::Checkbox("Sort Sprites", &spriteSort);
+            Settings::EnableSpriteSort = spriteSort;
+
+            // HDR Debug Mode
+            ImGui::Text("Tiled Sample Rate");
+
+            int mode = Settings::TiledRes;
+
+            ImGui::RadioButton("High-Res", &mode, 0); ImGui::SameLine();
+            ImGui::RadioButton("Low-Res", &mode, 1); ImGui::SameLine();
+            ImGui::RadioButton("Dynamic", &mode, 2);
+
+            Settings::TiledRes = mode;
+
+            float res = Settings::DynamicResLevel;
+            ImGui::SliderFloat("Dynamic Resolution Cutoff", &res, -4.0f, 4.0f, "%.3f");
+            Settings::DynamicResLevel = res;
+
+            float mip = Settings::MipBias;
+            ImGui::SliderFloat("Mib bias", &mip, -4.0f, 4.0f, "%.3f");
+            Settings::MipBias = mip;
+        	
             // ===================
             ImGui::Indent(-indent);
         } // Graphics/PE

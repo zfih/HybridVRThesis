@@ -37,10 +37,7 @@ namespace ParticleEffects
     void Render(CommandContext& Context, const Camera& Camera, ColorBuffer& ColorTarget, DepthBuffer& DepthTarget, ColorBuffer& LinearDepth);
     void ResetEffect(EffectHandle EffectID);
     float GetCurrentLife(EffectHandle EffectID);
-
-    extern BoolVar Enable;
-    extern BoolVar PauseSim;
-    extern BoolVar EnableTiledRendering;
+	
     extern bool Reproducible; //If you want to repro set to true. When true, effect uses the same set of random numbers each run
     extern UINT ReproFrame;
 } // namespace ParticleEffects

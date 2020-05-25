@@ -105,5 +105,16 @@ namespace Settings
 	// VR
 	extern EnumVar VRDepthStencil;
 	// VR
+
+	// Particles
+	extern BoolVar Particles_Enable;
+	extern BoolVar PauseSim;
+	extern BoolVar EnableTiledRendering;
+	extern BoolVar EnableSpriteSort;
+	extern const char* ResolutionLabels[];
+	extern EnumVar TiledRes;
+	extern NumVar DynamicResLevel;
+	extern NumVar MipBias;
+	// Particles
 	
 }
