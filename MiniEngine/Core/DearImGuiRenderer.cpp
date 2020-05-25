@@ -96,8 +96,6 @@ void ImGui::BuildGUI()
 
             Settings::LightGridDim = lightGrid;
 
-        	// TODO: Fix cyclic dependencies... Maybe forward declare?
-        	// Show wave tile counts
             bool checkbox = Settings::ShowWaveTileCounts;
             ImGui::Checkbox("Show wave tile counts", &checkbox);
             Settings::ShowWaveTileCounts = checkbox;
@@ -277,21 +275,6 @@ void ImGui::BuildGUI()
             ImGui::Indent(indent);
             // ==================
 
-            
-                //BoolVar DOF_Enable("Graphics/Depth of Field/Enable", false);
-                //BoolVar DOF_EnablePreFilter("Graphics/Depth of Field/PreFilter", true);
-                //BoolVar MedianFilter("Graphics/Depth of Field/Median Filter", true);
-                //BoolVar MedianAlpha("Graphics/Depth of Field/Median Alpha", false);
-                //NumVar FocalDepth("Graphics/Depth of Field/Focal Center", 0.1f, 0.0f, 1.0f, 0.01f);
-                //NumVar FocalRange("Graphics/Depth of Field/Focal Radius", 0.1f, 0.0f, 1.0f, 0.01f);
-                //NumVar ForegroundRange("Graphics/Depth of Field/FG Range", 100.0f, 10.0f, 1000.0f, 10.0f);
-                //NumVar AntiSparkleWeight("Graphics/Depth of Field/AntiSparkle", 1.0f, 0.0f, 10.0f, 1.0f);
-                //const char* DebugLabels[] = { "Off", "Foreground", "Background", "FG Alpha", "CoC" };
-                //EnumVar DOF_DebugMode("Graphics/Depth of Field/Debug Mode", 0, _countof(DebugLabels), DebugLabels);
-                //BoolVar DebugTiles("Graphics/Depth of Field/Debug Tiles", false);
-                //BoolVar ForceSlow("Graphics/Depth of Field/Force Slow Path", false);
-                //BoolVar ForceFast("Graphics/Depth of Field/Force Fast Path", false);
-
             bool enable = Settings::DOF_Enable;
             ImGui::Checkbox("Enable Depth Of Field", &enable);
             Settings::DOF_Enable = enable;
@@ -353,8 +336,65 @@ void ImGui::BuildGUI()
             ImGui::Indent(indent);
             // ==================
 
+            // HDR Debug Mode
+            ImGui::Text("HDR Debug Mode");
 
+            int mode = Settings::HDRDebugMode;
 
+            ImGui::RadioButton("HDR", &mode, 0); ImGui::SameLine();
+            ImGui::RadioButton("SDR", &mode, 1); ImGui::SameLine();
+            ImGui::RadioButton("Side-by-side", &mode, 2); 
+
+            Settings::HDRDebugMode = mode;
+
+            // HDR Debug Mode
+            ImGui::Text("Debug zoom");
+
+            int zoom = Settings::DebugZoom;
+
+            ImGui::RadioButton("Off", &zoom, 0); ImGui::SameLine();
+            ImGui::RadioButton("2x", &zoom, 1); ImGui::SameLine();
+            ImGui::RadioButton("4x", &zoom, 2); ImGui::SameLine();
+            ImGui::RadioButton("8x", &zoom, 3); ImGui::SameLine();
+            ImGui::RadioButton("16x", &zoom, 4);
+
+            Settings::DebugZoom = zoom;
+
+            float white = Settings::HDRPaperWhite;
+            ImGui::SliderFloat("Paper White (nits)", &white, 100.0f, 500.0f, "%.0f");
+            Settings::HDRPaperWhite = white;
+
+            float peak = Settings::MaxDisplayLuminance;
+            ImGui::SliderFloat("Peak Brightness (nits)", &peak, 500.0f, 10000.0f, "%.0f");
+            Settings::MaxDisplayLuminance = peak;
+
+			// Upsample filter
+            ImGui::Text("Upsample filter");
+
+            int filter = Settings::UpsampleFilter;
+
+            ImGui::RadioButton("Bilinear", &filter, 0); ImGui::SameLine();
+            ImGui::RadioButton("Bicubic", &filter, 1); ImGui::SameLine();
+            ImGui::RadioButton("Sharpening", &filter, 2);
+
+            Settings::UpsampleFilter = filter;
+
+            float biRange = Settings::BicubicUpsampleWeight;
+            ImGui::SliderFloat("Bicubic Filter Weight", &biRange, -1.0f, -0.25f, "%.3f");
+            Settings::BicubicUpsampleWeight = biRange;
+
+            float sharpSpread = Settings::SharpeningSpread;
+            ImGui::SliderFloat("Sharpness Sample Spread", &sharpSpread, 0.7f, 2.0f, "%.3f");
+            Settings::SharpeningSpread = sharpSpread;
+
+            float sharpRot = Settings::SharpeningRotation;
+            ImGui::SliderFloat("Sharpness Sample Rotation", &sharpRot, 0.0f, 90.0f, "%.3f");
+            Settings::SharpeningRotation = sharpRot;
+
+            float sharpStr = Settings::SharpeningStrength;
+            ImGui::SliderFloat("Sharpness Sample Strength", &sharpStr, 0.0f, 1.0f, "%.3f");
+            Settings::SharpeningStrength = sharpStr;
+        	
             // ===================
             ImGui::Indent(-indent);
         } // Graphics/Display
@@ -405,7 +445,9 @@ void ImGui::BuildGUI()
             ImGui::Indent(indent);
             // ==================
 
-
+            bool checkbox = Settings::MotionBlur_Enable;
+            ImGui::Checkbox("Enable Motion Blur", &checkbox);
+            Settings::MotionBlur_Enable = checkbox;
 
             // ===================
             ImGui::Indent(-indent);
@@ -453,8 +495,9 @@ void ImGui::BuildGUI()
         ImGui::Indent(indent);
         // ==================
 
-    	// Depth
-
+        bool checkbox = Settings::VRDepthStencil;
+        ImGui::Checkbox("Use VR DepthStencil", &checkbox);
+        Settings::VRDepthStencil = checkbox;
 
         // ===================
         ImGui::Indent(-indent);

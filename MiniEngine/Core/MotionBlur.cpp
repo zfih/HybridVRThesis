@@ -34,10 +34,13 @@
 using namespace Graphics;
 using namespace Math;
 
+namespace Settings
+{
+    BoolVar MotionBlur_Enable("Graphics/Motion Blur/Enable", false);
+}
+
 namespace MotionBlur
 {
-    BoolVar Enable("Graphics/Motion Blur/Enable", false);
-
     RootSignature s_RootSignature;
     ComputePSO s_CameraMotionBlurPrePassCS[2];
     ComputePSO s_MotionBlurPrePassCS;
@@ -159,7 +162,7 @@ void MotionBlur::RenderCameraBlur( CommandContext& BaseContext, const Matrix4& r
 {
     ScopedTimer _prof(L"MotionBlur", BaseContext);
 
-    if (!Enable)
+    if (!Settings::MotionBlur_Enable)
         return;
 
     ComputeContext& Context = BaseContext.GetComputeContext();
@@ -196,7 +199,7 @@ void MotionBlur::RenderCameraBlur( CommandContext& BaseContext, const Matrix4& r
     else
         Context.TransitionResource(g_SceneDepthBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 
-    if (Enable)
+    if (Settings::MotionBlur_Enable)
     {
         Context.TransitionResource(g_VelocityBuffer, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
         Context.TransitionResource(g_MotionPrepBuffer, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
@@ -254,7 +257,7 @@ void MotionBlur::RenderObjectBlur( CommandContext& BaseContext, ColorBuffer& vel
 {
     ScopedTimer _prof(L"MotionBlur", BaseContext);
 
-    if (!Enable)
+    if (!Settings::MotionBlur_Enable)
         return;
 
     uint32_t Width = g_SceneColorBuffer.GetWidth();

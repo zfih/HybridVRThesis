@@ -224,7 +224,7 @@ int wmain(int argc, wchar_t** argv)
 		pAdapter = nullptr;
 	}
 
-	s_EnableVSync.Decrement();
+	Settings::EnableVSync.Decrement();
 	g_DisplayWidth = 1280;
 	g_DisplayHeight = 720;
 	GameCore::RunApplication(D3D12RaytracingMiniEngineSample(validDeviceFound), L"D3D12RaytracingMiniEngineSample");
@@ -1013,7 +1013,7 @@ void D3D12RaytracingMiniEngineSample::Startup(void)
 
     m_CameraController.reset(new VRCameraController(m_Camera, Vector3(kYUnitVector)));
     
-    MotionBlur::Enable = false;//true;
+    Settings::MotionBlur_Enable = false;//true;
     Settings::TAA_Enable = false;//true;
     Settings::FXAA_Enable = false;
 	Settings::EnableHDR = false;//true;
@@ -1033,21 +1033,14 @@ void D3D12RaytracingMiniEngineSample::Cleanup(void)
 	m_Model.Clear();
 }
 
-
-namespace Graphics
-{
-extern EnumVar DebugZoom;
-}
-
-
 void D3D12RaytracingMiniEngineSample::Update(float deltaT)
 {
 	ScopedTimer _prof(L"Update State");
 
 	if (GameInput::IsFirstPressed(GameInput::kLShoulder))
-		DebugZoom.Decrement();
+		Settings::DebugZoom.Decrement();
 	else if (GameInput::IsFirstPressed(GameInput::kRShoulder))
-		DebugZoom.Increment();
+		Settings::DebugZoom.Increment();
 	if (g_RayTraceSupport)
 	{
 		if (GameInput::IsFirstPressed(GameInput::kKey_1))
@@ -1484,8 +1477,8 @@ void D3D12RaytracingMiniEngineSample::RenderScene(UINT cam)
 				gfxContext.TransitionResource(g_SceneDepthBuffer, D3D12_RESOURCE_STATE_DEPTH_WRITE, true);
 				// note: we no longer clear because we need the stencil from engine
 				// prepass
-				auto fuckyou = g_VRDepthStencil;
-				if (g_VRDepthStencil == 1)
+				auto fuckyou = Settings::VRDepthStencil;
+				if (Settings::VRDepthStencil == 1)
 				{
 					gfxContext.ClearDepthAndStencil(g_SceneDepthBuffer);
 				}

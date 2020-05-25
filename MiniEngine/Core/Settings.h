@@ -80,5 +80,30 @@ namespace Settings
 	extern BoolVar ForceFast;
 	// DOF
 
+	// Display
+	extern BoolVar EnableVSync;
+	extern NumVar HDRPaperWhite;
+	extern NumVar MaxDisplayLuminance;
+	extern const char* HDRModeLabels[];
+	extern EnumVar HDRDebugMode;
+
+	extern const char* FilterLabels[];
+	extern EnumVar UpsampleFilter;
+	extern NumVar BicubicUpsampleWeight;
+	extern NumVar SharpeningSpread;
+	extern NumVar SharpeningRotation;
+	extern NumVar SharpeningStrength;
+	extern enum DebugZoomLevel;
+	extern const char* DebugZoomLabels[];
+	extern EnumVar DebugZoom;
+	// Display
+
+	// Motion Blur
+	extern BoolVar MotionBlur_Enable;
+	// Motion Blur
+
+	// VR
+	extern EnumVar VRDepthStencil;
+	// VR
 	
 }
