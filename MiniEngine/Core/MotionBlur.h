@@ -22,8 +22,6 @@ class CommandContext;
 
 namespace MotionBlur
 {
-    extern BoolVar Enable;
-
     void Initialize( void );
     void Shutdown( void );
 

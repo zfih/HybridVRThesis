@@ -28,14 +28,18 @@ using namespace Graphics;
 using namespace Math;
 using namespace TemporalEffects;
 
-namespace TemporalEffects
+namespace Settings
 {
-    BoolVar EnableTAA("Graphics/AA/TAA/Enable", false);
-    NumVar Sharpness("Graphics/AA/TAA/Sharpness", 0.5f, 0.0f, 1.0f, 0.25f);
+    BoolVar TAA_Enable("Graphics/AA/TAA/Enable", false);
+    NumVar TAA_Sharpness("Graphics/AA/TAA/TAA_Sharpness", 0.5f, 0.0f, 1.0f, 0.25f);
     NumVar TemporalMaxLerp("Graphics/AA/TAA/Blend Factor", 1.0f, 0.0f, 1.0f, 0.01f);
     ExpVar TemporalSpeedLimit("Graphics/AA/TAA/Speed Limit", 64.0f, 1.0f, 1024.0f, 1.0f);
     BoolVar TriggerReset("Graphics/AA/TAA/Reset", false);
+}
 
+
+namespace TemporalEffects
+{
     RootSignature s_RootSignature;
 
     ComputePSO s_TemporalBlendCS;
@@ -87,7 +91,7 @@ void TemporalEffects::Update( uint64_t FrameIndex )
     s_FrameIndex = (uint32_t)FrameIndex;
     s_FrameIndexMod2 = s_FrameIndex % 2;
 
-    if (EnableTAA)// && !DepthOfField::Enable)
+    if (Settings::TAA_Enable)// && !DepthOfField::Enable)
     {
         static const float Halton23[8][2] =
         {
@@ -129,7 +133,7 @@ void TemporalEffects::ClearHistory( CommandContext& Context )
 {
     GraphicsContext& gfxContext = Context.GetGraphicsContext();
 
-    if (EnableTAA)
+    if (Settings::TAA_Enable)
     {
         gfxContext.TransitionResource(g_TemporalColor[0], D3D12_RESOURCE_STATE_RENDER_TARGET);
         gfxContext.TransitionResource(g_TemporalColor[1], D3D12_RESOURCE_STATE_RENDER_TARGET, true);
@@ -146,17 +150,17 @@ void TemporalEffects::ResolveImage( CommandContext& BaseContext )
 
     static bool s_EnableTAA = false;
 
-    if (EnableTAA != s_EnableTAA || TriggerReset)
+    if (Settings::TAA_Enable != s_EnableTAA || Settings::TriggerReset)
     {
         ClearHistory(Context);
-        s_EnableTAA = EnableTAA;
-        TriggerReset = false;
+        s_EnableTAA = Settings::TAA_Enable;
+        Settings::TriggerReset = false;
     }
 
     uint32_t Src = s_FrameIndexMod2;
     uint32_t Dst = Src ^ 1;
 
-    if (EnableTAA)
+    if (Settings::TAA_Enable)
     {
         ApplyTemporalAA(Context);
         SharpenImage(Context, g_TemporalColor[Dst]);
@@ -182,7 +186,7 @@ void TemporalEffects::ApplyTemporalAA(ComputeContext& Context)
     };
     ConstantBuffer cbv = {
         1.0f / g_SceneColorBuffer.GetWidth(), 1.0f / g_SceneColorBuffer.GetHeight(),
-        (float)TemporalMaxLerp, 1.0f / TemporalSpeedLimit,
+        (float)Settings::TemporalMaxLerp, 1.0f / Settings::TemporalSpeedLimit,
         s_JitterDeltaX, s_JitterDeltaY
     };
 
@@ -211,8 +215,8 @@ void TemporalEffects::SharpenImage(ComputeContext& Context, ColorBuffer& Tempora
     Context.TransitionResource(g_SceneColorBuffer, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
     Context.TransitionResource(TemporalColor, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 
-    Context.SetPipelineState(Sharpness >= 0.001f ? s_SharpenTAACS : s_ResolveTAACS);
-    Context.SetConstants(0, 1.0f + Sharpness, 0.25f * Sharpness);
+    Context.SetPipelineState(Settings::TAA_Sharpness >= 0.001f ? s_SharpenTAACS : s_ResolveTAACS);
+    Context.SetConstants(0, 1.0f + Settings::TAA_Sharpness, 0.25f * Settings::TAA_Sharpness);
     Context.SetDynamicDescriptor(1, 0, TemporalColor.GetSRV());
     Context.SetDynamicDescriptor(2, 0, g_SceneColorBuffer.GetUAV());
     Context.Dispatch2D(g_SceneColorBuffer.GetWidth(), g_SceneColorBuffer.GetHeight());

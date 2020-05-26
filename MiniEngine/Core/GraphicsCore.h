@@ -79,11 +79,8 @@ namespace Graphics
 
     enum eResolution { k720p, k900p, k1080p, k1440p, k1800p, k2160p };
 
-    extern BoolVar s_EnableVSync;
     extern uint32_t g_DisplayWidth;
     extern uint32_t g_DisplayHeight;
-
-    extern EnumVar g_VRDepthStencil;
 
     extern StructuredBuffer &ScreenQuadVB;
     extern StructuredBuffer &ScreenQuadIB;

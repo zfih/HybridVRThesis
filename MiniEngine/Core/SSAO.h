@@ -21,9 +21,4 @@ namespace SSAO
     void Shutdown( void );
     void Render(GraphicsContext& Context, const float* ProjMat, float NearClipDist, float FarClipDist, UINT CurCam );
     void Render(GraphicsContext& Context, const Math::Camera& camera, UINT CurCam );
-
-    extern BoolVar Enable;
-    extern BoolVar DebugDraw;
-    extern BoolVar AsyncCompute;
-    extern BoolVar ComputeLinearZ;
 }
