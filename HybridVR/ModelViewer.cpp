@@ -1018,7 +1018,7 @@ void D3D12RaytracingMiniEngineSample::Startup(void)
     Settings::FXAA_Enable = false;
 	Settings::EnableHDR = false;//true;
 	Settings::EnableAdaptation = false;//true;
-    SSAO::Enable = true;
+    Settings::SSAO_Enable = true;
 
     Lighting::CreateRandomLights(m_Model.GetBoundingBox().min, m_Model.GetBoundingBox().max);
 
@@ -1361,7 +1361,7 @@ void D3D12RaytracingMiniEngineSample::RenderShadowMap()
 
 	if (!skipShadowMap)
 	{
-		if (!SSAO::DebugDraw)
+		if (!Settings::SSAO_DebugDraw)
 		{
 			GraphicsContext& gfxContext = 
 				GraphicsContext::Begin(L"Shadow Map Render");
@@ -1507,7 +1507,7 @@ void D3D12RaytracingMiniEngineSample::RenderScene(UINT cam)
 	{
 		Lighting::FillLightGrid(gfxContext, *m_Camera[cam]);
 
-		if (!SSAO::DebugDraw)
+		if (!Settings::SSAO_DebugDraw)
 		{
 			ScopedTimer _prof(L"Main Render", gfxContext);
 			{
@@ -1520,9 +1520,9 @@ void D3D12RaytracingMiniEngineSample::RenderScene(UINT cam)
 
 	if (!skipDiffusePass)
 	{
-		if (!SSAO::DebugDraw)
+		if (!Settings::SSAO_DebugDraw)
 		{
-			if (SSAO::AsyncCompute)
+			if (Settings::AsyncCompute)
 			{
 				gfxContext.Flush();
 				pfnSetupGraphicsState();

@@ -98,14 +98,14 @@ namespace
     float s_FrameTime = 0.0f;
     uint64_t s_FrameIndex = 0;
     int64_t s_FrameStartTick = 0;
-
-    BoolVar s_LimitTo30Hz("Timing/Limit To 30Hz", false);
-    BoolVar s_DropRandomFrames("Timing/Drop Random Frames", false);
 }
 
 namespace Settings
 {
     BoolVar EnableVSync("Timing/VSync", true);
+    BoolVar LimitTo30Hz("Timing/Limit To 30Hz", false);
+    BoolVar DropRandomFrames("Timing/Drop Random Frames", false);
+	
 	
     NumVar HDRPaperWhite("Graphics/Display/Paper White (nits)", 200.0f, 100.0f, 500.0f, 50.0f);
     NumVar MaxDisplayLuminance("Graphics/Display/Peak Brightness (nits)", 1000.0f, 500.0f, 10000.0f, 100.0f);
@@ -946,8 +946,8 @@ void Graphics::Present(void)
         // With VSync enabled, the time step between frames becomes a multiple of 16.666 ms.  We need
         // to add logic to vary between 1 and 2 (or 3 fields).  This delta time also determines how
         // long the previous frame should be displayed (i.e. the present interval.)
-        s_FrameTime = (s_LimitTo30Hz ? 2.0f : 1.0f) / 60.0f;
-        if (s_DropRandomFrames)
+        s_FrameTime = (Settings::LimitTo30Hz ? 2.0f : 1.0f) / 60.0f;
+        if (Settings::DropRandomFrames)
         {
             if (std::rand() % 50 == 0)
                 s_FrameTime += (1.0f / 60.0f);

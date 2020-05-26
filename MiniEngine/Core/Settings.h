@@ -81,7 +81,6 @@ namespace Settings
 	// DOF
 
 	// Display
-	extern BoolVar EnableVSync;
 	extern NumVar HDRPaperWhite;
 	extern NumVar MaxDisplayLuminance;
 	extern const char* HDRModeLabels[];
@@ -116,5 +115,29 @@ namespace Settings
 	extern NumVar DynamicResLevel;
 	extern NumVar MipBias;
 	// Particles
-	
+
+
+	// SSAO
+	extern BoolVar SSAO_Enable;
+	extern BoolVar SSAO_DebugDraw;
+	extern BoolVar AsyncCompute;
+	extern BoolVar ComputeLinearZ;
+
+	extern enum QualityLevel;
+	extern const char* QualityLabels[];
+	extern EnumVar SSAO_QualityLevel;
+
+	extern NumVar NoiseFilterTolerance;
+	extern NumVar BlurTolerance;
+	extern NumVar UpsampleTolerance;
+	extern NumVar RejectionFalloff;
+	extern NumVar Accentuation;
+	extern IntVar HierarchyDepth;
+	// SSAO
+
+	// Timing
+	extern BoolVar EnableVSync;
+	extern BoolVar LimitTo30Hz;
+	extern BoolVar DropRandomFrames;
+	// Timing
 }

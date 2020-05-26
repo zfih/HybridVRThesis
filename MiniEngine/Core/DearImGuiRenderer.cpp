@@ -109,14 +109,6 @@ void ImGui::BuildGUI()
             ImGui::Indent(indent);
             // ==================
 
-            // ExpVar SunLightIntensity("Application/Lighting/Sun Light Intensity", 4.0f, 0.0f, 16.0f, 0.1f);
-        	// Settings::AmbientIntensity("Application/Lighting/Ambient Intensity", 0.1f, -16.0f, 16.0f, 0.1f);
-            // Settings::SunOrientation("Application/Lighting/Sun Orientation", -0.5f, -100.0f, 100.0f, 0.1f);
-            // Settings::SunInclination("Application/Lighting/Sun Inclination", 0.75f, 0.0f, 1.0f, 0.01f);
-            // Settings::ShadowDimX("Application/Lighting/Shadow Dim X", 5000, 1000, 10000, 100);
-            // Settings::ShadowDimY("Application/Lighting/Shadow Dim Y", 3000, 1000, 10000, 100);
-            // Settings::ShadowDimZ("Application/Lighting/Shadow Dim Z", 3000, 1000, 10000, 100);
-
             float amb       = log2f(Settings::AmbientIntensity);
             float shadx     = Settings::ShadowDimX;
             float shady     = Settings::ShadowDimY;
@@ -125,12 +117,12 @@ void ImGui::BuildGUI()
             float suninc    = Settings::SunInclination;
             float sunint    = log2f(Settings::SunLightIntensity);
         	
-            ImGui::SliderFloat("Sun Light Intensity Exponent", &sunint, 0.0f, 16.0f, "%.2f");
             ImGui::SliderFloat("Ambient Intensity Exponent", &amb, -16.0f, 16.0f, "%.2f");
             ImGui::SliderFloat("Shadow Dim X", &shadx, 1000.0f, 10000.0f, "%.1f");
             ImGui::SliderFloat("Shadow Dim Y", &shady, 1000.0f, 10000.0f, "%.1f");
             ImGui::SliderFloat("Shadow Dim Z", &shadz, 1000.0f, 10000.0f, "%.1f");
             ImGui::SliderFloat("Sun Orientation", &sunori, -5.0f, 5.0f, "%.2f");
+            ImGui::SliderFloat("Sun Light Intensity Exponent", &sunint, 0.0f, 16.0f, "%.2f");
             ImGui::SliderFloat("Sun Inclination", &suninc, 0.0f, 1.0f, "%.2f");
 
             Settings::AmbientIntensity  = exp2f(amb);
@@ -225,14 +217,16 @@ void ImGui::BuildGUI()
                 ImGui::SliderFloat("Blend factor", &blend, 0.0f, 1.0f, "%.3f");
                 Settings::TemporalMaxLerp = blend;
 
-                float speed = Settings::TemporalSpeedLimit;
-                ImGui::SliderFloat("Speed limit", &speed, exp2(1.0f), exp2(1024.0f), "%.0f");
-                Settings::TemporalSpeedLimit = speed;
+                float speed = log2f(Settings::TemporalSpeedLimit);
+                ImGui::SliderFloat("Speed limit", &speed, 1.0f, 1024.0f, "%.0f");
+                Settings::TemporalSpeedLimit = exp2f(speed);
             	
-                bool reset = Settings::TriggerReset;
-                ImGui::Checkbox("Reset", &reset);
-                Settings::TriggerReset = reset;
+                //bool reset = Settings::TriggerReset;
+                //ImGui::Checkbox("Reset", &reset);
+                Settings::TriggerReset = ImGui::Button("Reset", { 150, 20 });;
 
+                
+            	
                 // ===================
                 ImGui::Indent(-indent);
             } // Graphics/AA/TAA
@@ -303,6 +297,10 @@ void ImGui::BuildGUI()
             ImGui::SliderFloat("FG Range", &fgRange, 10.0f, 1000.0f, "%.0f");
             Settings::ForegroundRange = fgRange;
 
+            float sparkle = Settings::AntiSparkleWeight;
+            ImGui::SliderFloat("AntiSparkle", &sparkle, 1.0f, 10.0f, "%.0f");
+            Settings::AntiSparkleWeight = sparkle;
+        	
             ImGui::Text("Debug Mode");
         	
             int debugMode = Settings::DOF_DebugMode;
@@ -421,7 +419,7 @@ void ImGui::BuildGUI()
             Settings::AdaptationRate = arate;
 
             float key = Settings::TargetLuminance;
-            ImGui::SliderFloat("Adaptive Rate", &key, 0.01f, 0.99f, "%.3f");
+            ImGui::SliderFloat("Key", &key, 0.01f, 0.99f, "%.3f");
             Settings::TargetLuminance = key;
         	
             float min = log2f(Settings::MinExposure);
@@ -490,7 +488,7 @@ void ImGui::BuildGUI()
             Settings::DynamicResLevel = res;
 
             float mip = Settings::MipBias;
-            ImGui::SliderFloat("Mib bias", &mip, -4.0f, 4.0f, "%.3f");
+            ImGui::SliderFloat("Mip bias", &mip, -4.0f, 4.0f, "%.3f");
             Settings::MipBias = mip;
         	
             // ===================
@@ -502,8 +500,59 @@ void ImGui::BuildGUI()
             ImGui::Indent(indent);
             // ==================
 
+            bool enable = Settings::SSAO_Enable;
+            ImGui::Checkbox("Enable SSAO", &enable);
+            Settings::SSAO_Enable = enable;
+
+            bool debug = Settings::SSAO_DebugDraw;
+            ImGui::Checkbox("Enable Debug", &debug);
+            Settings::SSAO_DebugDraw = debug;
+
+            bool async = Settings::AsyncCompute;
+            ImGui::Checkbox("Enable Async Compute", &async);
+            Settings::AsyncCompute = async;
+
+            bool linearz = Settings::ComputeLinearZ;
+            ImGui::Checkbox("Always Linearize Z", &linearz);
+            Settings::ComputeLinearZ = linearz;
+
+        	
+            // Quality level
+            ImGui::Text("Quality level");
+
+            int level = Settings::SSAO_QualityLevel;
+
+            ImGui::PushItemWidth(-1);
+            ImGui::ListBox("Quality Level", &level, Settings::QualityLabels, 5, 5);
+            ImGui::PopItemWidth();
+
+            Settings::SSAO_QualityLevel = level;
 
 
+            float filter = Settings::NoiseFilterTolerance;
+            ImGui::SliderFloat("Noise Filter Threshold (log10)", &filter, -8.0f, 0.0f, "%.3f");
+            Settings::NoiseFilterTolerance = filter;
+
+            float blur = Settings::BlurTolerance;
+            ImGui::SliderFloat("Blur Tolerance (log10)", &blur, -8.0f, -1.0f, "%.3f");
+            Settings::BlurTolerance = blur;
+
+            float upsample = Settings::UpsampleTolerance;
+            ImGui::SliderFloat("Upsample Tolerance (log10)", &upsample, -12.0f, -1.0f, "%.3f");
+            Settings::UpsampleTolerance = upsample;
+
+            float reject = Settings::RejectionFalloff;
+            ImGui::SliderFloat("Rejection Falloff (rcp)", &reject, 1.0f, 10.0f, "%.1f");
+            Settings::RejectionFalloff = reject;
+
+            float accen = Settings::Accentuation;
+            ImGui::SliderFloat("Accentuation", &accen, 0.0f, 1.0f, "%.1f");
+            Settings::Accentuation = accen;
+
+            int hier = Settings::HierarchyDepth;
+            ImGui::SliderInt("Hierarchy Depth", &hier, 1, 4);
+            Settings::HierarchyDepth = hier;
+        	
             // ===================
             ImGui::Indent(-indent);
         } // Graphics/SSAO
@@ -517,7 +566,17 @@ void ImGui::BuildGUI()
         ImGui::Indent(indent);
         // ==================
 
+        bool vsync = Settings::EnableVSync;
+        ImGui::Checkbox("Enable VSync", &vsync);
+        Settings::EnableVSync = vsync;
 
+        bool limithz = Settings::LimitTo30Hz;
+        ImGui::Checkbox("Limit to 30Hz (halves fps on VSync)", &limithz);
+        Settings::LimitTo30Hz = limithz;
+
+        bool frames = Settings::DropRandomFrames;
+        ImGui::Checkbox("Drop Random Frames", &frames);
+        Settings::DropRandomFrames = frames;
 
         // ===================
         ImGui::Indent(-indent);
@@ -540,10 +599,12 @@ void ImGui::BuildGUI()
 
     	// Test?
 
+    	// TODO: How to solve these?
     	// Display Profiler
     	// Display Frame Rate
-    	
     	// Load/Save Settings
+
+
     	
 		{ // use imgui
 	        bool checkbox = Settings::UseImGui;
