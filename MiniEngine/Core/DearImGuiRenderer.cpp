@@ -339,8 +339,8 @@ void ImGui::BuildGUI()
 
             int mode = Settings::HDRDebugMode;
 
-            ImGui::RadioButton("HDR", &mode, 0); ImGui::SameLine();
-            ImGui::RadioButton("SDR", &mode, 1); ImGui::SameLine();
+            ImGui::RadioButton("HDR mode", &mode, 0); ImGui::SameLine();
+            ImGui::RadioButton("SDR mode", &mode, 1); ImGui::SameLine();
             ImGui::RadioButton("Side-by-side", &mode, 2); 
 
             Settings::HDRDebugMode = mode;
