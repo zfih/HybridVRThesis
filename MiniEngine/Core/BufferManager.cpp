@@ -109,8 +109,8 @@ void Graphics::InitializeRenderingBuffers( uint32_t bufferWidth, uint32_t buffer
     esram.PushStack();
 
         g_SceneColorBuffer.CreateArray( L"Main Color Buffers", bufferWidth, bufferHeight, 2, DefaultHdrColorFormat, esram );
-        g_VelocityBuffer.Create( L"Motion Vectors", bufferWidth, bufferHeight, 1, DXGI_FORMAT_R32_UINT );
-        g_PostEffectsBuffer.Create( L"Post Effects Buffer", bufferWidth, bufferHeight, 1, DXGI_FORMAT_R32_UINT );
+        g_VelocityBuffer.Create( L"Motion Vectors", bufferWidth, bufferHeight, 2, DXGI_FORMAT_R32_UINT );
+        g_PostEffectsBuffer.Create( L"Post Effects Buffer", bufferWidth, bufferHeight, 2, DXGI_FORMAT_R32_UINT );
 
         esram.PushStack();    // Render HDR image
 
@@ -169,8 +169,8 @@ void Graphics::InitializeRenderingBuffers( uint32_t bufferWidth, uint32_t buffer
                     g_DoFFixupQueue.Create(L"DoF Fixup Queue", bufferWidth4 * bufferHeight4, 4, esram );
                 esram.PopStack();    // End depth of field
 
-                g_TemporalColor[0].Create( L"Temporal Color 0", bufferWidth, bufferHeight, 1, DXGI_FORMAT_R16G16B16A16_FLOAT);
-                g_TemporalColor[1].Create( L"Temporal Color 1", bufferWidth, bufferHeight, 1, DXGI_FORMAT_R16G16B16A16_FLOAT);
+                g_TemporalColor[0].CreateArray( L"Temporal Color 0", bufferWidth, bufferHeight, 2, DXGI_FORMAT_R16G16B16A16_FLOAT);
+                g_TemporalColor[1].CreateArray( L"Temporal Color 1", bufferWidth, bufferHeight, 2, DXGI_FORMAT_R16G16B16A16_FLOAT);
                 TemporalEffects::ClearHistory(InitContext);
 
                 esram.PushStack();    // Begin motion blur

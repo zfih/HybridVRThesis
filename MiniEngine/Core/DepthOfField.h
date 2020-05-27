@@ -20,5 +20,5 @@ namespace DepthOfField
     void Initialize( void );
     void Shutdown( void );
 
-    void Render( CommandContext& BaseContext, float NearClipDist, float FarClipDist );
+    void Render( CommandContext& BaseContext, float NearClipDist, float FarClipDist, UINT curCam );
 }

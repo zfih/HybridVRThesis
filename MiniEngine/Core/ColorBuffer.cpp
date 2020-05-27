@@ -111,10 +111,46 @@ void ColorBuffer::CreateDerivedViews(ID3D12Device* Device, DXGI_FORMAT Format, u
 			RTVDesc.Texture2DArray.ArraySize = (UINT)(ArraySize - i);
 			RTVDesc.Format = Format;
 			D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle{};
-			rtvHandle = Graphics::AllocateDescriptor(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+			rtvHandle = 
+                Graphics::AllocateDescriptor(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
 			Device->CreateRenderTargetView(Resource, &RTVDesc, rtvHandle);
 			m_RTVSubHandles.push_back(rtvHandle);
 		}
+
+        m_UAVSubHandles.reserve(ArraySize);
+        for (int i = 0; i < ArraySize; i++)
+        {
+            D3D12_UNORDERED_ACCESS_VIEW_DESC UAVDesc = {};
+            UAVDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2DARRAY;
+            UAVDesc.Texture2DArray.MipSlice = 0;
+            UAVDesc.Texture2DArray.FirstArraySlice = i;
+            UAVDesc.Texture2DArray.ArraySize = (UINT)(ArraySize - i);
+            UAVDesc.Format = Format;
+            D3D12_CPU_DESCRIPTOR_HANDLE uavHandle{};
+            uavHandle = Graphics::AllocateDescriptor(
+                            D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+            Device->CreateUnorderedAccessView(
+                Resource, nullptr, &UAVDesc, uavHandle);
+            m_UAVSubHandles.push_back(uavHandle);
+        }
+
+        m_SRVSubHandles.reserve(ArraySize);
+        for (int i = 0; i < ArraySize; i++)
+        {
+            D3D12_SHADER_RESOURCE_VIEW_DESC SRVDesc = {};
+            SRVDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2DARRAY;
+            SRVDesc.Texture2DArray.MipLevels = 1;
+            SRVDesc.Texture2DArray.FirstArraySlice = i;
+            SRVDesc.Texture2DArray.ArraySize = (UINT)(ArraySize - i);
+            SRVDesc.Format = Format;
+            SRVDesc.Shader4ComponentMapping = 
+                D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+            D3D12_CPU_DESCRIPTOR_HANDLE srvHandle{};
+            srvHandle = Graphics::AllocateDescriptor(
+                            D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+            Device->CreateShaderResourceView(Resource, &SRVDesc, srvHandle);
+            m_SRVSubHandles.push_back(srvHandle);
+        }
 	}
 }
 
