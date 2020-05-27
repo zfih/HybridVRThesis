@@ -110,7 +110,7 @@ void FXAA::Shutdown(void)
     IndirectParameters.Destroy();
 }
 
-void FXAA::Render( ComputeContext& Context, bool bUsePreComputedLuma )
+void FXAA::Render( ComputeContext& Context, bool bUsePreComputedLuma, UINT curCam )
 {
     ScopedTimer _prof(L"FXAA", Context);
 
@@ -154,7 +154,7 @@ void FXAA::Render( ComputeContext& Context, bool bUsePreComputedLuma )
 
             D3D12_CPU_DESCRIPTOR_HANDLE Pass1SRVs[] =
             {
-                Target.GetSRV(),
+                Target.GetSubSRV(curCam),
                 g_LumaBuffer.GetSRV()
             };
 
@@ -195,7 +195,7 @@ void FXAA::Render( ComputeContext& Context, bool bUsePreComputedLuma )
             Context.TransitionResource(g_FXAAColorQueue, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
             Context.TransitionResource(Target, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 
-            Context.SetDynamicDescriptor(1, 0, Target.GetUAV());
+            Context.SetDynamicDescriptor(1, 0, Target.GetSubUAV(curCam));
             Context.SetDynamicDescriptor(2, 0, g_LumaBuffer.GetSRV());
             Context.SetDynamicDescriptor(2, 1, g_FXAAWorkQueue.GetSRV());
             Context.SetDynamicDescriptor(2, 2, g_FXAAColorQueue.GetSRV());

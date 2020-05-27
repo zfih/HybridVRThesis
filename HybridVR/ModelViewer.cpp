@@ -1414,7 +1414,7 @@ void D3D12RaytracingMiniEngineSample::RenderShadowMap()
 	}
 }
 
-void D3D12RaytracingMiniEngineSample::RenderScene(UINT cam)
+void D3D12RaytracingMiniEngineSample::RenderScene(UINT curCam)
 {
 	DepthBuffer& db = g_SceneDepthBuffer;
 	const bool skipDiffusePass =
@@ -1480,7 +1480,7 @@ void D3D12RaytracingMiniEngineSample::RenderScene(UINT cam)
 
 	pfnSetupGraphicsState();
 
-	RenderLightShadows(gfxContext, cam);
+	RenderLightShadows(gfxContext, curCam);
 
 	{
 		gfxContext.SetStencilRef(0x0);
@@ -1502,12 +1502,12 @@ void D3D12RaytracingMiniEngineSample::RenderScene(UINT cam)
 				}
 
 				gfxContext.SetPipelineState(m_DepthPSO[0]);
-				gfxContext.SetDepthStencilTarget(g_SceneDepthBuffer.GetSubDSV(cam));
+				gfxContext.SetDepthStencilTarget(g_SceneDepthBuffer.GetSubDSV(curCam));
 
 				gfxContext.SetViewportAndScissor(m_MainViewport, m_MainScissor);
 			}
 
-			RenderObjects(gfxContext, m_Camera[cam]->GetViewProjMatrix(), cam, kOpaque);
+			RenderObjects(gfxContext, m_Camera[curCam]->GetViewProjMatrix(), curCam, kOpaque);
 		}
 
 		{
@@ -1515,15 +1515,15 @@ void D3D12RaytracingMiniEngineSample::RenderScene(UINT cam)
 			{
 				gfxContext.SetPipelineState(m_CutoutDepthPSO[0]);
 			}
-			RenderObjects(gfxContext, m_Camera[cam]->GetViewProjMatrix(), cam, kCutout);
+			RenderObjects(gfxContext, m_Camera[curCam]->GetViewProjMatrix(), curCam, kCutout);
 		}
 	}
 
-	SSAO::Render(gfxContext, *m_Camera[cam], cam);
+	SSAO::Render(gfxContext, *m_Camera[curCam], curCam);
 
 	if (!skipDiffusePass)
 	{
-		Lighting::FillLightGrid(gfxContext, *m_Camera[cam]);
+		Lighting::FillLightGrid(gfxContext, *m_Camera[curCam]);
 
 		if (!Settings::SSAO_DebugDraw)
 		{
@@ -1531,7 +1531,7 @@ void D3D12RaytracingMiniEngineSample::RenderScene(UINT cam)
 			{
 				gfxContext.TransitionResource(g_SceneColorBuffer, D3D12_RESOURCE_STATE_RENDER_TARGET, true);
 				gfxContext.TransitionResource(g_SceneNormalBuffer, D3D12_RESOURCE_STATE_RENDER_TARGET, true);
-				gfxContext.ClearColor(g_SceneColorBuffer, cam);
+				gfxContext.ClearColor(g_SceneColorBuffer, curCam);
 			}
 		}
 	}
@@ -1566,23 +1566,23 @@ void D3D12RaytracingMiniEngineSample::RenderScene(UINT cam)
 					                              D3D12_RESOURCE_STATE_DEPTH_READ);
 
 					D3D12_CPU_DESCRIPTOR_HANDLE rtvs[2]{
-						g_SceneColorBuffer.GetSubRTV(cam),
-						g_SceneNormalBuffer.GetSubRTV(cam),
+						g_SceneColorBuffer.GetSubRTV(curCam),
+						g_SceneNormalBuffer.GetSubRTV(curCam),
 					};
 
 					gfxContext.SetRenderTargets(2, rtvs,
-					                            g_SceneDepthBuffer.GetSubDSV(cam));
+					                            g_SceneDepthBuffer.GetSubDSV(curCam));
 
 					gfxContext.SetViewportAndScissor(
 						m_MainViewport, m_MainScissor);
 				}
 
-				RenderObjects(gfxContext, m_Camera[cam]->GetViewProjMatrix(), cam, kOpaque);
+				RenderObjects(gfxContext, m_Camera[curCam]->GetViewProjMatrix(), curCam, kOpaque);
 
 				if (!Settings::ShowWaveTileCounts)
 				{
 					gfxContext.SetPipelineState(m_CutoutModelPSO[0]);
-					RenderObjects(gfxContext, m_Camera[cam]->GetViewProjMatrix(), cam, kCutout);
+					RenderObjects(gfxContext, m_Camera[curCam]->GetViewProjMatrix(), curCam, kCutout);
 				}
 			}
 		}
@@ -1590,25 +1590,25 @@ void D3D12RaytracingMiniEngineSample::RenderScene(UINT cam)
 		// Some systems generate a per-pixel velocity buffer to better track dynamic and skinned meshes.  Everything
 		// is static in our scene, so we generate velocity from camera motion and the depth buffer.  A velocity buffer
 		// is necessary for all temporal effects (and motion blur).
-		MotionBlur::GenerateCameraVelocityBuffer(gfxContext, *m_Camera[cam], true);
+		MotionBlur::GenerateCameraVelocityBuffer(gfxContext, *m_Camera[curCam], true);
 
-		TemporalEffects::ResolveImage(gfxContext);
+		TemporalEffects::ResolveImage(gfxContext, curCam);
 
-		ParticleEffects::Render(gfxContext, *m_Camera[cam], g_SceneColorBuffer, g_SceneDepthBuffer,
+		ParticleEffects::Render(gfxContext, *m_Camera[curCam], g_SceneColorBuffer, g_SceneDepthBuffer,
 		                        g_LinearDepth[FrameIndex]);
 
 		// Until I work out how to couple these two, it's "either-or".
 		if (Settings::DOF_Enable)
-			DepthOfField::Render(gfxContext, m_Camera[cam]->GetNearClip(), m_Camera[cam]->GetFarClip());
+			DepthOfField::Render(gfxContext, m_Camera[curCam]->GetNearClip(), m_Camera[curCam]->GetFarClip(), curCam);
 		else
-			MotionBlur::RenderObjectBlur(gfxContext, g_VelocityBuffer);
+			MotionBlur::RenderObjectBlur(gfxContext, g_VelocityBuffer, curCam);
 	}
 
-	g_dynamicCb.curCam = cam;
+	g_dynamicCb.curCam = curCam;
 
 	if (g_RayTraceSupport/* && RayTracingMode != RTM_OFF*/)
 	{
-		Raytrace(gfxContext, cam);
+		Raytrace(gfxContext, curCam);
 	}
 
 	gfxContext.Finish();

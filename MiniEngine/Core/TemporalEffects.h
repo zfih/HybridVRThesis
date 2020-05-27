@@ -40,6 +40,6 @@ namespace TemporalEffects
 
     void ClearHistory(CommandContext& Context);
 
-    void ResolveImage(CommandContext& Context);
+    void ResolveImage(CommandContext& Context, UINT curCam);
 
 }

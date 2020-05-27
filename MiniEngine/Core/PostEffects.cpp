@@ -109,10 +109,10 @@ namespace PostEffects
 
     void UpdateExposure(ComputeContext&);
     void BlurBuffer(ComputeContext&, ColorBuffer buffer[2], const ColorBuffer& lowerResBuf, float upsampleBlendFactor );
-    void GenerateBloom(ComputeContext&);
-    void ExtractLuma(ComputeContext&);
-    void ProcessHDR(ComputeContext&);
-    void ProcessLDR(CommandContext&);
+    void GenerateBloom(ComputeContext&, UINT curCam);
+    void ExtractLuma(ComputeContext&, UINT curCam);
+    void ProcessHDR(ComputeContext&, UINT curCam);
+    void ProcessLDR(CommandContext&, UINT curCam);
 }
 
 void PostEffects::Initialize( void )
@@ -209,7 +209,7 @@ void PostEffects::BlurBuffer( ComputeContext& Context, ColorBuffer buffer[2], co
 //--------------------------------------------------------------------------------------
 // Bloom effect in CS path
 //--------------------------------------------------------------------------------------
-void PostEffects::GenerateBloom( ComputeContext& Context )
+void PostEffects::GenerateBloom( ComputeContext& Context, UINT curCam )
 {
     ScopedTimer _prof(L"Generate Bloom", Context);
 
@@ -236,7 +236,7 @@ void PostEffects::GenerateBloom( ComputeContext& Context )
 
         Context.SetDynamicDescriptor(1, 0, g_aBloomUAV1[0].GetUAV());
         Context.SetDynamicDescriptor(1, 1, g_LumaLR.GetUAV());
-        Context.SetDynamicDescriptor(2, 0, g_SceneColorBuffer.GetSRV());
+        Context.SetDynamicDescriptor(2, 0, g_SceneColorBuffer.GetSubSRV(curCam));
         Context.SetDynamicDescriptor(2, 1, g_Exposure.GetSRV());
 
         Context.SetPipelineState(Settings::EnableHDR ? BloomExtractAndDownsampleHdrCS : BloomExtractAndDownsampleLdrCS);
@@ -303,7 +303,7 @@ void PostEffects::GenerateBloom( ComputeContext& Context )
     }
 }
 
-void PostEffects::ExtractLuma( ComputeContext& Context )
+void PostEffects::ExtractLuma( ComputeContext& Context, UINT curCam )
 {
     ScopedTimer _prof(L"Extract Luma", Context);
 
@@ -311,7 +311,7 @@ void PostEffects::ExtractLuma( ComputeContext& Context )
     Context.TransitionResource(g_Exposure, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
     Context.SetConstants(0, 1.0f / g_LumaLR.GetWidth(), 1.0f / g_LumaLR.GetHeight());
     Context.SetDynamicDescriptor(1, 0, g_LumaLR.GetUAV());
-    Context.SetDynamicDescriptor(2, 0, g_SceneColorBuffer.GetSRV());
+    Context.SetDynamicDescriptor(2, 0, g_SceneColorBuffer.GetSubSRV(curCam));
     Context.SetDynamicDescriptor(2, 1, g_Exposure.GetSRV());
     Context.SetPipelineState(ExtractLumaCS);
     Context.Dispatch2D(g_LumaLR.GetWidth(), g_LumaLR.GetHeight());
@@ -365,17 +365,17 @@ void PostEffects::UpdateExposure( ComputeContext& Context )
     Context.TransitionResource(g_Exposure, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 }
 
-void PostEffects::ProcessHDR( ComputeContext& Context )
+void PostEffects::ProcessHDR( ComputeContext& Context, UINT curCam )
 {
     ScopedTimer _prof(L"HDR Tone Mapping", Context);
 
     if (Settings::BloomEnable)
     {
-        GenerateBloom(Context);
+        GenerateBloom(Context, curCam);
         Context.TransitionResource(g_aBloomUAV1[1], D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
     }
     else if (Settings::EnableAdaptation)
-        ExtractLuma(Context);
+        ExtractLuma(Context, curCam);
 
     if (g_bTypedUAVLoadSupport_R11G11B10_FLOAT)
         Context.TransitionResource(g_SceneColorBuffer, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
@@ -393,11 +393,11 @@ void PostEffects::ProcessHDR( ComputeContext& Context )
 
     // Separate out SDR result from its perceived luminance
     if (g_bTypedUAVLoadSupport_R11G11B10_FLOAT)
-        Context.SetDynamicDescriptor(1, 0, g_SceneColorBuffer.GetUAV());
+        Context.SetDynamicDescriptor(1, 0, g_SceneColorBuffer.GetSubUAV(curCam));
     else
     {
-        Context.SetDynamicDescriptor(1, 0, g_PostEffectsBuffer.GetUAV());
-        Context.SetDynamicDescriptor(2, 2, g_SceneColorBuffer.GetSRV());
+        Context.SetDynamicDescriptor(1, 0, g_PostEffectsBuffer.GetSubUAV(curCam));
+        Context.SetDynamicDescriptor(2, 2, g_SceneColorBuffer.GetSubSRV(curCam));
     }
     Context.SetDynamicDescriptor(1, 1, g_LumaBuffer.GetUAV());
 
@@ -411,7 +411,7 @@ void PostEffects::ProcessHDR( ComputeContext& Context )
     UpdateExposure(Context);
 }
 
-void PostEffects::ProcessLDR(CommandContext& BaseContext)
+void PostEffects::ProcessLDR(CommandContext& BaseContext, UINT curCam)
 {
     ScopedTimer _prof(L"SDR Processing", BaseContext);
 
@@ -419,7 +419,7 @@ void PostEffects::ProcessLDR(CommandContext& BaseContext)
 
     bool bGenerateBloom = Settings::BloomEnable && !Settings::SSAO_DebugDraw;
     if (bGenerateBloom)
-        GenerateBloom(Context);
+        GenerateBloom(Context, curCam);
 
     if (bGenerateBloom || Settings::FXAA_DebugDraw || Settings::SSAO_DebugDraw || !g_bTypedUAVLoadSupport_R11G11B10_FLOAT)
     {
@@ -437,11 +437,11 @@ void PostEffects::ProcessLDR(CommandContext& BaseContext)
 
         // Separate out SDR result from its perceived luminance
         if (g_bTypedUAVLoadSupport_R11G11B10_FLOAT)
-            Context.SetDynamicDescriptor(1, 0, g_SceneColorBuffer.GetUAV());
+            Context.SetDynamicDescriptor(1, 0, g_SceneColorBuffer.GetSubUAV(curCam));
         else
         {
-            Context.SetDynamicDescriptor(1, 0, g_PostEffectsBuffer.GetUAV());
-            Context.SetDynamicDescriptor(2, 2, g_SceneColorBuffer.GetSRV());
+            Context.SetDynamicDescriptor(1, 0, g_PostEffectsBuffer.GetSubUAV(curCam));
+            Context.SetDynamicDescriptor(2, 2, g_SceneColorBuffer.GetSubSRV(curCam));
         }
         Context.SetDynamicDescriptor(1, 1, g_LumaBuffer.GetUAV());
 
@@ -455,19 +455,19 @@ void PostEffects::ProcessLDR(CommandContext& BaseContext)
     }
 }
 
-void PostEffects::CopyBackPostBuffer( ComputeContext& Context )
+void PostEffects::CopyBackPostBuffer( ComputeContext& Context, UINT curCam )
 {
     ScopedTimer _prof(L"Copy Post back to Scene", Context);
     Context.SetRootSignature(PostEffectsRS);
     Context.SetPipelineState(CopyBackPostBufferCS);
     Context.TransitionResource(g_SceneColorBuffer, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
     Context.TransitionResource(g_PostEffectsBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-    Context.SetDynamicDescriptor(1, 0, g_SceneColorBuffer.GetUAV());
-    Context.SetDynamicDescriptor(2, 0, g_PostEffectsBuffer.GetSRV());
+    Context.SetDynamicDescriptor(1, 0, g_SceneColorBuffer.GetSubUAV(curCam));
+    Context.SetDynamicDescriptor(2, 0, g_PostEffectsBuffer.GetSubSRV(curCam));
     Context.Dispatch2D(g_SceneColorBuffer.GetWidth(), g_SceneColorBuffer.GetHeight());
 }
 
-void PostEffects::Render( void )
+void PostEffects::Render( UINT curCam )
 {
     ComputeContext& Context = ComputeContext::Begin(L"Post Effects");
 
@@ -476,13 +476,13 @@ void PostEffects::Render( void )
     Context.TransitionResource(g_SceneColorBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 
     if (Settings::EnableHDR && !Settings::SSAO_DebugDraw && !(Settings::DOF_Enable && Settings::DOF_DebugMode >= 3))
-        ProcessHDR(Context);
+        ProcessHDR(Context, curCam);
     else
-        ProcessLDR(Context);
+        ProcessLDR(Context, curCam);
 
     bool bGeneratedLumaBuffer = Settings::EnableHDR || Settings::FXAA_DebugDraw || Settings::BloomEnable;
     if (Settings::FXAA_Enable)
-        FXAA::Render(Context, bGeneratedLumaBuffer);
+        FXAA::Render(Context, bGeneratedLumaBuffer, curCam);
 
     // In the case where we've been doing post processing in a separate buffer, we need to copy it
     // back to the original buffer.  It is possible to skip this step if the next shader knows to
@@ -491,7 +491,7 @@ void PostEffects::Render( void )
     // is only to support legacy hardware and a single buffer copy isn't that big of a deal, this
     // is the most economical solution.
     if (!g_bTypedUAVLoadSupport_R11G11B10_FLOAT)
-        CopyBackPostBuffer(Context);
+        CopyBackPostBuffer(Context, curCam);
 
     if (Settings::DrawHistogram)
     {
@@ -501,7 +501,7 @@ void PostEffects::Render( void )
         Context.InsertUAVBarrier(g_SceneColorBuffer);
         Context.TransitionResource(g_Histogram, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
         Context.TransitionResource(g_Exposure, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-        Context.SetDynamicDescriptor(1, 0, g_SceneColorBuffer.GetUAV());
+        Context.SetDynamicDescriptor(1, 0, g_SceneColorBuffer.GetSubUAV(curCam));
         D3D12_CPU_DESCRIPTOR_HANDLE SRVs[2] = { g_Histogram.GetSRV(), g_Exposure.GetSRV() };
         Context.SetDynamicDescriptors(2, 0, 2, SRVs);
         Context.Dispatch(1, 32);
