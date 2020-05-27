@@ -68,7 +68,22 @@
     <FxCompile Include="Shaders\FillLightGridCS_32.hlsl">
       <Filter>Shaders</Filter>
     </FxCompile>
-    <FxCompile Include="*Lib.hlsl">
+    <FxCompile Include="hitShaderLib.hlsl">
+      <Filter>Shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="missShaderLib.hlsl">
+      <Filter>Shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="missShadowsLib.hlsl">
+      <Filter>Shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="RayGenerationShaderLib.hlsl">
+      <Filter>Shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="RayGenerationShaderSSRLib.hlsl">
+      <Filter>Shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="RayGenerationShadowsLib.hlsl">
       <Filter>Shaders</Filter>
     </FxCompile>
     <FxCompile Include="*Lib.hlsl">
@@ -286,6 +301,24 @@
     <FxCompile Include="*Lib.hlsl" />
     <FxCompile Include="DiffuseHitShaderLib.hlsl" />
     <FxCompile Include="AlphaTransparencyAnyHit.hlsl" />
+    <FxCompile Include="Shaders\ReprojectionDS.hlsl">
+      <Filter>Shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="Shaders\ReprojectionGS.hlsl">
+      <Filter>Shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="Shaders\ReprojectionHS.hlsl">
+      <Filter>Shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="Shaders\ReprojectionPS.hlsl">
+      <Filter>Shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="Shaders\ReprojectionRT.hlsl">
+      <Filter>Shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="Shaders\ReprojectionVS.hlsl">
+      <Filter>Shaders</Filter>
+    </FxCompile>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="ForwardPlusLighting.cpp" />
@@ -302,6 +335,9 @@
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="Raytracing.h" />
     <ClInclude Include="DescriptorHeapStack.h" />
+    <ClInclude Include="Shaders\Raytracing.hlsl">
+      <Filter>Shaders</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Image Include="Textures\Models\background.DDS">

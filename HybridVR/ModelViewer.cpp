@@ -142,6 +142,10 @@ public:
 
 	virtual void Update(float deltaT) override;
 	virtual void RenderShadowMap() override;
+
+	void Reproject();
+	void GenerateGrid(UINT width, UINT height);
+	
 	virtual void RenderScene(UINT cam) override;
 	virtual void RenderUI(class GraphicsContext&) override;
 	virtual void Raytrace(class GraphicsContext&, UINT cam);
@@ -717,7 +721,7 @@ void InitializeRaytracingStateObjects(const Model& model, UINT numMeshes)
 }
 
 void InitializeStateObjects(const Model& model, UINT numMeshes)
-{
+{	
 	ZeroMemory(&g_dynamicCb, sizeof(g_dynamicCb));
 
 	D3D12_STATIC_SAMPLER_DESC staticSamplerDescs[2] = {};
@@ -1036,6 +1040,8 @@ void D3D12RaytracingMiniEngineSample::Startup(void)
     m_ExtraTextures[3] = Lighting::m_LightShadowArray.GetSRV();
     m_ExtraTextures[4] = Lighting::m_LightGrid.GetSRV();
     m_ExtraTextures[5] = Lighting::m_LightGridBitMask.GetSRV();
+
+	GenerateGrid(128, 128);
 }
 
 void D3D12RaytracingMiniEngineSample::Cleanup(void)
@@ -1412,6 +1418,74 @@ void D3D12RaytracingMiniEngineSample::RenderShadowMap()
 			gfxContext.Finish();
 		}
 	}
+}
+
+
+void D3D12RaytracingMiniEngineSample::Reproject()
+{
+	// Needed for reproj
+	// Compute context and shader that does quad grid stuff, like splitting
+	// by depth and such
+	// Graphics shader with tesselation shaders.
+	// Generate of quad grid
+	// 
+
+	
+	GraphicsContext& reprojectContext = GraphicsContext::Begin(L"Reproject");
+	ComputeContext& quadLevelContext = ComputeContext::Begin(L"Quad Level Context");
+
+	
+}
+
+void D3D12RaytracingMiniEngineSample::GenerateGrid(UINT width, UINT height)
+{
+	UINT quadFactor = 16; // TODO: Make setting
+	
+	UINT quadSizeX = width / quadFactor;
+	UINT quadSizeY = height / quadFactor;
+
+	UINT vertexCount = (quadSizeX + 1) * (quadSizeY + 1);
+	UINT indexCount = quadSizeX * quadSizeY * 4;
+
+	bool pixelCenter = true; // TODO: Make setting
+	
+	std::vector<Vector3> vertices;
+	std::vector<Vector2> uvs;
+	std::vector<float> quadIDs;
+
+	vertices.reserve(vertexCount);
+	uvs.reserve(vertexCount);
+	quadIDs.reserve(vertexCount);
+
+	float qID = -1.f; // Quad ID Counter
+	for (uint32_t i = 0, y = quadSizeY; y >= 0 && y != 4294967295; y--) {
+		for (uint32_t x = 0; x <= quadSizeX; x++, i++) {
+			vertices.push_back(Vector3((float)x / (float) quadSizeX * 2.f - 1, (float)y / (float)quadSizeY * 2.f - 1, 0));
+			uvs.push_back(Vector2((float)x / (float)quadSizeX, 1 - (float)y / (float)quadSizeY));
+			quadIDs.push_back(qID += 1.f);
+
+			// Move vertex position to pixel center
+			if (pixelCenter)
+			{
+				vertices[i] += Vector3(0.5f / (float)width, -0.5f / (float)height, 0);
+				uvs[i] += Vector2(0.5f / (float)width, 0.5f / (float)height);
+			}
+		}
+		qID -= 1.f; // Jump to next row (here might be a bug)
+	}
+
+	std::vector<UINT> quads;
+	quads.reserve(indexCount);
+	for (UINT qu = 0, vi = 0, y = 0; y < quadSizeY; y++, vi++) {
+		for (UINT x = 0; x < quadSizeX; x++, qu += 4, vi++) {
+			quads.push_back(vi + quadSizeX + 1);
+			quads.push_back(vi + quadSizeX + 2);
+			quads.push_back(vi + 1);
+			quads.push_back(vi);
+		}
+	}
+
+	
 }
 
 void D3D12RaytracingMiniEngineSample::RenderScene(UINT cam)

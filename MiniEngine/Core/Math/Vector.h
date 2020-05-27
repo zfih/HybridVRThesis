@@ -17,7 +17,33 @@
 
 namespace Math
 {
+    class Vector2;
+    class Vector3;
     class Vector4;
+
+    _declspec(align(8)) class Vector2
+    {
+    public:
+
+        INLINE Vector2() { x = 0; y = 0; }
+        INLINE Vector2(float scalar) { this->x = scalar; this->y = scalar; }
+        INLINE Vector2(float x, float y) { this->x = x; this->y = y; }
+
+        INLINE float GetX() const { return x; }
+        INLINE float GetY() const { return y; }
+        INLINE void SetX(Scalar x) { this->x = x; }
+        INLINE void SetY(Scalar y) { this->y = y; }
+
+        INLINE Vector2 operator- () const { return Vector2(-x, -y); }
+        INLINE Vector2 operator+ (Vector2 v2) const { return Vector2(x + v2.GetX(), y + v2.GetY()); }
+        INLINE Vector2 operator- (Vector2 v2) const { return Vector2(x - v2.GetX(), y - v2.GetY()); }
+
+        INLINE Vector2& operator += (Vector2 v) { *this = *this + v; return *this; }
+    private:
+        float x;
+        float y;
+    };
+
 
     // A 3-vector with an unspecified fourth component.  Depending on the context, the W can be 0 or 1, but both are implicit.
     // The actual value of the fourth component is undefined for performance reasons.
