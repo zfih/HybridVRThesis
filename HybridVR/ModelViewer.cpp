@@ -59,6 +59,7 @@
 #include "CompiledShaders/RayGenerationShadowsLib.h"
 #include "CompiledShaders/MissShadowsLib.h"
 #include "CompiledShaders/AlphaTransparencyAnyHit.h"
+#include "CompiledShaders/QuadLevelCompute.h"
 #include "CompiledShaders/ReprojectionVS.h"
 #include "CompiledShaders/ReprojectionHS.h"
 #include "CompiledShaders/ReprojectionDS.h"
@@ -190,6 +191,8 @@ private:
 	GraphicsPSO m_CutoutShadowPSO;
 	GraphicsPSO m_WaveTileCountPSO;
 
+	RootSignature m_ReprojectionComputeRS;
+	ComputePSO m_ReprojectionComputePSO;
 	RootSignature m_ReprojectionRS;
 	GraphicsPSO m_ReprojectionPSO;
 
@@ -939,6 +942,17 @@ void D3D12RaytracingMiniEngineSample::Startup(void)
 	m_WaveTileCountPSO = m_ModelPSO[0];
 	m_WaveTileCountPSO.SetPixelShader(g_pWaveTileCountPS, sizeof(g_pWaveTileCountPS));
 	m_WaveTileCountPSO.Finalize();
+
+	m_ReprojectionComputeRS.Reset(3);
+	m_ReprojectionComputeRS[0].InitAsDescriptorRange(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 0, 3);
+	m_ReprojectionComputeRS[1].InitAsDescriptorRange(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 0, 1);
+	m_ReprojectionComputeRS[2].InitAsConstantBuffer(0);
+	m_ReprojectionComputeRS.Finalize(L"Reprojection Root Signature",
+									 D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
+
+	m_ReprojectionComputePSO.SetRootSignature(m_ReprojectionComputeRS);
+	m_ReprojectionComputePSO.SetComputeShader(g_pQuadLevelCompute);
+	m_ReprojectionComputePSO.Finalize();
 
 	m_ReprojectionRS.Reset(3, 1);
 	m_ReprojectionRS.InitStaticSampler(0, DefaultSamplerDesc);
