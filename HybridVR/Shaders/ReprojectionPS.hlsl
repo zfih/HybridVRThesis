@@ -25,8 +25,8 @@ struct VertexOutput
     float occFlag : DOCCFLAG;
 };
 
-SamplerState gLinearSampler;
-Texture2D gLeftEyeTex;
+SamplerState gLinearSampler : register(s0);
+Texture2D gLeftEyeTex : register(t1);
 
 static float gThreshold = 0.008; // TODO: Do we want to be able to change this?
 static float3 gClearColor = float3(0, 0, 0);

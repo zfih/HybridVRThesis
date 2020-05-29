@@ -20,7 +20,7 @@
 //import ShaderCommon;
 
 
-RWStructuredBuffer<float> gDiffResult;
+RWStructuredBuffer<float> gDiffResult : register(u0);
 
 struct HS_Input
 {

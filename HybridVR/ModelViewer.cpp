@@ -940,10 +940,11 @@ void D3D12RaytracingMiniEngineSample::Startup(void)
 	m_WaveTileCountPSO.SetPixelShader(g_pWaveTileCountPS, sizeof(g_pWaveTileCountPS));
 	m_WaveTileCountPSO.Finalize();
 
-	m_ReprojectionRS.Reset(2, 1);
+	m_ReprojectionRS.Reset(3, 1);
 	m_ReprojectionRS.InitStaticSampler(0, DefaultSamplerDesc);
 	m_ReprojectionRS[0].InitAsDescriptorRange(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 0, 2);
 	m_ReprojectionRS[1].InitAsDescriptorRange(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 0, 1);
+	m_ReprojectionRS[2].InitAsConstantBuffer(0);
 	m_ReprojectionRS.Finalize(L"Reprojection Root Signature",
 							  D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
 

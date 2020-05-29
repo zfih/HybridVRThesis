@@ -19,10 +19,10 @@
 
 //import ShaderCommon;
 
-SamplerState gLinearSampler;
-Texture2D gDepthTex;
+SamplerState gLinearSampler : register(s0);
+Texture2D gDepthTex : register(t0);
 
-cbuffer ReprojInput
+cbuffer ReprojInput : register(b0)
 {
     float4x4 reprojectionMat;
 };
