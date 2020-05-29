@@ -186,6 +186,9 @@ private:
 	GraphicsPSO m_CutoutShadowPSO;
 	GraphicsPSO m_WaveTileCountPSO;
 
+	StructuredBuffer m_GridVertexBuffer;
+	ByteAddressBuffer m_GridIndexBuffer;
+	
 	D3D12_CPU_DESCRIPTOR_HANDLE m_DefaultSampler;
 	D3D12_CPU_DESCRIPTOR_HANDLE m_ShadowSampler;
 	D3D12_CPU_DESCRIPTOR_HANDLE m_BiasedDefaultSampler;
@@ -1448,30 +1451,36 @@ void D3D12RaytracingMiniEngineSample::GenerateGrid(UINT width, UINT height)
 	UINT indexCount = quadSizeX * quadSizeY * 4;
 
 	bool pixelCenter = true; // TODO: Make setting
-	
-	std::vector<Vector3> vertices;
-	std::vector<Vector2> uvs;
-	std::vector<float> quadIDs;
 
-	vertices.reserve(vertexCount);
-	uvs.reserve(vertexCount);
-	quadIDs.reserve(vertexCount);
+	struct GridVertex
+	{
+		Vector3 pos;
+		Vector2 uv;
+		float quadID;
+	};
+
+	std::vector<GridVertex> gridVertices;
+	gridVertices.reserve(vertexCount);
 
 	float qID = -1.f; // Quad ID Counter
 	for (uint32_t i = 0, y = quadSizeY; y >= 0 && y != 4294967295; y--) {
 		for (uint32_t x = 0; x <= quadSizeX; x++, i++) {
-			vertices.push_back(Vector3((float)x / (float) quadSizeX * 2.f - 1, (float)y / (float)quadSizeY * 2.f - 1, 0));
-			uvs.push_back(Vector2((float)x / (float)quadSizeX, 1 - (float)y / (float)quadSizeY));
-			quadIDs.push_back(qID += 1.f);
+
+			GridVertex gv{};
+			
+			gv.pos = Vector3((float)x / (float) quadSizeX * 2.f - 1, (float)y / (float)quadSizeY * 2.f - 1, 0);
+			gv.uv = Vector2((float)x / (float)quadSizeX, 1 - (float)y / (float)quadSizeY);
+			gv.quadID = qID += 1.f;
 
 			// Move vertex position to pixel center
 			if (pixelCenter)
 			{
-				vertices[i] += Vector3(0.5f / (float)width, -0.5f / (float)height, 0);
-				uvs[i] += Vector2(0.5f / (float)width, 0.5f / (float)height);
+				gv.pos += Vector3(0.5f / (float)width, -0.5f / (float)height, 0);
+				gv.uv += Vector2(0.5f / (float)width, 0.5f / (float)height);
 			}
+			gridVertices.push_back(gv);
 		}
-		qID -= 1.f; // Jump to next row (here might be a bug)
+		qID -= 1.f; // Jump to next row (here might be a bug) - Nice comment lol
 	}
 
 	std::vector<UINT> quads;
@@ -1485,7 +1494,24 @@ void D3D12RaytracingMiniEngineSample::GenerateGrid(UINT width, UINT height)
 		}
 	}
 
+	std::vector<UINT> indices;
+	indices.reserve(indexCount);
+	for (uint32_t i = 0; i < indexCount; i++) {
+		indices.push_back(quads[i]);
+	}
+
 	
+	m_GridVertexBuffer.Create(
+		L"Grid Vertex Buffer",
+		vertexCount,
+		sizeof(GridVertex),
+		gridVertices.data());
+	
+	m_GridIndexBuffer.Create(
+		L"Grid Index Buffer",
+		indexCount,
+		sizeof(UINT),
+		indices.data());
 }
 
 void D3D12RaytracingMiniEngineSample::RenderScene(UINT cam)
