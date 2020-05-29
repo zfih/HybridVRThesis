@@ -22,10 +22,9 @@
 SamplerState gLinearSampler;
 Texture2D gDepthTex;
 
-cbuffer PerImageCBDomain
+cbuffer ReprojInput
 {
-    float4x4 gThirdPersonViewProj;
-    float4x4 gInvRightEyeViewProj;
+    float4x4 reprojectionMat;
 };
 
 struct HS_Constant_Output
@@ -65,14 +64,12 @@ VertexOutput main(HS_Constant_Output input, float2 UV : SV_DomainLocation, const
 
     float z = clamp(gDepthTex.SampleLevel(gLinearSampler, output.texC.xy, 0).r, 0.000001, 0.99999); // clamp is needed to avoid flickering if quad grid does not cover any geometry
 
-#ifdef _DEBUG_THIRDPERSON
-    float4 posWH = mul(mul(mul(float4(posH.xy, z, posH.w), gCamera.reprojectionMat), gInvRightEyeViewProj), gThirdPersonViewProj);
-#else
-    float4 posWH = mul(float4(posH.xy, z, posH.w), gCamera.reprojectionMat);
-#endif
+    //float4 posWH = mul(float4(posH.xy, z, posH.w), reprojectionMat);
 
-    output.posW = posWH.xyz;
-    output.posH = float4(posWH.xy, z, posWH.w);
+    /*output.posW = posWH.xyz;
+    output.posH = float4(posWH.xy, z, posWH.w);*/
+    output.posW = 0.1337;
+    output.posH = 0.1337;
 
     //output.posW = posH.xyz; // [Debug] screen quad (no reprojection)
     //output.posH = posH;

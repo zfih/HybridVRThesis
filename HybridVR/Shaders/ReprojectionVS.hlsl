@@ -32,8 +32,8 @@ struct HS_Input
     float2 texC : TEXCRD;
 };
 
-Texture2D gDepthTex;
-Texture2D gLeftEyeTex;
+Texture2D gDepthTex : register(t0);
+Texture2D gLeftEyeTex : register(t1);
 
 HS_Input main(VertexIn vIn)
 {

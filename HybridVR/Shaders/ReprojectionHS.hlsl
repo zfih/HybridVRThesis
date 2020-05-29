@@ -22,13 +22,6 @@
 
 RWStructuredBuffer<float> gDiffResult;
 
-cbuffer PerImageCBHull
-{
-    float gThreshold;
-    float gTessFactor;
-    uint gQuadCountX;
-};
-
 struct HS_Input
 {
     float3 posW : POSW;
@@ -49,6 +42,10 @@ struct HS_Output
     float4 posH : SV_POSITION;
     float2 texC : TEXCRD;
 };
+
+static float gThreshold = 0.997; // TODO: Do we want to be able to change this?
+static float gTessFactor = 16;
+static uint gQuadCountX = 16;
 
 #ifdef _BINOCULAR_METRIC
 float getTessellationFactor(float quadid)

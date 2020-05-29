@@ -28,8 +28,10 @@
 #ifndef __RAYTRACING_H__
 #define __RAYTRACING_H__
 
-__exported __import Shading;
-__exported __import DefaultVS;
+//__exported __import Shading;
+//__exported __import DefaultVS;
+
+//#include "DefaultVS.hlsl"
 
 ByteAddressBuffer gIndices       : register(t50);
 ByteAddressBuffer gTexCrds       : register(t51);
@@ -44,6 +46,27 @@ shared RaytracingAccelerationStructure gRtScene : register(t57);
 // Otherwise it is computed based on the ray equation in world space: p=o+t*d, which is numerically unstable.
 // Unfortunately, interpolating the position incurs the extra cost of fetching 3x12B positions and one matrix multiply.
 #define USE_INTERPOLATED_POSITION
+
+#ifndef INTERPOLATION_MODE
+#define INTERPOLATION_MODE linear
+#endif
+
+struct VertexOut
+{
+    INTERPOLATION_MODE float3 normalW    : NORMAL;
+    INTERPOLATION_MODE float3 bitangentW : BITANGENT;
+    INTERPOLATION_MODE float2 texC       : TEXCRD;
+    INTERPOLATION_MODE float3 posW       : POSW;
+    INTERPOLATION_MODE float3 colorV     : COLOR;
+    INTERPOLATION_MODE float4 prevPosH   : PREVPOSH;
+    INTERPOLATION_MODE float2 lightmapC  : LIGHTMAPUV;
+    float4 posH : SV_POSITION;
+#ifdef _SINGLE_PASS_STEREO
+    INTERPOLATION_MODE float4 rightEyePosS : NV_X_RIGHT;
+    uint4 viewportMask : NV_VIEWPORT_MASK;
+    uint renderTargetIndex : SV_RenderTargetArrayIndex;
+#endif
+};
 
 shared cbuffer DxrPerFrame : register(b13)
 {
@@ -86,12 +109,7 @@ VertexOut getVertexAttributes(uint triangleIndex, float3 barycentrics)
 #endif
     }
 #ifdef USE_INTERPOLATED_POSITION
-    v.posW = mul(float4(v.posW, 1.f), gWorldMat[0]).xyz;
-#endif
-#ifndef _MS_DISABLE_INSTANCE_TRANSFORM
-    // Transform normal/bitangent to world space
-    v.normalW = mul(v.normalW, (float3x3)gWorldInvTransposeMat[0]).xyz;
-    v.bitangentW = mul(v.bitangentW, (float3x3)gWorldMat[0]).xyz;
+    v.posW = float4(v.posW, 1.f).xyz;
 #endif
     v.normalW = normalize(v.normalW);
     v.bitangentW = normalize(v.bitangentW);
@@ -149,7 +167,7 @@ float3 getGeometricNormalW(uint triangleIndex)
     e[1] = p[2] - p[0];
 
     float3 N = getGeoNormal(e);
-    return mul(N, (float3x3)gWorldInvTransposeMat[0]).xyz;
+    return N.xyz;
 }
 
 /** Returns position on triangle in the previous frame in world space.
@@ -167,7 +185,7 @@ float3 getPrevPosW(uint triangleIndex, float3 barycentrics)
         prevPos += asfloat(gPrevPositions.Load3(address)) * barycentrics[i];
     }
 
-    return mul(float4(prevPos, 1.f), gPrevWorldMat[0]).xyz;
+    return prevPos;
 }
 
 float3 getPrevPosW(uint triangleIndex, BuiltInTriangleIntersectionAttributes attribs)

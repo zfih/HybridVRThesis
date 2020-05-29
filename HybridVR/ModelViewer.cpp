@@ -59,6 +59,10 @@
 #include "CompiledShaders/RayGenerationShadowsLib.h"
 #include "CompiledShaders/MissShadowsLib.h"
 #include "CompiledShaders/AlphaTransparencyAnyHit.h"
+#include "CompiledShaders/ReprojectionVS.h"
+#include "CompiledShaders/ReprojectionHS.h"
+#include "CompiledShaders/ReprojectionDS.h"
+#include "CompiledShaders/ReprojectionPS.h"
 
 #include "RaytracingHlslCompat.h"
 #include "ModelViewerRayTracing.h"
@@ -143,9 +147,9 @@ public:
 	virtual void Update(float deltaT) override;
 	virtual void RenderShadowMap() override;
 
-	void Reproject();
 	void GenerateGrid(UINT width, UINT height);
 	
+	virtual void ReprojectScene() override;
 	virtual void RenderScene(UINT cam) override;
 	virtual void RenderUI(class GraphicsContext&) override;
 	virtual void Raytrace(class GraphicsContext&, UINT cam);
@@ -185,6 +189,9 @@ private:
 	GraphicsPSO m_ShadowPSO;
 	GraphicsPSO m_CutoutShadowPSO;
 	GraphicsPSO m_WaveTileCountPSO;
+
+	RootSignature m_ReprojectionRS;
+	GraphicsPSO m_ReprojectionPSO;
 
 	D3D12_CPU_DESCRIPTOR_HANDLE m_DefaultSampler;
 	D3D12_CPU_DESCRIPTOR_HANDLE m_ShadowSampler;
@@ -930,6 +937,33 @@ void D3D12RaytracingMiniEngineSample::Startup(void)
 	m_WaveTileCountPSO.SetPixelShader(g_pWaveTileCountPS, sizeof(g_pWaveTileCountPS));
 	m_WaveTileCountPSO.Finalize();
 
+	m_ReprojectionRS.Reset(2, 1);
+	m_ReprojectionRS.InitStaticSampler(0, DefaultSamplerDesc);
+	m_ReprojectionRS[0].InitAsDescriptorRange(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 0, 2);
+	m_ReprojectionRS[1].InitAsDescriptorRange(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 0, 1);
+	m_ReprojectionRS.Finalize(L"Reprojection Root Signature",
+							  D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
+
+	D3D12_INPUT_ELEMENT_DESC vertElem2[] =
+	{
+		makeVertexInputElement("POSITION", DXGI_FORMAT_R32G32B32_FLOAT),
+		makeVertexInputElement("TEXCOORD", DXGI_FORMAT_R32G32_FLOAT),
+		makeVertexInputElement("QUADID", DXGI_FORMAT_R32_FLOAT)
+	};
+
+	m_ReprojectionPSO.SetRootSignature(m_ReprojectionRS);
+	m_ReprojectionPSO.SetRasterizerState(RasterizerDefault);
+	m_ReprojectionPSO.SetBlendState(BlendDisable); // This might be incorrect
+	m_ReprojectionPSO.SetDepthStencilState(DepthStateReadOnly); // This might be incorrect
+	m_ReprojectionPSO.SetInputLayout(_countof(vertElem2), vertElem2);
+	m_ReprojectionPSO.SetPrimitiveTopologyType(D3D12_PRIMITIVE_TOPOLOGY_TYPE_PATCH);
+	m_ReprojectionPSO.SetRenderTargetFormat(ColorFormat, DepthFormat);
+	m_ReprojectionPSO.SetVertexShader(g_pReprojectionVS, sizeof(g_pReprojectionVS));
+	m_ReprojectionPSO.SetHullShader(g_pReprojectionHS, sizeof(g_pReprojectionHS));
+	m_ReprojectionPSO.SetDomainShader(g_pReprojectionDS, sizeof(g_pReprojectionDS));
+	m_ReprojectionPSO.SetPixelShader(g_pReprojectionPS, sizeof(g_pReprojectionPS));
+	m_ReprojectionPSO.Finalize();
+
 	Lighting::InitializeResources();
 
 	m_ExtraTextures[0] = g_SSAOFullScreen.GetSRV();
@@ -1421,7 +1455,7 @@ void D3D12RaytracingMiniEngineSample::RenderShadowMap()
 }
 
 
-void D3D12RaytracingMiniEngineSample::Reproject()
+void D3D12RaytracingMiniEngineSample::ReprojectScene()
 {
 	// Needed for reproj
 	// Compute context and shader that does quad grid stuff, like splitting

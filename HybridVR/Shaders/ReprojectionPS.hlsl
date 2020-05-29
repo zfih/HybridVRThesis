@@ -25,14 +25,11 @@ struct VertexOutput
     float occFlag : DOCCFLAG;
 };
 
-cbuffer PerImageCBPixel
-{
-    float gThreshold;
-    float3 gClearColor;
-};
-
 SamplerState gLinearSampler;
 Texture2D gLeftEyeTex;
+
+static float gThreshold = 0.008; // TODO: Do we want to be able to change this?
+static float3 gClearColor = float3(0, 0, 0);
 
 float4 main(VertexOutput vOut) : SV_TARGET
 {
@@ -42,7 +39,7 @@ float4 main(VertexOutput vOut) : SV_TARGET
     color = float4(gLeftEyeTex.SampleLevel(gLinearSampler, vOut.texC, 0).rgb, 1);
 #endif
 #ifdef _SHOWUVS
-    color = float4(1, 1 , 1, 1);
+    color = float4(1, 1, 1, 1);
 #endif
 #ifdef _SHOWDISOCCLUSION
         if (vOut.occFlag > gThreshold)
@@ -55,7 +52,7 @@ float4 main(VertexOutput vOut) : SV_TARGET
     {
         discard;
     }
-    #endif
+#endif
 
     return color;
 }

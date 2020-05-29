@@ -17,7 +17,8 @@
   Authors: Niko Wissmann
  */
 
-import Raytracing;
+//import Raytracing;
+#include "Raytracing.hlsl"
 
 #define M_1_DIVIDE_PI  0.318309886183790671538
 #define NUM_LIGHTSOURCES 1
