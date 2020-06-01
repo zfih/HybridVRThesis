@@ -210,6 +210,7 @@ private:
 
 	Vector3 m_SunDirection;
 	ShadowCamera m_SunShadow;
+	UINT m_QuadDivideFactor;
 
 	struct CameraPosition
 	{
@@ -944,7 +945,7 @@ void D3D12RaytracingMiniEngineSample::Startup(void)
 	m_WaveTileCountPSO.Finalize();
 
 	m_ReprojectionComputeRS.Reset(3);
-	m_ReprojectionComputeRS[0].InitAsDescriptorRange(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 0, 3);
+	m_ReprojectionComputeRS[0].InitAsDescriptorRange(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 0, 2);
 	m_ReprojectionComputeRS[1].InitAsDescriptorRange(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 0, 1);
 	m_ReprojectionComputeRS[2].InitAsConstantBuffer(0);
 	m_ReprojectionComputeRS.Finalize(L"Reprojection Root Signature",
@@ -1483,18 +1484,50 @@ void D3D12RaytracingMiniEngineSample::ReprojectScene()
 	// 
 
 	
-	GraphicsContext& reprojectContext = GraphicsContext::Begin(L"Reproject");
 	ComputeContext& quadLevelContext = ComputeContext::Begin(L"Quad Level Context");
+	quadLevelContext.SetRootSignature(m_ReprojectionComputeRS);
+	quadLevelContext.SetPipelineState(m_ReprojectionComputePSO);
+
+	quadLevelContext.SetDynamicDescriptor(0, 0,
+		g_SceneDepthBuffer.GetSubSRV(0));
+	quadLevelContext.SetDynamicDescriptor(0, 1,
+		g_SceneNormalBuffer.GetSRV());
+	//quadLevelContext.SetDynamicDescriptor(1, 0,
+	//	g_SceneDiffBuffer.GetUAV()); TODO: Make Diffbuffer
+	
+	struct ComputeCB
+	{
+		UINT gQuadSizeX;
+		float gNearZ;
+		float gFarZ;
+		Vector3 gCamPos;
+	};
+
+	ComputeCB cb{
+		g_SceneColorBuffer.GetWidth() / m_QuadDivideFactor,
+		m_Camera.GetNearClip(),
+		m_Camera.GetFarClip(),
+		m_Camera.GetPosition()
+	};
+
+	// TODO: What is rootindex here?
+	quadLevelContext.SetDynamicConstantBufferView(0, sizeof(cb), &cb);
+
+	GraphicsContext& reprojectContext = GraphicsContext::Begin(L"Reproject");
+	
+	reprojectContext.SetRootSignature(m_ReprojectionRS);
+	reprojectContext.SetPipelineState(m_ReprojectionPSO);
+	reprojectContext.SetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+	reprojectContext.SetIndexBuffer(m_GridIndexBuffer.IndexBufferView());
+	reprojectContext.SetVertexBuffer(0, m_GridIndexBuffer.VertexBufferView());
 
 	
 }
 
 void D3D12RaytracingMiniEngineSample::GenerateGrid(UINT width, UINT height)
 {
-	UINT quadFactor = 16; // TODO: Make setting
-	
-	UINT quadSizeX = width / quadFactor;
-	UINT quadSizeY = height / quadFactor;
+	UINT quadSizeX = width / m_QuadDivideFactor;
+	UINT quadSizeY = height / m_QuadDivideFactor;
 
 	UINT vertexCount = (quadSizeX + 1) * (quadSizeY + 1);
 	UINT indexCount = quadSizeX * quadSizeY * 4;

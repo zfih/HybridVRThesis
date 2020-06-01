@@ -19,12 +19,11 @@
 
 #define QUAD_SIZE 16
 
-Texture2D gDepthTex;
-Texture2D gNormalTex;
-Texture2D gPositionTex;
-RWStructuredBuffer<float> gDiffResult;
+Texture2D gDepthTex : register(t0);
+Texture2D gNormalTex : register(t1);
+RWStructuredBuffer<float> gDiffResult : register(u0);
 
-cbuffer ComputeCB
+cbuffer ComputeCB : register(b0)
 {
     uint gQuadSizeX;
     float gNearZ;
@@ -151,17 +150,6 @@ void main(uint3 groupId : SV_GroupID, uint3 groupThreadId : SV_GroupThreadId, ui
 
         float3 normalDifference = normalsMax[0] - normalsMin[0];
         float normalSpread = dot(normalDifference, normalDifference);
-
-        /*
-        if(normalSpread < 0.01f)
-        {
-            float3 toCamVec   = normalize(gCamPos - gPositionTex[crd].xyz);
-            float scaleFactor = 1.0 / dot(toCamVec, normalsMin[0]);
-            scaleFactor = sqrt(scaleFactor);
-            if(maxDepth/minDepth < (scaleFactor*0.9f))
-                disparityArcMinutes = 0;
-        }
-        */
         
 
          gDiffResult[outputIndex] =  disparityArcMinutes;
