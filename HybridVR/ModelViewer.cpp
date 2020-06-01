@@ -951,7 +951,7 @@ void D3D12RaytracingMiniEngineSample::Startup(void)
 									 D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
 
 	m_ReprojectionComputePSO.SetRootSignature(m_ReprojectionComputeRS);
-	m_ReprojectionComputePSO.SetComputeShader(g_pQuadLevelCompute);
+	m_ReprojectionComputePSO.SetComputeShader(g_pQuadLevelCompute, sizeof(g_pQuadLevelCompute));
 	m_ReprojectionComputePSO.Finalize();
 
 	m_ReprojectionRS.Reset(3, 1);
