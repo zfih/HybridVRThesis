@@ -982,7 +982,7 @@ void D3D12RaytracingMiniEngineSample::Startup(void)
 	m_ReprojectionPSO.SetDepthStencilState(DepthStateReadOnly); // This might be incorrect
 	m_ReprojectionPSO.SetInputLayout(_countof(quadGridLayout), quadGridLayout);
 	m_ReprojectionPSO.SetPrimitiveTopologyType(D3D12_PRIMITIVE_TOPOLOGY_TYPE_PATCH);
-	m_ReprojectionPSO.SetRenderTargetFormat(ColorFormat, DepthFormat);
+	m_ReprojectionPSO.SetRenderTargetFormat(ColorFormat, DXGI_FORMAT_UNKNOWN);
 	m_ReprojectionPSO.SetVertexShader(g_pReprojectionVS, sizeof(g_pReprojectionVS));
 	m_ReprojectionPSO.SetHullShader(g_pReprojectionHS, sizeof(g_pReprojectionHS));
 	m_ReprojectionPSO.SetDomainShader(g_pReprojectionDS, sizeof(g_pReprojectionDS));
@@ -1497,6 +1497,9 @@ void D3D12RaytracingMiniEngineSample::ReprojectScene()
 	quadLevelContext.SetDynamicDescriptor(0, 0, g_SceneDepthBuffer.GetSubSRV(0));
 	quadLevelContext.SetDynamicDescriptor(0, 1, g_SceneNormalBuffer.GetSRV());
 
+	quadLevelContext.TransitionResource(
+		g_SceneDiffBuffer, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+
 	// TODO: Maybe the top works. Maybe bottom. Who knows?
 	quadLevelContext.SetDynamicDescriptor(1, 0, g_SceneDiffBuffer.GetUAV());
 	//quadLevelContext.SetBufferUAV(1, g_SceneDiffBuffer, 0);
@@ -1528,14 +1531,14 @@ void D3D12RaytracingMiniEngineSample::ReprojectScene()
 	
 	reprojectContext.SetRootSignature(m_ReprojectionRS);
 	reprojectContext.SetPipelineState(m_ReprojectionPSO);
-	reprojectContext.SetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST); // TODO: CHECK UP ON THIS
+	reprojectContext.SetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_4_CONTROL_POINT_PATCHLIST);
 	reprojectContext.SetIndexBuffer(m_GridIndexBuffer.IndexBufferView());
 	reprojectContext.SetVertexBuffer(0, m_GridIndexBuffer.VertexBufferView());
 	reprojectContext.TransitionResource(g_SceneColorBuffer, D3D12_RESOURCE_STATE_RENDER_TARGET);
 	reprojectContext.SetRenderTarget(g_SceneColorBuffer.GetSubRTV(1));
 	
 	// Hull Shader
-	reprojectContext.SetDynamicDescriptor(0, 0, g_SceneDiffBuffer.GetUAV());
+	reprojectContext.SetDynamicDescriptor(1, 0, g_SceneDiffBuffer.GetUAV());
 	//reprojectContext.SetBufferUAV(0, g_SceneDiffBuffer, 0);
 
 	// Domain Shader
@@ -1554,7 +1557,7 @@ void D3D12RaytracingMiniEngineSample::ReprojectScene()
 	reprojectContext.SetDynamicConstantBufferView(2, sizeof(ri), &ri);
 	
 	// Pixel Shader
-	reprojectContext.SetDynamicDescriptor(1, 0, g_SceneColorBuffer.GetSRV());
+	reprojectContext.SetDynamicDescriptor(0, 1, g_SceneColorBuffer.GetSRV());
 
 	reprojectContext.DrawIndexed(m_GridIndexBuffer.GetElementCount(), 0, 0);
 
@@ -1588,7 +1591,7 @@ void D3D12RaytracingMiniEngineSample::GenerateGrid(UINT width, UINT height)
 
 			GridVertex gv{};
 			
-			gv.pos = Vector3((float)x / (float) quadSizeX * 2.f - 1, (float)y / (float)quadSizeY * 2.f - 1, 0);
+			gv.pos = Vector3((float)x / (float)quadSizeX * 2.f - 1, (float)y / (float)quadSizeY * 2.f - 1, 0);
 			gv.uv = Vector2((float)x / (float)quadSizeX, 1 - (float)y / (float)quadSizeY);
 			gv.quadID = qID += 1.f;
 

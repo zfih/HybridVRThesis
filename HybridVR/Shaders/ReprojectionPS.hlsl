@@ -53,6 +53,13 @@ float4 main(VertexOutput vOut) : SV_TARGET
         discard;
     }
 #endif
-
+    if (vOut.posH.x == 0 && vOut.posH.y == 0 && vOut.posH.z == 0)
+    {
+        color = float4(0, 1, 0, 1);
+    }
+    else
+    {
+        color = float4(1, 0, 0, 1);
+    }
     return color;
 }
