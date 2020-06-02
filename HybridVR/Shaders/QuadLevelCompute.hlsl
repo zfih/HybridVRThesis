@@ -140,21 +140,21 @@ void main(uint3 groupId : SV_GroupID, uint3 groupThreadId : SV_GroupThreadId, ui
     if (groupIndex == 0)
     {
 #ifdef _BINOCULAR_METRIC
-         float minDepth = linearDepth(depth[0].y);
-         float maxDepth = linearDepth(depth[0].x);
-         float angleMin = 2*atan(0.065/(2*minDepth));
-         float angleMax = 2*atan(0.065/(2*maxDepth));
+        float minDepth = linearDepth(depth[0].y);
+        float maxDepth = linearDepth(depth[0].x);
+        float angleMin = 2*atan(0.065/(2*minDepth));
+        float angleMax = 2*atan(0.065/(2*maxDepth));
 
-         float disparity = abs(angleMin - angleMax);
-         float disparityArcMinutes = (disparity/3.14159)*180 * 60;
+        float disparity = abs(angleMin - angleMax);
+        float disparityArcMinutes = (disparity/3.14159)*180 * 60;
 
         float3 normalDifference = normalsMax[0] - normalsMin[0];
         float normalSpread = dot(normalDifference, normalDifference);
         
 
-         gDiffResult[outputIndex] =  disparityArcMinutes;
+        gDiffResult[outputIndex] = disparityArcMinutes;
 #else
-         gDiffResult[outputIndex] = (depth[0].y / depth[0].x);
+        gDiffResult[outputIndex] = (depth[0].y / depth[0].x);
 #endif
     }
         
