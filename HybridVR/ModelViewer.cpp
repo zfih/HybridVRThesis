@@ -1531,9 +1531,9 @@ void D3D12RaytracingMiniEngineSample::ReprojectScene()
 	
 	reprojectContext.SetRootSignature(m_ReprojectionRS);
 	reprojectContext.SetPipelineState(m_ReprojectionPSO);
-	reprojectContext.SetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_4_CONTROL_POINT_PATCHLIST);
+	reprojectContext.SetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_3_CONTROL_POINT_PATCHLIST);
 	reprojectContext.SetIndexBuffer(m_GridIndexBuffer.IndexBufferView());
-	reprojectContext.SetVertexBuffer(0, m_GridIndexBuffer.VertexBufferView());
+	reprojectContext.SetVertexBuffer(0, m_GridVertexBuffer.VertexBufferView());
 	reprojectContext.TransitionResource(g_SceneColorBuffer, D3D12_RESOURCE_STATE_RENDER_TARGET);
 	reprojectContext.SetRenderTarget(g_SceneColorBuffer.GetSubRTV(1));
 	
