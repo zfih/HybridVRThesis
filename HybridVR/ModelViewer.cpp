@@ -1104,7 +1104,7 @@ void D3D12RaytracingMiniEngineSample::Startup(void)
 	// ASRP INIT STUFf
 	m_QuadDivideFactor = 16;
 	
-	UINT bufferSize = (g_SceneColorBuffer.GetWidth() * g_SceneColorBuffer.GetHeight()) / m_QuadDivideFactor;
+	UINT bufferSize = g_SceneColorBuffer.GetWidth() * g_SceneColorBuffer.GetHeight() / m_QuadDivideFactor / m_QuadDivideFactor;
 	g_SceneDiffBuffer.Create(L"Scene Diff Buffer", bufferSize, sizeof(float));
 	GenerateGrid(g_SceneColorBuffer.GetWidth(), g_SceneColorBuffer.GetHeight());
 }
@@ -1529,9 +1529,11 @@ void D3D12RaytracingMiniEngineSample::ReprojectScene()
 	GraphicsContext& reprojectContext = GraphicsContext::Begin(
 		L"Reproject Graphics Context");
 	
+
+	reprojectContext.SetViewportAndScissor(m_MainViewport, m_MainScissor);
 	reprojectContext.SetRootSignature(m_ReprojectionRS);
 	reprojectContext.SetPipelineState(m_ReprojectionPSO);
-	reprojectContext.SetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_3_CONTROL_POINT_PATCHLIST);
+	reprojectContext.SetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_4_CONTROL_POINT_PATCHLIST);
 	reprojectContext.SetIndexBuffer(m_GridIndexBuffer.IndexBufferView());
 	reprojectContext.SetVertexBuffer(0, m_GridVertexBuffer.VertexBufferView());
 	reprojectContext.TransitionResource(g_SceneColorBuffer, D3D12_RESOURCE_STATE_RENDER_TARGET);

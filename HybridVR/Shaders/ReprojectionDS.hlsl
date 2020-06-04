@@ -64,12 +64,12 @@ VertexOutput main(HS_Constant_Output input, float2 UV : SV_DomainLocation, const
 
     float z = clamp(gDepthTex.SampleLevel(gLinearSampler, output.texC.xy, 0).r, 0.000001, 0.99999); // clamp is needed to avoid flickering if quad grid does not cover any geometry
 
-    //float4 posWH = mul(float4(posH.xy, z, posH.w), reprojectionMat);
+    float4 posWH = mul(float4(posH.xy, z, posH.w), reprojectionMat);
 
-    /*output.posW = posWH.xyz;
-    output.posH = float4(posWH.xy, z, posWH.w);*/
-    output.posW = 0.1337;
-    output.posH = 0.1337;
+    output.posW = posWH.xyz;
+    output.posH = float4(posWH.xy, z, posWH.w);
+    /*output.posW = 0.1337;
+    output.posH = 0.1337;*/
 
     //output.posW = posH.xyz; // [Debug] screen quad (no reprojection)
     //output.posH = posH;

@@ -35,6 +35,10 @@ float4 main(VertexOutput vOut) : SV_TARGET
 {
     float4 color;
 
+#define _PERFRAGMENT
+#define _SHOWDISOCCLUSION
+
+
 #ifdef _PERFRAGMENT
     color = float4(gLeftEyeTex.SampleLevel(gLinearSampler, vOut.texC, 0).rgb, 1);
 #endif
@@ -54,7 +58,7 @@ float4 main(VertexOutput vOut) : SV_TARGET
     }
 #endif
 
-    color = float4(0, 1, 0, 1);
+    //color = float4(0, 1, 0, 1);
     
     return color;
 }
