@@ -971,7 +971,7 @@ void D3D12RaytracingMiniEngineSample::Startup(void)
 
 	D3D12_INPUT_ELEMENT_DESC quadGridLayout[] =
 	{
-		makeVertexInputElement("POSITION", DXGI_FORMAT_R32G32B32_FLOAT),
+		makeVertexInputElement("POSITION", DXGI_FORMAT_R32G32B32A32_FLOAT),
 		makeVertexInputElement("TEXCOORD", DXGI_FORMAT_R32G32_FLOAT),
 		makeVertexInputElement("QUADID", DXGI_FORMAT_R32_FLOAT)
 	};
@@ -1553,8 +1553,9 @@ void D3D12RaytracingMiniEngineSample::ReprojectScene()
 
 	ReprojInput ri{
 		// TODO: FIX ENUM
-		XMMATRIX(m_Camera[1]->GetViewProjMatrix()) * 
-		XMMatrixInverse(nullptr, m_Camera[0]->GetViewProjMatrix())
+		XMMatrixIdentity()
+		/*XMMATRIX(m_Camera[1]->GetViewProjMatrix()) * 
+		XMMatrixInverse(nullptr, m_Camera[0]->GetViewProjMatrix())*/
 	};
 	reprojectContext.SetDynamicConstantBufferView(2, sizeof(ri), &ri);
 	
@@ -1579,7 +1580,7 @@ void D3D12RaytracingMiniEngineSample::GenerateGrid(UINT width, UINT height)
 
 	struct GridVertex
 	{
-		Vector3 pos;
+		Vector4 pos;
 		Vector2 uv;
 		float quadID;
 	};
@@ -1593,14 +1594,14 @@ void D3D12RaytracingMiniEngineSample::GenerateGrid(UINT width, UINT height)
 
 			GridVertex gv{};
 			
-			gv.pos = Vector3((float)x / (float)quadSizeX * 2.f - 1, (float)y / (float)quadSizeY * 2.f - 1, 0);
+			gv.pos = Vector4((float)x / (float)quadSizeX * 2.f - 1, (float)y / (float)quadSizeY * 2.f - 1, 0, 1);
 			gv.uv = Vector2((float)x / (float)quadSizeX, 1 - (float)y / (float)quadSizeY);
 			gv.quadID = qID += 1.f;
 
 			// Move vertex position to pixel center
 			if (pixelCenter)
 			{
-				gv.pos += Vector3(0.5f / (float)width, -0.5f / (float)height, 0);
+				gv.pos += Vector4(0.5f / (float)width, -0.5f / (float)height, 0, 1);
 				gv.uv += Vector2(0.5f / (float)width, 0.5f / (float)height);
 			}
 			gridVertices.push_back(gv);

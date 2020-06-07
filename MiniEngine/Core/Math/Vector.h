@@ -139,6 +139,11 @@ namespace Math
         INLINE void operator*= ( float   v2 ) { *this = *this * Scalar(v2); }
         INLINE void operator/= ( float   v2 ) { *this = *this / Scalar(v2); }
 
+        INLINE Vector4& operator += (Vector4 v) { *this = *this + v; return *this; }
+        INLINE Vector4& operator -= (Vector4 v) { *this = *this - v; return *this; }
+        INLINE Vector4& operator *= (Vector4 v) { *this = *this * v; return *this; }
+        INLINE Vector4& operator /= (Vector4 v) { *this = *this / v; return *this; }
+
         INLINE friend Vector4 operator* ( Scalar  v1, Vector4 v2 ) { return Vector4(v1) * v2; }
         INLINE friend Vector4 operator/ ( Scalar  v1, Vector4 v2 )     { return Vector4(v1) / v2; }
         INLINE friend Vector4 operator* ( float   v1, Vector4 v2 ) { return Scalar(v1) * v2; }
