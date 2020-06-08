@@ -1553,9 +1553,9 @@ void D3D12RaytracingMiniEngineSample::ReprojectScene()
 
 	ReprojInput ri{
 		// TODO: FIX ENUM
-		XMMatrixIdentity()
-		/*XMMATRIX(m_Camera[1]->GetViewProjMatrix()) * 
-		XMMatrixInverse(nullptr, m_Camera[0]->GetViewProjMatrix())*/
+		//XMMatrixIdentity()
+		XMMatrixTranspose(m_Camera[1]->GetViewProjMatrix()) * 
+		XMMatrixTranspose(XMMatrixInverse(nullptr, m_Camera[0]->GetViewProjMatrix()))
 	};
 	reprojectContext.SetDynamicConstantBufferView(2, sizeof(ri), &ri);
 	
@@ -1638,6 +1638,12 @@ void D3D12RaytracingMiniEngineSample::RenderScene(UINT cam)
 	if(cam == 1)
 	{
 		ReprojectScene();
+
+		//GraphicsContext& gfxContext = GraphicsContext::Begin(L"Scene Render");
+		//g_dynamicCb.curCam = cam;
+		//Raytrace(gfxContext, cam);
+		//gfxContext.Finish();
+
 		return;
 	}
 	

@@ -28,7 +28,7 @@ struct VertexOutput
 SamplerState gLinearSampler : register(s0);
 Texture2D gLeftEyeTex : register(t1);
 
-static float gThreshold = 0.008; // TODO: Do we want to be able to change this?
+static float gThreshold = 0.001; // TODO: Do we want to be able to change this? // This was 0.008
 static float3 gClearColor = float3(0, 0, 0);
 
 float4 main(VertexOutput vOut) : SV_TARGET
@@ -36,7 +36,7 @@ float4 main(VertexOutput vOut) : SV_TARGET
     float4 color;
 
 #define _PERFRAGMENT
-#define _SHOWDISOCCLUSION
+//#define _SHOWDISOCCLUSION
 
 
 #ifdef _PERFRAGMENT
