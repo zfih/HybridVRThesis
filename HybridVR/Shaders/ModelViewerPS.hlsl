@@ -326,7 +326,7 @@ struct MRT
 	/*float3 ColorLeft : SV_Target0;
 	float3 ColorRight : SV_Target1;
     float4 Normal : SV_Target2;*/
-	float3 Color : SV_Target0;
+	float4 Color : SV_Target0;
 	float4 Normal : SV_Target1;
 };
 
@@ -334,7 +334,7 @@ struct MRT
 MRT main(VSOutput vsOutput)
 {
     MRT mrt;
-	mrt.Color = 0.0;
+	mrt.Color = float4(0, 0, 0, 0);
     mrt.Normal = 0.0;
 
     uint2 pixelPos = uint2(vsOutput.position.xy);
@@ -370,7 +370,7 @@ MRT main(VSOutput vsOutput)
     float3 viewDir = normalize(vsOutput.viewDir);
     colorSum += ApplyDirectionalLight(diffuseAlbedo, specularAlbedo, specularMask, gloss, normal, viewDir, SunDirection, SunColor, vsOutput.shadowCoord);
 
-	mrt.Color = ApplySRGBCurve(colorSum);
+	mrt.Color = float4(ApplySRGBCurve(colorSum), 1);
 
     if (AreNormalsNeeded)
     {

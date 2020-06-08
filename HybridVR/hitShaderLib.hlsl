@@ -18,8 +18,8 @@ void Hit(inout RayPayload payload, in BuiltInTriangleIntersectionAttributes attr
     payload.RayHitT = RayTCurrent();
     if (!payload.SkipShading)
     {
-        g_screenOutput[int3(DispatchRaysIndex().xy, 0)] = float4(attr.barycentrics, 1, 1);
-        g_screenOutput[int3(DispatchRaysIndex().xy, 1)] = float4(attr.barycentrics, 1, 1); // TODO: Do second view differently
+        g_screenOutput[int3(DispatchRaysIndex().xy, g_dynamic.curCam)] = float4(attr.barycentrics, 1, 1);
+        //g_screenOutput[int3(DispatchRaysIndex().xy, 1)] = float4(attr.barycentrics, 1, 1); // TODO: Do second view differently
     }
 }
 

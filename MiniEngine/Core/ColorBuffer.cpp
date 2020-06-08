@@ -139,6 +139,8 @@ void ColorBuffer::Create(const std::wstring& Name, uint32_t Width, uint32_t Heig
     ResourceDesc.SampleDesc.Count = m_FragmentCount;
     ResourceDesc.SampleDesc.Quality = 0;
 
+    SetClearColor({ 0.0f, 0.0f, 0.0f, 0.0f });
+
     D3D12_CLEAR_VALUE ClearValue = {};
     ClearValue.Format = Format;
     ClearValue.Color[0] = m_ClearColor.R();
@@ -161,6 +163,8 @@ void ColorBuffer::CreateArray( const std::wstring& Name, uint32_t Width, uint32_
 {
     D3D12_RESOURCE_FLAGS Flags = CombineResourceFlags();
     D3D12_RESOURCE_DESC ResourceDesc = DescribeTex2D(Width, Height, ArrayCount, 1, Format, Flags);
+
+    SetClearColor({ 0.0f, 0.0f, 0.0f, 0.0f });
 
     D3D12_CLEAR_VALUE ClearValue = {};
     ClearValue.Format = Format;

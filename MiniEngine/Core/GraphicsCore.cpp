@@ -558,7 +558,7 @@ void Graphics::Initialize(void)
     // Initialize PSOs
     s_BlendUIPSO.SetRootSignature(s_PresentRS);
     s_BlendUIPSO.SetRasterizerState( RasterizerTwoSided );
-    s_BlendUIPSO.SetBlendState(BlendPreMultiplied);
+    s_BlendUIPSO.SetBlendState(BlendAdditive);
     s_BlendUIPSO.SetDepthStencilState( DepthStateDisabled );
     s_BlendUIPSO.SetSampleMask(0xFFFFFFFF);
     s_BlendUIPSO.SetInputLayout(_countof(vertElem), vertElem);

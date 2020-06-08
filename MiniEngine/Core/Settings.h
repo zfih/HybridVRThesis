@@ -140,4 +140,8 @@ namespace Settings
 	extern BoolVar LimitTo30Hz;
 	extern BoolVar DropRandomFrames;
 	// Timing
+
+	// Reprojection
+	extern BoolVar ReprojEnable;
+	// Reprojection
 }

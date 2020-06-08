@@ -594,6 +594,19 @@ void ImGui::BuildGUI()
         // ===================
         ImGui::Indent(-indent);
     } // VR
+
+    if (ImGui::CollapsingHeader("LOD", ImGuiTreeNodeFlags_CollapsingHeader | ImGuiTreeNodeFlags_Framed))
+    { // VR
+        ImGui::Indent(indent);
+        // ==================
+
+        bool checkbox = Settings::ReprojEnable;
+        ImGui::Checkbox("Reproject", &checkbox);
+        Settings::ReprojEnable = checkbox;
+
+        // ===================
+        ImGui::Indent(-indent);
+    } // VR
 	
     { // Other
 

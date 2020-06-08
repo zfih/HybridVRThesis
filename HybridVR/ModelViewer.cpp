@@ -299,6 +299,8 @@ namespace Settings
 
 	BoolVar ShowWaveTileCounts("Application/Forward+/Show Wave Tile Counts", false);
 
+	BoolVar ReprojEnable("LOD/Reproject", true);
+
 	EnumVar RayTracingMode("Application/Raytracing/RayTraceMode", RTM_DIFFUSE_WITH_SHADOWMAPS, _countof(rayTracingModes), rayTracingModes);
 }
 
@@ -1537,6 +1539,7 @@ void D3D12RaytracingMiniEngineSample::ReprojectScene()
 	reprojectContext.SetIndexBuffer(m_GridIndexBuffer.IndexBufferView());
 	reprojectContext.SetVertexBuffer(0, m_GridVertexBuffer.VertexBufferView());
 	reprojectContext.TransitionResource(g_SceneColorBuffer, D3D12_RESOURCE_STATE_RENDER_TARGET);
+	reprojectContext.ClearColor(g_SceneColorBuffer, 1);
 	reprojectContext.SetRenderTarget(g_SceneColorBuffer.GetSubRTV(1));
 	
 	// Hull Shader
@@ -1635,14 +1638,20 @@ void D3D12RaytracingMiniEngineSample::GenerateGrid(UINT width, UINT height)
 
 void D3D12RaytracingMiniEngineSample::RenderScene(UINT cam)
 {
-	if(cam == 1)
+	if(cam == 1 && Settings::ReprojEnable)
 	{
 		ReprojectScene();
 
-		//GraphicsContext& gfxContext = GraphicsContext::Begin(L"Scene Render");
-		//g_dynamicCb.curCam = cam;
-		//Raytrace(gfxContext, cam);
-		//gfxContext.Finish();
+		GraphicsContext& gfxContext = GraphicsContext::Begin(L"Scene Render");
+
+		gfxContext.SetRootSignature(m_RootSig);
+		gfxContext.SetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+		gfxContext.SetIndexBuffer(m_Model.m_IndexBuffer.IndexBufferView());
+		gfxContext.SetVertexBuffer(0, m_Model.m_VertexBuffer.VertexBufferView());
+
+		g_dynamicCb.curCam = cam;
+		RaytraceDiffuse(gfxContext, *m_Camera[cam], g_SceneColorBuffer);
+		gfxContext.Finish();
 
 		return;
 	}
