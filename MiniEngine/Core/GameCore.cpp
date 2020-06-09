@@ -90,6 +90,8 @@ namespace GameCore
         game.RenderScene(0);
         game.RenderScene(1);
 
+        game.RenderSSAO();
+
         PostEffects::Render();
 
         if (TestGenerateMips)

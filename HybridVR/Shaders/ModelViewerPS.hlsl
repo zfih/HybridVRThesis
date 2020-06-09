@@ -62,6 +62,7 @@ cbuffer PSConstants : register(b0)
     uint4 TileCount;
     uint4 FirstLightIndex;
     uint FrameIndexMod2;
+    uint aoFirst;
 }
 
 cbuffer MaterialInfo : register(b1)
@@ -342,10 +343,6 @@ MRT main(VSOutput vsOutput)
 
     float3 diffuseAlbedo = SAMPLE_TEX(texDiffuse);
     float3 colorSum = 0;
-    {
-        float ao = texSSAO[pixelPos];
-        colorSum += ApplyAmbientLight(diffuseAlbedo, ao, AmbientColor);
-    }
 
     float gloss = 128.0;
     float3 normal;
@@ -368,7 +365,21 @@ MRT main(VSOutput vsOutput)
     float3 specularAlbedo = float3(0.56, 0.56, 0.56);
     float specularMask = SAMPLE_TEX(texSpecular).g;
     float3 viewDir = normalize(vsOutput.viewDir);
+
     colorSum += ApplyDirectionalLight(diffuseAlbedo, specularAlbedo, specularMask, gloss, normal, viewDir, SunDirection, SunColor, vsOutput.shadowCoord);
+    colorSum += ApplyAmbientLight(diffuseAlbedo, 1, AmbientColor);
+
+    /*if (aoFirst) {
+        float ao = texSSAO[pixelPos];
+        colorSum += ApplyAmbientLight(diffuseAlbedo, ao, AmbientColor);
+        colorSum += ApplyDirectionalLight(diffuseAlbedo, specularAlbedo, specularMask, gloss, normal, viewDir, SunDirection, SunColor, vsOutput.shadowCoord);
+    }
+    else
+    {
+        colorSum += ApplyDirectionalLight(diffuseAlbedo, specularAlbedo, specularMask, gloss, normal, viewDir, SunDirection, SunColor, vsOutput.shadowCoord);
+        float ao = texSSAO[pixelPos];
+        colorSum += ApplyAmbientLight(diffuseAlbedo, ao, AmbientColor);
+    }*/
 
 	mrt.Color = float4(ApplySRGBCurve(colorSum), 1);
 

@@ -41,6 +41,7 @@ namespace GameCore
         virtual void RenderShadowMap() = 0;
         virtual void RenderScene( UINT cam) = 0;
         virtual void ReprojectScene() = 0;
+        virtual void RenderSSAO() = 0;
 
         // Optional UI (overlay) rendering pass.  This is LDR.  The buffer is already cleared.
         virtual void RenderUI( class GraphicsContext& ) {};

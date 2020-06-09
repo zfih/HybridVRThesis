@@ -133,6 +133,7 @@ namespace Settings
 	extern NumVar RejectionFalloff;
 	extern NumVar Accentuation;
 	extern IntVar HierarchyDepth;
+	extern BoolVar AOFirst;
 	// SSAO
 
 	// Timing

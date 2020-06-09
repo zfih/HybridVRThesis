@@ -553,6 +553,10 @@ void ImGui::BuildGUI()
             ImGui::SliderInt("Hierarchy Depth", &hier, 1, 4);
             Settings::HierarchyDepth = hier;
         	
+            bool aoFirst = Settings::AOFirst;
+            ImGui::Checkbox("Enable AO First", &aoFirst);
+            Settings::AOFirst = aoFirst;
+
             // ===================
             ImGui::Indent(-indent);
         } // Graphics/SSAO

@@ -156,9 +156,11 @@ public:
 
 	void GenerateGrid(UINT width, UINT height);
 	
-	virtual void ReprojectScene() override;
 	virtual void RenderScene(UINT cam) override;
+	virtual void ReprojectScene() override;
+	virtual void RenderSSAO() override;
 	virtual void RenderUI(class GraphicsContext&) override;
+
 	virtual void Raytrace(class GraphicsContext&, UINT cam);
 
 	void SetCameraToPredefinedPosition(int cameraPosition);
@@ -302,6 +304,8 @@ namespace Settings
 	BoolVar ReprojEnable("LOD/Reproject", true);
 
 	EnumVar RayTracingMode("Application/Raytracing/RayTraceMode", RTM_DIFFUSE_WITH_SHADOWMAPS, _countof(rayTracingModes), rayTracingModes);
+
+	BoolVar AOFirst("SSAO/AOFirst", true);
 }
 
 std::unique_ptr<DescriptorHeapStack> g_pRaytracingDescriptorHeap;
@@ -981,7 +985,7 @@ void D3D12RaytracingMiniEngineSample::Startup(void)
 	m_ReprojectionPSO.SetRootSignature(m_ReprojectionRS);
 	m_ReprojectionPSO.SetRasterizerState(RasterizerDefault);
 	m_ReprojectionPSO.SetBlendState(BlendDisable); // This might be incorrect
-	m_ReprojectionPSO.SetDepthStencilState(DepthStateReadOnly); // This might be incorrect
+	m_ReprojectionPSO.SetDepthStencilState(DepthStateReadWrite); // This might be incorrect
 	m_ReprojectionPSO.SetInputLayout(_countof(quadGridLayout), quadGridLayout);
 	m_ReprojectionPSO.SetPrimitiveTopologyType(D3D12_PRIMITIVE_TOPOLOGY_TYPE_PATCH);
 	m_ReprojectionPSO.SetRenderTargetFormat(ColorFormat, DXGI_FORMAT_UNKNOWN);
@@ -1538,9 +1542,11 @@ void D3D12RaytracingMiniEngineSample::ReprojectScene()
 	reprojectContext.SetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_4_CONTROL_POINT_PATCHLIST);
 	reprojectContext.SetIndexBuffer(m_GridIndexBuffer.IndexBufferView());
 	reprojectContext.SetVertexBuffer(0, m_GridVertexBuffer.VertexBufferView());
+
+	reprojectContext.TransitionResource(g_SceneDepthBuffer, D3D12_RESOURCE_STATE_DEPTH_WRITE, true);
 	reprojectContext.TransitionResource(g_SceneColorBuffer, D3D12_RESOURCE_STATE_RENDER_TARGET);
 	reprojectContext.ClearColor(g_SceneColorBuffer, 1);
-	reprojectContext.SetRenderTarget(g_SceneColorBuffer.GetSubRTV(1));
+	reprojectContext.SetRenderTarget(g_SceneColorBuffer.GetSubRTV(1)/*, g_SceneDepthBuffer.GetSubDSV(1)*/);
 	
 	// Hull Shader
 	reprojectContext.SetDynamicDescriptor(1, 0, g_SceneDiffBuffer.GetUAV());
@@ -1638,6 +1644,11 @@ void D3D12RaytracingMiniEngineSample::GenerateGrid(UINT width, UINT height)
 
 void D3D12RaytracingMiniEngineSample::RenderScene(UINT cam)
 {
+	bool skipDiffusePass =
+		Settings::RayTracingMode == Settings::RTM_DIFFUSE_WITH_SHADOWMAPS ||
+		Settings::RayTracingMode == Settings::RTM_DIFFUSE_WITH_SHADOWRAYS ||
+		Settings::RayTracingMode == Settings::RTM_TRAVERSAL;
+
 	if(cam == 1 && Settings::ReprojEnable)
 	{
 		ReprojectScene();
@@ -1649,18 +1660,16 @@ void D3D12RaytracingMiniEngineSample::RenderScene(UINT cam)
 		gfxContext.SetIndexBuffer(m_Model.m_IndexBuffer.IndexBufferView());
 		gfxContext.SetVertexBuffer(0, m_Model.m_VertexBuffer.VertexBufferView());
 
+		/*SSAO::Render(gfxContext, *m_Camera[cam], cam);*/
+
 		g_dynamicCb.curCam = cam;
 		RaytraceDiffuse(gfxContext, *m_Camera[cam], g_SceneColorBuffer);
 		gfxContext.Finish();
 
-		return;
+		skipDiffusePass = true;
 	}
 	
 	DepthBuffer& db = g_SceneDepthBuffer;
-	const bool skipDiffusePass =
-		Settings::RayTracingMode == Settings::RTM_DIFFUSE_WITH_SHADOWMAPS ||
-		Settings::RayTracingMode == Settings::RTM_DIFFUSE_WITH_SHADOWRAYS ||
-		Settings::RayTracingMode == Settings::RTM_TRAVERSAL;
 
 	static bool s_ShowLightCounts = false;
 	if (Settings::ShowWaveTileCounts != s_ShowLightCounts)
@@ -1695,6 +1704,7 @@ void D3D12RaytracingMiniEngineSample::RenderScene(UINT cam)
 		uint32_t TileCount[4];
 		uint32_t FirstLightIndex[4];
 		uint32_t FrameIndexMod2;
+		uint aoFirst;
 	} psConstants;
 
 	psConstants.sunDirection = m_SunDirection;
@@ -1708,6 +1718,7 @@ void D3D12RaytracingMiniEngineSample::RenderScene(UINT cam)
 	psConstants.FirstLightIndex[0] = Lighting::m_FirstConeLight;
 	psConstants.FirstLightIndex[1] = Lighting::m_FirstConeShadowedLight;
 	psConstants.FrameIndexMod2 = FrameIndex;
+	psConstants.aoFirst = Settings::AOFirst ? 1 : 0;
 
 	// Set the default state for command lists
 	auto& pfnSetupGraphicsState = [&](void)
@@ -1735,7 +1746,6 @@ void D3D12RaytracingMiniEngineSample::RenderScene(UINT cam)
 				gfxContext.TransitionResource(g_SceneDepthBuffer, D3D12_RESOURCE_STATE_DEPTH_WRITE, true);
 				// note: we no longer clear because we need the stencil from engine
 				// prepass
-				auto fuckyou = Settings::VRDepthStencil;
 				if (Settings::VRDepthStencil == 1)
 				{
 					gfxContext.ClearDepthAndStencil(g_SceneDepthBuffer);
@@ -1792,7 +1802,7 @@ void D3D12RaytracingMiniEngineSample::RenderScene(UINT cam)
 			{
 				ScopedTimer _prof(L"Render Color", gfxContext);
 
-				gfxContext.TransitionResource(g_SSAOFullScreen, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+				//gfxContext.TransitionResource(g_SSAOFullScreen, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 
 				gfxContext.SetDynamicDescriptors(3, 0, ARRAYSIZE(m_ExtraTextures), m_ExtraTextures);
 				gfxContext.SetDynamicConstantBufferView(1, sizeof(psConstants), &psConstants);
@@ -1851,6 +1861,14 @@ void D3D12RaytracingMiniEngineSample::RenderScene(UINT cam)
 		Raytrace(gfxContext, cam);
 	}
 
+	gfxContext.Finish();
+}
+
+void D3D12RaytracingMiniEngineSample::RenderSSAO()
+{
+	GraphicsContext& gfxContext = GraphicsContext::Begin(L"Render SSAO");
+	SSAO::Render(gfxContext, *m_Camera[VRCamera::LEFT], VRCamera::LEFT);
+	SSAO::Render(gfxContext, *m_Camera[VRCamera::RIGHT], VRCamera::RIGHT);
 	gfxContext.Finish();
 }
 
