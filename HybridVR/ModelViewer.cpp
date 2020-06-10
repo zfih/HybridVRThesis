@@ -64,6 +64,7 @@
 #include "CompiledShaders/ReprojectionHS.h"
 #include "CompiledShaders/ReprojectionDS.h"
 #include "CompiledShaders/ReprojectionPS.h"
+#include "CompiledShaders/AddSSAOCS.h"
 
 #include "RaytracingHlslCompat.h"
 #include "ModelViewerRayTracing.h"
@@ -203,6 +204,9 @@ private:
 	ComputePSO m_ReprojectionComputePSO;
 	RootSignature m_ReprojectionRS;
 	GraphicsPSO m_ReprojectionPSO;
+
+	RootSignature m_SSAOComputeRS;
+	ComputePSO m_SSAOComputePSO;
 
 	StructuredBuffer m_GridVertexBuffer;
 	ByteAddressBuffer m_GridIndexBuffer;
@@ -961,7 +965,7 @@ void D3D12RaytracingMiniEngineSample::Startup(void)
 	m_ReprojectionComputeRS[1].InitAsDescriptorRange(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 0, 1);
 	m_ReprojectionComputeRS[2].InitAsConstantBuffer(0);
 	m_ReprojectionComputeRS.Finalize(L"Reprojection Root Signature",
-									 D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
+		D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
 
 	m_ReprojectionComputePSO.SetRootSignature(m_ReprojectionComputeRS);
 	m_ReprojectionComputePSO.SetComputeShader(g_pQuadLevelCompute, sizeof(g_pQuadLevelCompute));
@@ -973,7 +977,7 @@ void D3D12RaytracingMiniEngineSample::Startup(void)
 	m_ReprojectionRS[1].InitAsDescriptorRange(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 0, 1);
 	m_ReprojectionRS[2].InitAsConstantBuffer(0);
 	m_ReprojectionRS.Finalize(L"Reprojection Root Signature",
-							  D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
+		D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
 
 	D3D12_INPUT_ELEMENT_DESC quadGridLayout[] =
 	{
@@ -988,12 +992,24 @@ void D3D12RaytracingMiniEngineSample::Startup(void)
 	m_ReprojectionPSO.SetDepthStencilState(DepthStateReadWrite); // This might be incorrect
 	m_ReprojectionPSO.SetInputLayout(_countof(quadGridLayout), quadGridLayout);
 	m_ReprojectionPSO.SetPrimitiveTopologyType(D3D12_PRIMITIVE_TOPOLOGY_TYPE_PATCH);
-	m_ReprojectionPSO.SetRenderTargetFormat(ColorFormat, DXGI_FORMAT_UNKNOWN);
+	m_ReprojectionPSO.SetRenderTargetFormat(ColorFormat, DepthFormat);
 	m_ReprojectionPSO.SetVertexShader(g_pReprojectionVS, sizeof(g_pReprojectionVS));
 	m_ReprojectionPSO.SetHullShader(g_pReprojectionHS, sizeof(g_pReprojectionHS));
 	m_ReprojectionPSO.SetDomainShader(g_pReprojectionDS, sizeof(g_pReprojectionDS));
 	m_ReprojectionPSO.SetPixelShader(g_pReprojectionPS, sizeof(g_pReprojectionPS));
 	m_ReprojectionPSO.Finalize();
+
+	m_SSAOComputeRS.Reset(2);
+	m_SSAOComputeRS[0].InitAsDescriptorRange(
+		D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 0, 1);
+	m_SSAOComputeRS[1].InitAsDescriptorRange(
+		D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 0, 1);
+	m_SSAOComputeRS.Finalize(L"SSAO Root Signature",
+		D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
+
+	m_SSAOComputePSO.SetRootSignature(m_SSAOComputeRS);
+	m_SSAOComputePSO.SetComputeShader(g_pAddSSAOCS, sizeof(g_pAddSSAOCS));
+	m_SSAOComputePSO.Finalize();
 
 	Lighting::InitializeResources();
 
@@ -1546,7 +1562,7 @@ void D3D12RaytracingMiniEngineSample::ReprojectScene()
 	reprojectContext.TransitionResource(g_SceneDepthBuffer, D3D12_RESOURCE_STATE_DEPTH_WRITE, true);
 	reprojectContext.TransitionResource(g_SceneColorBuffer, D3D12_RESOURCE_STATE_RENDER_TARGET);
 	reprojectContext.ClearColor(g_SceneColorBuffer, 1);
-	reprojectContext.SetRenderTarget(g_SceneColorBuffer.GetSubRTV(1)/*, g_SceneDepthBuffer.GetSubDSV(1)*/);
+	reprojectContext.SetRenderTarget(g_SceneColorBuffer.GetSubRTV(1), g_SceneDepthBuffer.GetSubDSV(1));
 	
 	// Hull Shader
 	reprojectContext.SetDynamicDescriptor(1, 0, g_SceneDiffBuffer.GetUAV());
@@ -1668,8 +1684,6 @@ void D3D12RaytracingMiniEngineSample::RenderScene(UINT cam)
 
 		skipDiffusePass = true;
 	}
-	
-	DepthBuffer& db = g_SceneDepthBuffer;
 
 	static bool s_ShowLightCounts = false;
 	if (Settings::ShowWaveTileCounts != s_ShowLightCounts)
@@ -1769,7 +1783,7 @@ void D3D12RaytracingMiniEngineSample::RenderScene(UINT cam)
 		}
 	}
 
-	SSAO::Render(gfxContext, *m_Camera[cam], cam);
+	//SSAO::Render(gfxContext, *m_Camera[cam], cam);
 
 	if (!skipDiffusePass)
 	{
@@ -1867,8 +1881,34 @@ void D3D12RaytracingMiniEngineSample::RenderScene(UINT cam)
 void D3D12RaytracingMiniEngineSample::RenderSSAO()
 {
 	GraphicsContext& gfxContext = GraphicsContext::Begin(L"Render SSAO");
+
+	gfxContext.TransitionResource(
+		g_SSAOFullScreen, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+	gfxContext.TransitionResource(
+		g_SceneColorBuffer, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+
 	SSAO::Render(gfxContext, *m_Camera[VRCamera::LEFT], VRCamera::LEFT);
+
+	ComputeContext& ctx = gfxContext.GetComputeContext();
+	//ComputeContext& ctx = ComputeContext::Begin(L"Render SSAO Compute");
+
+	ctx.SetRootSignature(m_SSAOComputeRS);
+	ctx.SetPipelineState(m_SSAOComputePSO);
+	
+	ctx.SetDynamicDescriptors(0, 0, 1, &g_SSAOFullScreen.GetSRV());
+	ctx.SetDynamicDescriptors(
+		1, 0, 1, &g_SceneColorBuffer.GetSubUAV(VRCamera::LEFT));
+	ctx.Dispatch2D(g_SceneColorBuffer.GetWidth(),
+				   g_SceneColorBuffer.GetHeight());
+
 	SSAO::Render(gfxContext, *m_Camera[VRCamera::RIGHT], VRCamera::RIGHT);
+
+	//ctx.SetDynamicDescriptors(0, 0, 1, &g_SSAOFullScreen.GetSRV());
+	ctx.SetDynamicDescriptors(
+		1, 0, 1, &g_SceneColorBuffer.GetSubUAV(VRCamera::RIGHT));
+	ctx.Dispatch2D(g_SceneColorBuffer.GetWidth(),
+				   g_SceneColorBuffer.GetHeight());
+
 	gfxContext.Finish();
 }
 

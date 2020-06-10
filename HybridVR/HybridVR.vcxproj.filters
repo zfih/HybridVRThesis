@@ -118,6 +118,9 @@
     <FxCompile Include="Shaders\QuadLevelCompute.hlsl">
       <Filter>Shaders</Filter>
     </FxCompile>
+    <FxCompile Include="Shaders\AddSSAOCS.hlsl">
+      <Filter>Shaders</Filter>
+    </FxCompile>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="ForwardPlusLighting.cpp" />
@@ -134,9 +137,6 @@
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="Raytracing.h" />
     <ClInclude Include="DescriptorHeapStack.h" />
-    <ClInclude Include="Shaders\Raytracing.hlsl">
-      <Filter>Shaders</Filter>
-    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Image Include="Textures\Models\background.DDS">

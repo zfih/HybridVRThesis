@@ -99,23 +99,61 @@ void ColorBuffer::CreateDerivedViews(ID3D12Device* Device, DXGI_FORMAT Format, u
         UAVDesc.Texture2D.MipSlice++;
     }
 
-	if (ArraySize > 1)
-	{
-		m_RTVSubHandles.reserve(ArraySize);
-		for (int i = 0; i < ArraySize; i++)
-		{
-			D3D12_RENDER_TARGET_VIEW_DESC RTVDesc = {};
-			RTVDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2DARRAY;
-			RTVDesc.Texture2DArray.MipSlice = 0;
-			RTVDesc.Texture2DArray.FirstArraySlice = i; //D3D12CalcSubresource(0, i, 0, 0, ArraySize);
-			RTVDesc.Texture2DArray.ArraySize = (UINT)(ArraySize - i);
-			RTVDesc.Format = Format;
-			D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle{};
-			rtvHandle = Graphics::AllocateDescriptor(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
-			Device->CreateRenderTargetView(Resource, &RTVDesc, rtvHandle);
-			m_RTVSubHandles.push_back(rtvHandle);
-		}
-	}
+    if (ArraySize > 1)
+    {
+        m_RTVSubHandles.reserve(ArraySize);
+        m_SRVSubHandles.reserve(ArraySize);
+        m_UAVSubHandles.reserve(ArraySize);
+        for (int i = 0; i < ArraySize; i++)
+        {
+            {
+                D3D12_RENDER_TARGET_VIEW_DESC RTVDesc = {};
+                RTVDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2DARRAY;
+                RTVDesc.Texture2DArray.MipSlice = 0;
+                RTVDesc.Texture2DArray.FirstArraySlice = i; //D3D12CalcSubresource(0, i, 0, 0, ArraySize);
+                RTVDesc.Texture2DArray.ArraySize = (UINT)(ArraySize - i);
+                //RTVDesc.Texture2DArray.ArraySize = (UINT)(ArraySize - i);
+                RTVDesc.Format = Format;
+                D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle{};
+                rtvHandle = Graphics::AllocateDescriptor(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+                Device->CreateRenderTargetView(Resource, &RTVDesc, rtvHandle);
+                m_RTVSubHandles.push_back(rtvHandle);
+            }
+
+            {
+                D3D12_SHADER_RESOURCE_VIEW_DESC SRVDesc = {};
+                SRVDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2DARRAY;
+                SRVDesc.Texture2DArray.FirstArraySlice = i; //D3D12CalcSubresource(0, i, 0, 0, ArraySize);
+                //SRVDesc.Texture2DArray.ArraySize = (UINT)(ArraySize - i);
+                SRVDesc.Texture2DArray.ArraySize = (UINT)(ArraySize - i);
+                SRVDesc.Texture2DArray.MipLevels = NumMips;
+                SRVDesc.Texture2DArray.PlaneSlice = 0;
+                SRVDesc.Texture2DArray.MostDetailedMip = 0;
+                SRVDesc.Format = Format;
+                SRVDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+
+                D3D12_CPU_DESCRIPTOR_HANDLE srvHandle{};
+                srvHandle = Graphics::AllocateDescriptor(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+                Device->CreateShaderResourceView(Resource, &SRVDesc, srvHandle);
+                m_SRVSubHandles.push_back(srvHandle);
+            }
+
+            {
+                D3D12_UNORDERED_ACCESS_VIEW_DESC UAVDesc = {};
+                UAVDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2DARRAY;
+                UAVDesc.Texture2DArray.MipSlice = 0;
+                UAVDesc.Texture2DArray.FirstArraySlice = i;
+                UAVDesc.Texture2DArray.ArraySize = (UINT)(ArraySize - i);
+                UAVDesc.Format = Format;
+                D3D12_CPU_DESCRIPTOR_HANDLE uavHandle{};
+                uavHandle = Graphics::AllocateDescriptor(
+                    D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+                Device->CreateUnorderedAccessView(
+                    Resource, nullptr, &UAVDesc, uavHandle);
+                m_UAVSubHandles.push_back(uavHandle);
+            }
+        }
+    }
 }
 
 void ColorBuffer::CreateFromSwapChain( const std::wstring& Name, ID3D12Resource* BaseResource )
