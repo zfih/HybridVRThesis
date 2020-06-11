@@ -34,10 +34,13 @@
 using namespace Graphics;
 using namespace Math;
 
+namespace Settings
+{
+    BoolVar MotionBlur_Enable("Graphics/Motion Blur/Enable", false);
+}
+
 namespace MotionBlur
 {
-    BoolVar Enable("Graphics/Motion Blur/Enable", false);
-
     RootSignature s_RootSignature;
     ComputePSO s_CameraMotionBlurPrePassCS[2];
     ComputePSO s_MotionBlurPrePassCS;
@@ -103,7 +106,7 @@ void MotionBlur::GenerateCameraVelocityBuffer( CommandContext& BaseContext, cons
     GenerateCameraVelocityBuffer(BaseContext, camera.GetReprojectionMatrix(), camera.GetNearClip(), camera.GetFarClip(), UseLinearZ);
 }
 
-void MotionBlur::GenerateCameraVelocityBuffer( CommandContext& BaseContext, const Matrix4& reprojectionMatrix, float nearClip, float farClip, bool UseLinearZ)
+void MotionBlur::GenerateCameraVelocityBuffer( CommandContext& BaseContext, const Matrix4& reprojectionMatrix, float nearClip, float farClip, UINT curCam, bool UseLinearZ)
 {
     ScopedTimer _prof(L"Generate Camera Velocity", BaseContext);
 
@@ -144,7 +147,7 @@ void MotionBlur::GenerateCameraVelocityBuffer( CommandContext& BaseContext, cons
         Context.TransitionResource(*SceneDepthBuffer(), D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 
     Context.SetPipelineState(s_CameraVelocityCS[UseLinearZ ? 1 : 0]);
-    Context.SetDynamicDescriptor(3, 0, UseLinearZ ? LinearDepth.GetSRV() : SceneDepthBuffer()->GetDepthSRV());
+    Context.SetDynamicDescriptor(3, 0, UseLinearZ ? LinearDepth.GetSRV() : SceneDepthBuffer()->GetSubSRV(curCam));
     Context.SetDynamicDescriptor(2, 0, g_VelocityBuffer.GetUAV());
     Context.Dispatch2D(Width, Height);
 }
@@ -155,11 +158,11 @@ void MotionBlur::RenderCameraBlur( CommandContext& BaseContext, const Camera& ca
     RenderCameraBlur(BaseContext, camera.GetReprojectionMatrix(), camera.GetNearClip(), camera.GetFarClip(), UseLinearZ);
 }
 
-void MotionBlur::RenderCameraBlur( CommandContext& BaseContext, const Matrix4& reprojectionMatrix, float nearClip, float farClip, bool UseLinearZ)
+void MotionBlur::RenderCameraBlur( CommandContext& BaseContext, const Matrix4& reprojectionMatrix, float nearClip, float farClip, UINT curCam, bool UseLinearZ)
 {
     ScopedTimer _prof(L"MotionBlur", BaseContext);
 
-    if (!Enable)
+    if (!Settings::MotionBlur_Enable)
         return;
 
     ComputeContext& Context = BaseContext.GetComputeContext();
@@ -196,15 +199,15 @@ void MotionBlur::RenderCameraBlur( CommandContext& BaseContext, const Matrix4& r
     else
         Context.TransitionResource(*SceneDepthBuffer(), D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 
-    if (Enable)
+    if (Settings::MotionBlur_Enable)
     {
         Context.TransitionResource(g_VelocityBuffer, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
         Context.TransitionResource(g_MotionPrepBuffer, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
         Context.TransitionResource(*SceneColorBuffer(), D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 
         Context.SetPipelineState(s_CameraMotionBlurPrePassCS[UseLinearZ ? 1 : 0]);
-        Context.SetDynamicDescriptor(3, 0, SceneColorBuffer()->GetSRV());
-        Context.SetDynamicDescriptor(3, 1, UseLinearZ ? LinearDepth.GetSRV() : SceneDepthBuffer()->GetDepthSRV());
+        Context.SetDynamicDescriptor(3, 0, SceneColorBuffer()->GetSubSRV(curCam));
+        Context.SetDynamicDescriptor(3, 1, UseLinearZ ? LinearDepth.GetSRV() : SceneDepthBuffer()->GetSubSRV(curCam));
         Context.SetDynamicDescriptor(2, 0, g_MotionPrepBuffer.GetUAV());
         Context.SetDynamicDescriptor(2, 1, g_VelocityBuffer.GetUAV());
         Context.Dispatch2D(g_MotionPrepBuffer.GetWidth(), g_MotionPrepBuffer.GetHeight());
@@ -217,7 +220,7 @@ void MotionBlur::RenderCameraBlur( CommandContext& BaseContext, const Matrix4& r
             Context.TransitionResource(*SceneColorBuffer(), D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
             Context.TransitionResource(g_VelocityBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
             Context.TransitionResource(g_MotionPrepBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-            Context.SetDynamicDescriptor(2, 0, SceneColorBuffer()->GetUAV());
+            Context.SetDynamicDescriptor(2, 0, SceneColorBuffer()->GetSubUAV(curCam));
             Context.SetDynamicDescriptor(3, 0, g_VelocityBuffer.GetSRV());
             Context.SetDynamicDescriptor(3, 1, g_MotionPrepBuffer.GetSRV());
 
@@ -236,7 +239,7 @@ void MotionBlur::RenderCameraBlur( CommandContext& BaseContext, const Matrix4& r
             GrContext.SetDynamicDescriptor(3, 0, g_VelocityBuffer.GetSRV());
             GrContext.SetDynamicDescriptor(3, 1, g_MotionPrepBuffer.GetSRV());
             GrContext.SetConstants(0, 1.0f / Width, 1.0f / Height);
-            GrContext.SetRenderTarget(SceneColorBuffer()->GetRTV());
+            GrContext.SetRenderTarget(SceneColorBuffer()->GetSubRTV(curCam));
             GrContext.SetViewportAndScissor(0, 0, Width, Height);
             GrContext.Draw(3);
         }
@@ -244,17 +247,17 @@ void MotionBlur::RenderCameraBlur( CommandContext& BaseContext, const Matrix4& r
     else
     {
         Context.SetPipelineState(s_CameraVelocityCS[UseLinearZ ? 1 : 0]);
-        Context.SetDynamicDescriptor(3, 0, UseLinearZ ? LinearDepth.GetSRV() : SceneDepthBuffer()->GetDepthSRV());
+        Context.SetDynamicDescriptor(3, 0, UseLinearZ ? LinearDepth.GetSRV() : SceneDepthBuffer()->GetSubSRV(curCam));
         Context.SetDynamicDescriptor(2, 0, g_VelocityBuffer.GetUAV());
         Context.Dispatch2D(Width, Height);
     }
 }
 
-void MotionBlur::RenderObjectBlur( CommandContext& BaseContext, ColorBuffer& velocityBuffer )
+void MotionBlur::RenderObjectBlur( CommandContext& BaseContext, ColorBuffer& velocityBuffer, UINT curCam )
 {
     ScopedTimer _prof(L"MotionBlur", BaseContext);
 
-    if (!Enable)
+    if (!Settings::MotionBlur_Enable)
         return;
 
     uint32_t Width = SceneColorBuffer()->GetWidth();
@@ -269,7 +272,7 @@ void MotionBlur::RenderObjectBlur( CommandContext& BaseContext, ColorBuffer& vel
     Context.TransitionResource(velocityBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 
     Context.SetDynamicDescriptor(2, 0, g_MotionPrepBuffer.GetUAV());
-    Context.SetDynamicDescriptor(3, 0, SceneColorBuffer()->GetSRV());
+    Context.SetDynamicDescriptor(3, 0, SceneColorBuffer()->GetSubSRV(curCam));
     Context.SetDynamicDescriptor(3, 1, velocityBuffer.GetSRV());
 
     Context.SetPipelineState(s_MotionBlurPrePassCS);
@@ -283,7 +286,7 @@ void MotionBlur::RenderObjectBlur( CommandContext& BaseContext, ColorBuffer& vel
         Context.TransitionResource(velocityBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
         Context.TransitionResource(g_MotionPrepBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 
-        Context.SetDynamicDescriptor(2, 0, SceneColorBuffer()->GetUAV());
+        Context.SetDynamicDescriptor(2, 0, SceneColorBuffer()->GetSubUAV(curCam));
         Context.SetDynamicDescriptor(3, 0, velocityBuffer.GetSRV());
         Context.SetDynamicDescriptor(3, 1, g_MotionPrepBuffer.GetSRV());
         Context.SetConstants(0, 1.0f / Width, 1.0f / Height);
@@ -305,7 +308,7 @@ void MotionBlur::RenderObjectBlur( CommandContext& BaseContext, ColorBuffer& vel
         GrContext.SetDynamicDescriptor(3, 0, velocityBuffer.GetSRV());
         GrContext.SetDynamicDescriptor(3, 1, g_MotionPrepBuffer.GetSRV());
         GrContext.SetConstants(0, 1.0f / Width, 1.0f / Height);
-        GrContext.SetRenderTarget(SceneColorBuffer()->GetRTV());
+        GrContext.SetRenderTarget(SceneColorBuffer()->GetSubRTV(curCam));
         GrContext.SetViewportAndScissor(0, 0, Width, Height);
 
         GrContext.Draw(3);

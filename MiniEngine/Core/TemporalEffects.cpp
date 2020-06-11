@@ -28,14 +28,18 @@ using namespace Graphics;
 using namespace Math;
 using namespace TemporalEffects;
 
-namespace TemporalEffects
+namespace Settings
 {
-    BoolVar EnableTAA("Graphics/AA/TAA/Enable", false);
-    NumVar Sharpness("Graphics/AA/TAA/Sharpness", 0.5f, 0.0f, 1.0f, 0.25f);
+    BoolVar TAA_Enable("Graphics/AA/TAA/Enable", false);
+    NumVar TAA_Sharpness("Graphics/AA/TAA/TAA_Sharpness", 0.5f, 0.0f, 1.0f, 0.25f);
     NumVar TemporalMaxLerp("Graphics/AA/TAA/Blend Factor", 1.0f, 0.0f, 1.0f, 0.01f);
     ExpVar TemporalSpeedLimit("Graphics/AA/TAA/Speed Limit", 64.0f, 1.0f, 1024.0f, 1.0f);
     BoolVar TriggerReset("Graphics/AA/TAA/Reset", false);
+}
 
+
+namespace TemporalEffects
+{
     RootSignature s_RootSignature;
 
     ComputePSO s_TemporalBlendCS;
@@ -50,8 +54,8 @@ namespace TemporalEffects
     float s_JitterDeltaX = 0.0f;
     float s_JitterDeltaY = 0.0f;
 
-    void ApplyTemporalAA(ComputeContext& Context);
-    void SharpenImage(ComputeContext& Context, ColorBuffer& TemporalColor);
+    void ApplyTemporalAA(ComputeContext& Context, UINT curCam);
+    void SharpenImage(ComputeContext& Context, ColorBuffer& TemporalColor, UINT curCam);
 }
 
 void TemporalEffects::Initialize( void )
@@ -87,7 +91,7 @@ void TemporalEffects::Update( uint64_t FrameIndex )
     s_FrameIndex = (uint32_t)FrameIndex;
     s_FrameIndexMod2 = s_FrameIndex % 2;
 
-    if (EnableTAA)// && !DepthOfField::Enable)
+    if (Settings::TAA_Enable)// && !DepthOfField::Enable)
     {
         static const float Halton23[8][2] =
         {
@@ -129,7 +133,7 @@ void TemporalEffects::ClearHistory( CommandContext& Context )
 {
     GraphicsContext& gfxContext = Context.GetGraphicsContext();
 
-    if (EnableTAA)
+    if (Settings::TAA_Enable)
     {
         gfxContext.TransitionResource(g_TemporalColor[0], D3D12_RESOURCE_STATE_RENDER_TARGET);
         gfxContext.TransitionResource(g_TemporalColor[1], D3D12_RESOURCE_STATE_RENDER_TARGET, true);
@@ -138,7 +142,7 @@ void TemporalEffects::ClearHistory( CommandContext& Context )
     }
 }
 
-void TemporalEffects::ResolveImage( CommandContext& BaseContext )
+void TemporalEffects::ResolveImage( CommandContext& BaseContext, UINT curCam )
 {
     ScopedTimer _prof(L"Temporal Resolve", BaseContext);
 
@@ -146,24 +150,24 @@ void TemporalEffects::ResolveImage( CommandContext& BaseContext )
 
     static bool s_EnableTAA = false;
 
-    if (EnableTAA != s_EnableTAA || TriggerReset)
+    if (Settings::TAA_Enable != s_EnableTAA || Settings::TriggerReset)
     {
         ClearHistory(Context);
-        s_EnableTAA = EnableTAA;
-        TriggerReset = false;
+        s_EnableTAA = Settings::TAA_Enable;
+        Settings::TriggerReset = false;
     }
 
     uint32_t Src = s_FrameIndexMod2;
     uint32_t Dst = Src ^ 1;
 
-    if (EnableTAA)
+    if (Settings::TAA_Enable)
     {
-        ApplyTemporalAA(Context);
-        SharpenImage(Context, g_TemporalColor[Dst]);
+        ApplyTemporalAA(Context, curCam);
+        SharpenImage(Context, g_TemporalColor[Dst], curCam);
     }
 }
 
-void TemporalEffects::ApplyTemporalAA(ComputeContext& Context)
+void TemporalEffects::ApplyTemporalAA(ComputeContext& Context, UINT curCam)
 {
     ScopedTimer _prof(L"Resolve Image", Context);
 
@@ -182,7 +186,7 @@ void TemporalEffects::ApplyTemporalAA(ComputeContext& Context)
     };
     ConstantBuffer cbv = {
         1.0f / SceneColorBuffer()->GetWidth(), 1.0f / SceneColorBuffer()->GetHeight(),
-        (float)TemporalMaxLerp, 1.0f / TemporalSpeedLimit,
+        (float)Settings::TemporalMaxLerp, 1.0f / Settings::TemporalSpeedLimit,
         s_JitterDeltaX, s_JitterDeltaY
     };
 
@@ -195,25 +199,25 @@ void TemporalEffects::ApplyTemporalAA(ComputeContext& Context)
     Context.TransitionResource(*LinearDepth(Src), D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
     Context.TransitionResource(*LinearDepth(Dst), D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
     Context.SetDynamicDescriptor(1, 0, g_VelocityBuffer.GetSRV());
-    Context.SetDynamicDescriptor(1, 1, SceneColorBuffer()->GetSRV());
-    Context.SetDynamicDescriptor(1, 2, g_TemporalColor[Src].GetSRV());
+    Context.SetDynamicDescriptor(1, 1, SceneColorBuffer()->GetSubSRV(curCam));
+    Context.SetDynamicDescriptor(1, 2, g_TemporalColor[Src].GetSubSRV(curCam));
     Context.SetDynamicDescriptor(1, 3, LinearDepth(Src)->GetSRV());
     Context.SetDynamicDescriptor(1, 4, LinearDepth(Dst)->GetSRV());
-    Context.SetDynamicDescriptor(2, 0, g_TemporalColor[Dst].GetUAV());
+    Context.SetDynamicDescriptor(2, 0, g_TemporalColor[Dst].GetSubUAV(curCam));
 
     Context.Dispatch2D(SceneColorBuffer()->GetWidth(), SceneColorBuffer()->GetHeight(), 16, 8);
 }
 
-void TemporalEffects::SharpenImage(ComputeContext& Context, ColorBuffer& TemporalColor)
+void TemporalEffects::SharpenImage(ComputeContext& Context, ColorBuffer& TemporalColor, UINT curCam)
 {
     ScopedTimer _prof(L"Sharpen or Copy Image", Context);
 
     Context.TransitionResource(*SceneColorBuffer(), D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
     Context.TransitionResource(TemporalColor, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 
-    Context.SetPipelineState(Sharpness >= 0.001f ? s_SharpenTAACS : s_ResolveTAACS);
-    Context.SetConstants(0, 1.0f + Sharpness, 0.25f * Sharpness);
-    Context.SetDynamicDescriptor(1, 0, TemporalColor.GetSRV());
-    Context.SetDynamicDescriptor(2, 0, SceneColorBuffer()->GetUAV());
+    Context.SetPipelineState(Settings::TAA_Sharpness >= 0.001f ? s_SharpenTAACS : s_ResolveTAACS);
+	Context.SetConstants(0, 1.0f + Settings::TAA_Sharpness, 0.25f * Settings::TAA_Sharpness);
+    Context.SetDynamicDescriptor(1, 0, TemporalColor.GetSubSRV(curCam));
+    Context.SetDynamicDescriptor(2, 0, SceneColorBuffer()->GetSubUAV(curCam));
     Context.Dispatch2D(SceneColorBuffer()->GetWidth(), SceneColorBuffer()->GetHeight());
 }

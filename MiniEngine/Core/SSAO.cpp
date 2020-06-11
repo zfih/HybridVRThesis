@@ -29,29 +29,31 @@
 #include "CompiledShaders/AoBlurUpsamplePreMinBlendOutCS.h"
 #include "CompiledShaders/AoBlurUpsampleCS.h"
 #include "CompiledShaders/AoBlurUpsamplePreMinCS.h"
+#include "Settings.h"
 
 using namespace Graphics;
 using namespace Math;
 
-namespace SSAO
+namespace Settings
 {
-    BoolVar Enable("Graphics/SSAO/Enable", true);
-    BoolVar DebugDraw("Graphics/SSAO/Debug Draw", false);
+    BoolVar SSAO_Enable("Graphics/SSAO/Enable", true);
+    BoolVar SSAO_DebugDraw("Graphics/SSAO/Debug Draw", false);
     BoolVar AsyncCompute("Graphics/SSAO/Async Compute", false);
     BoolVar ComputeLinearZ("Graphics/SSAO/Always Linearize Z", true);
 
     // High quality (and better) is barely a noticeable improvement when modulated properly with ambient light.
-    // However, in the debug view the quality improvement is very apparent.
+	// However, in the debug view the quality improvement is very apparent.
     enum QualityLevel { kSsaoQualityVeryLow, kSsaoQualityLow, kSsaoQualityMedium, kSsaoQualityHigh, kSsaoQualityVeryHigh, kNumSsaoQualitySettings };
     const char* QualityLabels[kNumSsaoQualitySettings] = { "Very Low", "Low", "Medium", "High", "Very High" };
-    EnumVar g_QualityLevel("Graphics/SSAO/Quality Level", kSsaoQualityHigh, kNumSsaoQualitySettings, QualityLabels);
+    EnumVar SSAO_QualityLevel("Graphics/SSAO/Quality Level", kSsaoQualityHigh, kNumSsaoQualitySettings, QualityLabels);
 
     // This is necessary to filter out pixel shimmer due to bilateral upsampling with too much lost resolution.  High
     // frequency detail can sometimes not be reconstructed, and the noise filter fills in the missing pixels with the
     // result of the higher resolution SSAO.
-    NumVar g_NoiseFilterTolerance("Graphics/SSAO/Noise Filter Threshold (log10)", -2.0f, -8.0f, 0.0f, 0.25f);
-    NumVar g_BlurTolerance("Graphics/SSAO/Blur Tolerance (log10)", -5.0f, -8.0f, -1.0f, 0.25f);
-    NumVar g_UpsampleTolerance("Graphics/SSAO/Upsample Tolerance (log10)", -7.0f, -12.0f, -1.0f, 0.5f);
+
+    NumVar NoiseFilterTolerance("Graphics/SSAO/Noise Filter Threshold (log10)", -3.0f, -8.0f, 0.0f, 0.25f);
+    NumVar BlurTolerance("Graphics/SSAO/Blur Tolerance (log10)", -5.0f, -8.0f, -1.0f, 0.25f);
+    NumVar UpsampleTolerance("Graphics/SSAO/Upsample Tolerance (log10)", -7.0f, -12.0f, -1.0f, 0.5f);
 
     // Controls how aggressive to fade off samples that occlude spheres but by so much as to be unreliable.
     // This is what gives objects a dark halo around them when placed in front of a wall.  If you want to
@@ -216,8 +218,8 @@ namespace SSAO
 
         SsaoCB[24] = 1.0f / BufferWidth;
         SsaoCB[25] = 1.0f / BufferHeight;
-        SsaoCB[26] = 1.0f / -RejectionFalloff;
-        SsaoCB[27] = 1.0f / (1.0f + Accentuation);
+        SsaoCB[26] = 1.0f / -Settings::RejectionFalloff;
+        SsaoCB[27] = 1.0f / (1.0f + Settings::Accentuation);
 
         Context.SetDynamicConstantBufferView(1, sizeof(SsaoCB), SsaoCB);
         Context.SetDynamicDescriptor(2, 0, Destination.GetUAV());
@@ -250,10 +252,10 @@ namespace SSAO
         }
         Context.SetPipelineState(*shader);
 
-        float kBlurTolerance = 1.0f - powf(10.0f, g_BlurTolerance) * 1920.0f / (float)LoWidth;
+        float kBlurTolerance = 1.0f - powf(10.0f, Settings::BlurTolerance) * 1920.0f / (float)LoWidth;
         kBlurTolerance *= kBlurTolerance;
-        float kUpsampleTolerance = powf(10.0f, g_UpsampleTolerance);
-        float kNoiseFilterWeight = 1.0f / (powf(10.0f, g_NoiseFilterTolerance) + kUpsampleTolerance);
+        float kUpsampleTolerance = powf(10.0f, Settings::UpsampleTolerance);
+        float kNoiseFilterWeight = 1.0f / (powf(10.0f, Settings::NoiseFilterTolerance) + kUpsampleTolerance);
 
         __declspec(align(16)) float cbData[] = {
             1.0f / LoWidth, 1.0f / LoHeight, 1.0f / HiWidth, 1.0f / HiHeight, 
@@ -301,7 +303,7 @@ void SSAO::Render( GraphicsContext& GfxContext, const float* ProjMat, float Near
 
     const float zMagic = (FarClipDist - NearClipDist) / NearClipDist;
 
-    if (!Enable)
+    if (!Settings::SSAO_Enable)
     {
         ScopedTimer _prof(L"Generate SSAO", GfxContext);
 
@@ -309,7 +311,7 @@ void SSAO::Render( GraphicsContext& GfxContext, const float* ProjMat, float Near
         GfxContext.ClearColor(*SSAOFullScreen());
         GfxContext.TransitionResource(*SSAOFullScreen(), D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 
-        if (!ComputeLinearZ)
+        if (!Settings::ComputeLinearZ)
             return;
 
         ComputeContext& Context = GfxContext.GetComputeContext();
@@ -324,7 +326,7 @@ void SSAO::Render( GraphicsContext& GfxContext, const float* ProjMat, float Near
         Context.SetPipelineState(s_LinearizeDepthCS);
         Context.Dispatch2D(LinearDepth.GetWidth(), LinearDepth.GetHeight(), 16, 16);
 
-        if (DebugDraw)
+        if (Settings::SSAO_DebugDraw)
         {
             Context.TransitionResource(*SceneColorBuffer(), D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
             Context.TransitionResource(LinearDepth, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
@@ -340,7 +342,7 @@ void SSAO::Render( GraphicsContext& GfxContext, const float* ProjMat, float Near
     GfxContext.TransitionResource(*SceneDepthBuffer(), D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
     GfxContext.TransitionResource(*SSAOFullScreen(), D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 
-    if (AsyncCompute)
+    if (Settings::AsyncCompute)
     {
         // Flush the ZPrePass and wait for it on the compute queue
         g_CommandManager.GetComputeQueue().StallForFence(GfxContext.Flush());
@@ -350,7 +352,7 @@ void SSAO::Render( GraphicsContext& GfxContext, const float* ProjMat, float Near
         EngineProfiling::BeginBlock(L"Generate SSAO", &GfxContext);
     }
 
-    ComputeContext& Context = AsyncCompute ? ComputeContext::Begin(L"Async SSAO", true) : GfxContext.GetComputeContext();
+    ComputeContext& Context = Settings::AsyncCompute ? ComputeContext::Begin(L"Async SSAO", true) : GfxContext.GetComputeContext();
     Context.SetRootSignature(s_RootSignature);
 
     { ScopedTimer _prof(L"Decompress and downsample", Context);
@@ -372,7 +374,7 @@ void SSAO::Render( GraphicsContext& GfxContext, const float* ProjMat, float Near
     Context.SetPipelineState(s_DepthPrepare1CS);
     Context.Dispatch2D(DepthTiled2()->GetWidth() * 8, DepthTiled2()->GetHeight() * 8);
 
-    if (HierarchyDepth > 2)
+    if (Settings::HierarchyDepth > 2)
     {
         Context.SetConstants(0, 1.0f / DepthDownsize2()->GetWidth(), 1.0f / DepthDownsize2()->GetHeight());
         Context.TransitionResource(*DepthDownsize2(), D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
@@ -411,31 +413,31 @@ void SSAO::Render( GraphicsContext& GfxContext, const float* ProjMat, float Near
     Context.TransitionResource(*DepthDownsize4(), D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 
     // Phase 2:  Render SSAO for each sub-tile
-    if (HierarchyDepth > 3)
+    if (Settings::HierarchyDepth > 3)
     {
         Context.SetPipelineState( s_Render1CS );
         ComputeAO( Context, *AOMerged4(), *DepthTiled4(), FovTangent );
-        if (g_QualityLevel >= kSsaoQualityLow)
+		if (Settings::SSAO_QualityLevel >= Settings::kSsaoQualityLow)
         {
             Context.SetPipelineState( s_Render2CS );
             ComputeAO( Context, *AOHighQuality4(), *DepthDownsize4(), FovTangent );
         }
     }
-    if (HierarchyDepth > 2)
+    if (Settings::HierarchyDepth > 2)
     {
         Context.SetPipelineState( s_Render1CS );
         ComputeAO( Context, *AOMerged3(), *DepthTiled3(), FovTangent );
-        if (g_QualityLevel >= kSsaoQualityMedium)  
+		if (Settings::SSAO_QualityLevel >= Settings::kSsaoQualityMedium)
         {
             Context.SetPipelineState( s_Render2CS );
             ComputeAO( Context, *AOHighQuality3(), *DepthDownsize3(), FovTangent );
         }
     }
-    if (HierarchyDepth > 1)
+    if (Settings::HierarchyDepth > 1)
     {
         Context.SetPipelineState( s_Render1CS );
         ComputeAO( Context, *AOMerged2(), *DepthTiled2(), FovTangent );
-        if (g_QualityLevel >= kSsaoQualityHigh)       
+		if (Settings::SSAO_QualityLevel >= Settings::kSsaoQualityHigh)
         {
             Context.SetPipelineState( s_Render2CS );
             ComputeAO( Context, *AOHighQuality2(), *DepthDownsize2(), FovTangent );
@@ -444,7 +446,7 @@ void SSAO::Render( GraphicsContext& GfxContext, const float* ProjMat, float Near
     {
         Context.SetPipelineState( s_Render1CS );
         ComputeAO( Context, *AOMerged1(), *DepthTiled1(), FovTangent );
-        if (g_QualityLevel >= kSsaoQualityVeryHigh)
+		if (Settings::SSAO_QualityLevel >= Settings::kSsaoQualityVeryHigh)
         {
             Context.SetPipelineState( s_Render2CS );
             ComputeAO( Context, *AOHighQuality1(), *DepthDownsize1(), FovTangent );
@@ -460,10 +462,10 @@ void SSAO::Render( GraphicsContext& GfxContext, const float* ProjMat, float Near
 
 
     // 120 x 68 -> 240 x 135
-    if (HierarchyDepth > 3)
+    if (Settings::HierarchyDepth > 3)
     {
         BlurAndUpsample( Context, *AOSmooth3(), *DepthDownsize3(), *DepthDownsize4(), NextSRV,
-            g_QualityLevel >= kSsaoQualityLow ? AOHighQuality4() : nullptr, AOMerged3());
+            Settings::SSAO_QualityLevel >= Settings::kSsaoQualityLow ? AOHighQuality4() : nullptr, AOMerged3());
 
         NextSRV = AOSmooth3();
     }
@@ -472,10 +474,10 @@ void SSAO::Render( GraphicsContext& GfxContext, const float* ProjMat, float Near
 
 
     // 240 x 135 -> 480 x 270
-    if (HierarchyDepth > 2)
+    if (Settings::HierarchyDepth > 2)
     {
         BlurAndUpsample( Context, *AOSmooth2(), *DepthDownsize2(), *DepthDownsize3(), NextSRV,
-            g_QualityLevel >= kSsaoQualityMedium ? AOHighQuality3() : nullptr, AOMerged2() );
+            Settings::SSAO_QualityLevel >= Settings::kSsaoQualityMedium ? AOHighQuality3() : nullptr, AOMerged2() );
 
         NextSRV = AOSmooth2();
     }
@@ -483,10 +485,10 @@ void SSAO::Render( GraphicsContext& GfxContext, const float* ProjMat, float Near
         NextSRV = AOMerged2();
 
     // 480 x 270 -> 960 x 540
-    if (HierarchyDepth > 1)
+    if (Settings::HierarchyDepth > 1)
     {
         BlurAndUpsample( Context, *AOSmooth1(), *DepthDownsize1(), *DepthDownsize2(), NextSRV,
-            g_QualityLevel >= kSsaoQualityHigh ? AOHighQuality2() : nullptr, AOMerged1() );
+            Settings::SSAO_QualityLevel >= Settings::kSsaoQualityHigh ? AOHighQuality2() : nullptr, AOMerged1() );
 
         NextSRV = AOSmooth1();
     }
@@ -495,18 +497,18 @@ void SSAO::Render( GraphicsContext& GfxContext, const float* ProjMat, float Near
 
     // 960 x 540 -> 1920 x 1080
     BlurAndUpsample( Context, *SSAOFullScreen(), LinearDepth, *DepthDownsize1(), NextSRV,
-        g_QualityLevel >= kSsaoQualityVeryHigh ? AOHighQuality1() : nullptr, nullptr );
+        Settings::SSAO_QualityLevel >= Settings::kSsaoQualityVeryHigh ? AOHighQuality1() : nullptr, nullptr );
 
     } // End blur and upsample
 
-    if (AsyncCompute)
+    if (Settings::AsyncCompute)
         Context.Finish();
     else
         EngineProfiling::EndBlock(&GfxContext);
 
-    if (DebugDraw)
+    if (Settings::SSAO_DebugDraw)
     {
-        if (AsyncCompute)
+        if (Settings::AsyncCompute)
         {
             g_CommandManager.GetGraphicsQueue().StallForProducer(
                 g_CommandManager.GetComputeQueue());

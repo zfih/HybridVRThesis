@@ -31,6 +31,7 @@
 #include "GraphRenderer.h"
 #include "TemporalEffects.h"
 #include "GpuBuffer.h"
+#include "DearImGuiRenderer.h"
 
 // This macro determines whether to detect if there is an HDR display and enable HDR10 output.
 // Currently, with HDR display enabled, the pixel magnfication functionality is broken.
@@ -71,6 +72,7 @@
 #include "CompiledShaders/GenerateMipsGammaOddCS.h"
 #include "CompiledShaders/GenerateMipsGammaOddXCS.h"
 #include "CompiledShaders/GenerateMipsGammaOddYCS.h"
+#include "Settings.h"
 
 #define SWAP_CHAIN_BUFFER_COUNT 3
 
@@ -96,9 +98,35 @@ namespace
     float s_FrameTime = 0.0f;
     uint64_t s_FrameIndex = 0;
     int64_t s_FrameStartTick = 0;
+}
 
-    BoolVar s_LimitTo30Hz("Timing/Limit To 30Hz", false);
-    BoolVar s_DropRandomFrames("Timing/Drop Random Frames", false);
+namespace Settings
+{
+    BoolVar EnableVSync("Timing/VSync", true);
+    BoolVar LimitTo30Hz("Timing/Limit To 30Hz", false);
+    BoolVar DropRandomFrames("Timing/Drop Random Frames", false);
+	
+	
+    NumVar HDRPaperWhite("Graphics/Display/Paper White (nits)", 200.0f, 100.0f, 500.0f, 50.0f);
+    NumVar MaxDisplayLuminance("Graphics/Display/Peak Brightness (nits)", 1000.0f, 500.0f, 10000.0f, 100.0f);
+    const char* HDRModeLabels[] = { "HDR", "SDR", "Side-by-Side" };
+    EnumVar HDRDebugMode("Graphics/Display/HDR Debug Mode", 0, 3, HDRModeLabels);
+
+    const char* OnOffLabels[] = { "On", "Off" };
+    EnumVar VRDepthStencil(
+        "VR Depth Stencil", 0, _countof(OnOffLabels), OnOffLabels);
+
+    enum { kBilinear, kBicubic, kSharpening, kFilterCount };
+    const char* FilterLabels[] = { "Bilinear", "Bicubic", "Sharpening" };
+    EnumVar UpsampleFilter("Graphics/Display/Upsample Filter", kFilterCount - 1, kFilterCount, FilterLabels);
+    NumVar BicubicUpsampleWeight("Graphics/Display/Bicubic Filter Weight", -0.75f, -1.0f, -0.25f, 0.25f);
+    NumVar SharpeningSpread("Graphics/Display/Sharpness Sample Spread", 1.0f, 0.7f, 2.0f, 0.1f);
+    NumVar SharpeningRotation("Graphics/Display/Sharpness Sample Rotation", 45.0f, 0.0f, 90.0f, 15.0f);
+    NumVar SharpeningStrength("Graphics/Display/Sharpness Strength", 0.10f, 0.0f, 1.0f, 0.01f);
+
+    enum DebugZoomLevel { kDebugZoomOff, kDebugZoom2x, kDebugZoom4x, kDebugZoom8x, kDebugZoom16x, kDebugZoomCount };
+    const char* DebugZoomLabels[] = { "Off", "2x Zoom", "4x Zoom", "8x Zoom", "16x Zoom" };
+    EnumVar DebugZoom("Graphics/Display/Magnify Pixels", kDebugZoomOff, kDebugZoomCount, DebugZoomLabels);
 }
 
 namespace Graphics
@@ -118,16 +146,11 @@ namespace Graphics
 
     const char* ResolutionLabels[] = { "1280x720", "1600x900", "1920x1080", "2560x1440", "3200x1800", "3840x2160" };
 
-    BoolVar s_EnableVSync("Timing/VSync", true);
-
     bool g_bTypedUAVLoadSupport_R11G11B10_FLOAT = false;
     bool g_bTypedUAVLoadSupport_R16G16B16A16_FLOAT = false;
     bool g_bEnableHDROutput = false;
-    NumVar g_HDRPaperWhite("Graphics/Display/Paper White (nits)", 200.0f, 100.0f, 500.0f, 50.0f);
-    NumVar g_MaxDisplayLuminance("Graphics/Display/Peak Brightness (nits)", 1000.0f, 500.0f, 10000.0f, 100.0f);
-    const char* HDRModeLabels[] = { "HDR", "SDR", "Side-by-Side" };
-    EnumVar HDRDebugMode("Graphics/Display/HDR Debug Mode", 0, 3, HDRModeLabels);
 
+	// TODO: Add to settings
     const char* TMPDebugLabels[] = { "On", "Off - Full Res", "Off - Low Res", "On - Full Res", "On - Low Res", "Residules" };
     EnumVar g_TMPMode = EnumVar("Graphics/TMP Mode", 0, _countof(TMPDebugLabels), TMPDebugLabels);
 
@@ -195,16 +218,6 @@ namespace Graphics
     ComputePSO g_GenerateMipsGammaPSO[4];
 
     enum { kBilinear, kBicubic, kSharpening, kFilterCount };
-    const char* FilterLabels[] = { "Bilinear", "Bicubic", "Sharpening" };
-    EnumVar UpsampleFilter("Graphics/Display/Upsample Filter", kFilterCount - 1, kFilterCount, FilterLabels);
-    NumVar BicubicUpsampleWeight("Graphics/Display/Bicubic Filter Weight", -0.75f, -1.0f, -0.25f, 0.25f);
-    NumVar SharpeningSpread("Graphics/Display/Sharpness Sample Spread", 1.0f, 0.7f, 2.0f, 0.1f);
-    NumVar SharpeningRotation("Graphics/Display/Sharpness Sample Rotation", 45.0f, 0.0f, 90.0f, 15.0f);
-    NumVar SharpeningStrength("Graphics/Display/Sharpness Strength", 0.10f, 0.0f, 1.0f, 0.01f);
-
-    enum DebugZoomLevel { kDebugZoomOff, kDebugZoom2x, kDebugZoom4x, kDebugZoom8x, kDebugZoom16x, kDebugZoomCount };
-    const char* DebugZoomLabels[] = { "Off", "2x Zoom", "4x Zoom", "8x Zoom", "16x Zoom" };
-    EnumVar DebugZoom("Graphics/Display/Magnify Pixels", kDebugZoomOff, kDebugZoomCount, DebugZoomLabels);
 
     StructuredBuffer &ScreenQuadVB = StructuredBuffer();
     StructuredBuffer &ScreenQuadIB = StructuredBuffer();
@@ -556,7 +569,7 @@ void Graphics::Initialize(void)
     // Initialize PSOs
     s_BlendUIPSO.SetRootSignature(s_PresentRS);
     s_BlendUIPSO.SetRasterizerState( RasterizerTwoSided );
-    s_BlendUIPSO.SetBlendState( BlendPreMultiplied );
+    s_BlendUIPSO.SetBlendState(BlendPreMultiplied);
     s_BlendUIPSO.SetDepthStencilState( DepthStateDisabled );
     s_BlendUIPSO.SetSampleMask(0xFFFFFFFF);
     s_BlendUIPSO.SetInputLayout(_countof(vertElem), vertElem);
@@ -658,6 +671,8 @@ void Graphics::Initialize(void)
     GraphRenderer::Initialize();
     ParticleEffects::Initialize(kMaxNativeWidth, kMaxNativeHeight);
     TextRenderer::Initialize();
+
+    ImGui::Initialize();
 }
 
 void Graphics::Terminate( void )
@@ -687,7 +702,8 @@ void Graphics::Shutdown( void )
     GraphRenderer::Shutdown();
     ParticleEffects::Shutdown();
     TextureManager::Shutdown();
-
+    ImGui::Shutdown();
+	
     for (UINT i = 0; i < SWAP_CHAIN_BUFFER_COUNT; ++i)
         g_DisplayPlane[i].Destroy();
 
@@ -737,7 +753,7 @@ void Graphics::PreparePresentHDR(void)
         int32_t DebugMode;
     };
     Constants consts = { 1.0f / g_NativeWidth, 1.0f / g_NativeHeight,
-        (float)g_HDRPaperWhite, (float)g_MaxDisplayLuminance, (int32_t)HDRDebugMode };
+        (float)Settings::HDRPaperWhite, (float)Settings::MaxDisplayLuminance, (int32_t)Settings::HDRDebugMode };
     Context.SetConstantArray(1, sizeof(Constants) / 4, (float*)&consts);
     Context.Draw(3);
 
@@ -802,7 +818,7 @@ void Graphics::PreparePresentLDR(void)
     }
     //Context.SetDynamicDescriptor(0, 1, g_SceneColorBufferLowPassed.GetSRV());
 
-    ColorBuffer& UpsampleDest = (DebugZoom == kDebugZoomOff ? g_DisplayPlane[g_CurrentBuffer] : g_PreDisplayBuffer);
+    ColorBuffer& UpsampleDest = (Settings::DebugZoom == Settings::kDebugZoomOff ? g_DisplayPlane[g_CurrentBuffer] : g_PreDisplayBuffer);
 
 	UINT32 vertCount = 12;
 
@@ -861,14 +877,14 @@ void Graphics::PreparePresentLDR(void)
         Context.Draw(vertCount);
     }*/
 
-    if (DebugZoom != kDebugZoomOff)
+    if (Settings::DebugZoom != Settings::kDebugZoomOff)
     {
         Context.TransitionResource(g_PreDisplayBuffer, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
         Context.SetPipelineState(MagnifyPixelsPS);
         Context.TransitionResource(g_DisplayPlane[g_CurrentBuffer], D3D12_RESOURCE_STATE_RENDER_TARGET);
         Context.SetRenderTarget(g_DisplayPlane[g_CurrentBuffer].GetRTV());
         Context.SetViewportAndScissor(0, 0, g_DisplayWidth, g_DisplayHeight);
-        Context.SetConstants(1, 1.0f / ((int)DebugZoom + 1.0f));
+        Context.SetConstants(1, 1.0f / ((int)Settings::DebugZoom + 1.0f));
         Context.SetDynamicDescriptor(0, 0, g_PreDisplayBuffer.GetSRV());
         Context.Draw(vertCount);
     }
@@ -895,7 +911,7 @@ void Graphics::HiddenMeshDepthPrepass()
 
 	if(BufferLeft.GetElementCount() < 2) // cannot create buffer with size 0, so default is size 1.
 	{
-        g_VRDepthStencil.Increment();
+		Settings::VRDepthStencil.Increment();
         return;
 	}
 	
@@ -938,8 +954,8 @@ void Graphics::Present(void)
 
     g_CurrentBuffer = (g_CurrentBuffer + 1) % SWAP_CHAIN_BUFFER_COUNT;
 
-    UINT PresentInterval = s_EnableVSync ? std::min(4, (int)Round(s_FrameTime * 60.0f)) : 0;
-
+    UINT PresentInterval = Settings::EnableVSync ? std::min(4, (int)Round(s_FrameTime * 60.0f)) : 0;
+	
     s_SwapChain1->Present(PresentInterval, 0);
 
     // Test robustness to handle spikes in CPU time
@@ -951,13 +967,13 @@ void Graphics::Present(void)
 
     int64_t CurrentTick = SystemTime::GetCurrentTick();
 
-    if (s_EnableVSync)
+    if (Settings::EnableVSync)
     {
         // With VSync enabled, the time step between frames becomes a multiple of 16.666 ms.  We need
         // to add logic to vary between 1 and 2 (or 3 fields).  This delta time also determines how
         // long the previous frame should be displayed (i.e. the present interval.)
-        s_FrameTime = (s_LimitTo30Hz ? 2.0f : 1.0f) / 60.0f;
-        if (s_DropRandomFrames)
+        s_FrameTime = (Settings::LimitTo30Hz ? 2.0f : 1.0f) / 60.0f;
+        if (Settings::DropRandomFrames)
         {
             if (std::rand() % 50 == 0)
                 s_FrameTime += (1.0f / 60.0f);
