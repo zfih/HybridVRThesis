@@ -68,10 +68,12 @@ namespace GameCore
 
     bool UpdateApplication( IGameApp& game )
     {
-        if (Settings::ForceResize)
+    	/*
+    	if (Settings::ForceResize)
         {
             Graphics::Resize(g_DisplayWidth, g_DisplayHeight, true);
         }
+        */
     	
         EngineProfiling::Update();
 
