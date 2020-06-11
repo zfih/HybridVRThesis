@@ -1668,7 +1668,7 @@ void D3D12RaytracingMiniEngineSample::FrameIntegration()
 {
 	ComputeContext& cmpContext = ComputeContext::Begin(L"Frame Integration");
 
-	if (g_TMPMode != TMPDebug::kOffFullRes && g_TMPMode != TMPDebug::kOffLowRes)
+	if (Settings::TMPMode != Settings::TMPDebug::kOffFullRes && Settings::TMPMode != Settings::TMPDebug::kOffLowRes)
 	{
 		if (Graphics::GetFrameCount() % 2 == 0)
 		{

@@ -68,6 +68,11 @@ namespace GameCore
 
     bool UpdateApplication( IGameApp& game )
     {
+        if (Settings::ForceResize)
+        {
+            Graphics::Resize(g_DisplayWidth, g_DisplayHeight, true);
+        }
+    	
         EngineProfiling::Update();
 
         float DeltaTime = Graphics::GetFrameTime();
@@ -130,7 +135,6 @@ namespace GameCore
         }
     	
         Graphics::Present();
-
         return !game.IsDone();
     }
 

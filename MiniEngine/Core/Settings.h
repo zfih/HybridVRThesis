@@ -140,4 +140,18 @@ namespace Settings
 	extern BoolVar LimitTo30Hz;
 	extern BoolVar DropRandomFrames;
 	// Timing
+
+	// TMP
+	namespace TMPDebug
+	{
+		enum { kOn, kOffFullRes, kOffLowRes, kOnFullRes, kOnLowRes, kResidules, kCount };
+	}
+	extern const char* TMPDebugLabels[];
+	extern EnumVar TMPMode;
+	extern IntVar LowResDivisor;
+	// TMP
+
+	// Other
+	extern BoolVar ForceResize;
+	// Other
 }

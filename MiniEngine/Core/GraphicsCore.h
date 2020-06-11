@@ -38,6 +38,7 @@ namespace Graphics
 
     void Initialize(void);
     void Resize(uint32_t width, uint32_t height);
+    void Resize(uint32_t width, uint32_t height, bool force);
     void Terminate(void);
     void Shutdown(void);
     void Present(void);
@@ -81,15 +82,6 @@ namespace Graphics
 
     extern uint32_t g_DisplayWidth;
     extern uint32_t g_DisplayHeight;
-
-
-	// TODO: Move to settings
-    namespace TMPDebug
-    {
-        enum { kOn, kOffFullRes, kOffLowRes, kOnFullRes, kOnLowRes, kResidules };
-    }
-    extern EnumVar g_TMPMode;
-    extern EnumVar g_VRDepthStencil;
 
     extern StructuredBuffer &ScreenQuadVB;
     extern StructuredBuffer &ScreenQuadIB;

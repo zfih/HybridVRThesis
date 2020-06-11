@@ -19,6 +19,11 @@
 #include "EsramAllocator.h"
 #include "TemporalEffects.h"
 
+namespace Settings
+{
+    IntVar LowResDivisor = IntVar("Graphics/TMP Resulition Divisor", 4, 2, 64);
+}
+
 namespace Graphics
 {
     DepthBuffer g_SceneDepthBufferFullRes;
@@ -110,7 +115,7 @@ namespace Graphics
     DXGI_FORMAT DefaultHdrColorFormat = DXGI_FORMAT_R8G8B8A8_UNORM;
     
     uint32_t divisionHelperFunc(uint32_t val);
-    const uint32_t lowResDivisor = 4;
+    uint32_t divisionHelperFunc(uint32_t val, uint32_t divisor);
 }
 
 #define T2X_COLOR_FORMAT DXGI_FORMAT_R10G10B10A2_UNORM
@@ -119,24 +124,29 @@ namespace Graphics
 
 uint32_t Graphics::divisionHelperFunc(uint32_t val)
 {
-    return (val + (lowResDivisor - 1)) / lowResDivisor;
+    return divisionHelperFunc(val, Settings::LowResDivisor);
+}
+
+uint32_t Graphics::divisionHelperFunc(uint32_t val, uint32_t divisor)
+{
+    return (val + (divisor - 1)) / divisor;
 }
 
 void Graphics::InitializeRenderingBuffers( uint32_t bufferWidth, uint32_t bufferHeight )
 {
     GraphicsContext& InitContext = GraphicsContext::Begin();
-    const uint32_t bufferWidth1 = (bufferWidth + 1) / 2;
-    const uint32_t bufferWidth2 = (bufferWidth + 3) / 4;
-    const uint32_t bufferWidth3 = (bufferWidth + 7) / 8;
-    const uint32_t bufferWidth4 = (bufferWidth + 15) / 16;
-    const uint32_t bufferWidth5 = (bufferWidth + 31) / 32;
-    const uint32_t bufferWidth6 = (bufferWidth + 63) / 64;
-    const uint32_t bufferHeight1 = (bufferHeight + 1) / 2;
-    const uint32_t bufferHeight2 = (bufferHeight + 3) / 4;
-    const uint32_t bufferHeight3 = (bufferHeight + 7) / 8;
-    const uint32_t bufferHeight4 = (bufferHeight + 15) / 16;
-    const uint32_t bufferHeight5 = (bufferHeight + 31) / 32;
-    const uint32_t bufferHeight6 = (bufferHeight + 63) / 64;
+    const uint32_t bufferWidth1 = divisionHelperFunc(bufferWidth, 2);
+    const uint32_t bufferWidth2 = divisionHelperFunc(bufferWidth, 4);
+    const uint32_t bufferWidth3 = divisionHelperFunc(bufferWidth, 8);
+    const uint32_t bufferWidth4 = divisionHelperFunc(bufferWidth, 16);
+    const uint32_t bufferWidth5 = divisionHelperFunc(bufferWidth, 32);
+    const uint32_t bufferWidth6 = divisionHelperFunc(bufferWidth, 64);
+    const uint32_t bufferHeight1 = divisionHelperFunc(bufferHeight, 2);
+    const uint32_t bufferHeight2 = divisionHelperFunc(bufferHeight, 4);
+    const uint32_t bufferHeight3 = divisionHelperFunc(bufferHeight, 8);
+    const uint32_t bufferHeight4 = divisionHelperFunc(bufferHeight, 16);
+    const uint32_t bufferHeight5 = divisionHelperFunc(bufferHeight, 32);
+    const uint32_t bufferHeight6 = divisionHelperFunc(bufferHeight, 64);
 
     EsramAllocator esram;
 
@@ -294,6 +304,77 @@ void Graphics::ResizeDisplayDependentBuffers(uint32_t /*NativeWidth*/, uint32_t 
 {
     g_OverlayBuffer.Create( L"UI Overlay", g_DisplayWidth, g_DisplayHeight, 1, DXGI_FORMAT_R8G8B8A8_UNORM );
     g_HorizontalBuffer.Create( L"Bicubic Intermediate", g_DisplayWidth, NativeHeight, 1, DefaultHdrColorFormat );
+}
+
+void Graphics::ResizeDisplayDependentBuffersTMP(uint32_t bufferWidth, uint32_t bufferHeight)
+{
+    const uint32_t bufferWidth1 = divisionHelperFunc(bufferWidth, 2);
+    const uint32_t bufferWidth2 = divisionHelperFunc(bufferWidth, 4);
+    const uint32_t bufferWidth3 = divisionHelperFunc(bufferWidth, 8);
+    const uint32_t bufferWidth4 = divisionHelperFunc(bufferWidth, 16);
+    const uint32_t bufferWidth5 = divisionHelperFunc(bufferWidth, 32);
+    const uint32_t bufferWidth6 = divisionHelperFunc(bufferWidth, 64);
+    const uint32_t bufferHeight1 = divisionHelperFunc(bufferHeight, 2);
+    const uint32_t bufferHeight2 = divisionHelperFunc(bufferHeight, 4);
+    const uint32_t bufferHeight3 = divisionHelperFunc(bufferHeight, 8);
+    const uint32_t bufferHeight4 = divisionHelperFunc(bufferHeight, 16);
+    const uint32_t bufferHeight5 = divisionHelperFunc(bufferHeight, 32);
+    const uint32_t bufferHeight6 = divisionHelperFunc(bufferHeight, 64);
+	
+    g_SceneColorBufferFullRes.CreateArray(L"Main Color Buffers", bufferWidth, bufferHeight, 2, DefaultHdrColorFormat);
+    g_SceneColorBufferLowRes.CreateArray(L"Low Resolution Main Color Buffers", divisionHelperFunc(bufferWidth), divisionHelperFunc(bufferHeight), 2, DefaultHdrColorFormat);
+    g_SceneColorBufferLowPassed.CreateArray(L"Low Passed Main Color Buffers", bufferWidth, bufferHeight, 2, DefaultHdrColorFormat);
+    g_SceneColorBufferResidules.CreateArray(L"Residules of Main Color Buffers", bufferWidth, bufferHeight, 2, DefaultHdrColorFormat);
+
+    g_LinearDepthFullRes[0].Create(L"Linear Depth 0", bufferWidth, bufferHeight, 1, DXGI_FORMAT_R16_UNORM);
+    g_LinearDepthFullRes[1].Create(L"Linear Depth 1", bufferWidth, bufferHeight, 1, DXGI_FORMAT_R16_UNORM);
+    g_LinearDepthLowRes[0].Create(L"Linear Depth 0", divisionHelperFunc(bufferWidth), divisionHelperFunc(bufferHeight), 1, DXGI_FORMAT_R16_UNORM);
+    g_LinearDepthLowRes[1].Create(L"Linear Depth 1", divisionHelperFunc(bufferWidth), divisionHelperFunc(bufferHeight), 1, DXGI_FORMAT_R16_UNORM);
+
+    g_SceneDepthBufferFullRes.CreateArray(L"Scene Depth Buffer", bufferWidth, bufferHeight, 2, DSV_FORMAT);
+    g_SceneDepthBufferLowRes.CreateArray(L"Scene Depth Buffer", divisionHelperFunc(bufferWidth), divisionHelperFunc(bufferHeight), 2, DSV_FORMAT);
+
+    g_SSAOFullScreenFullRes.Create(L"SSAO Full Res", bufferWidth, bufferHeight, 1, DXGI_FORMAT_R8_UNORM);
+    g_SSAOFullScreenLowRes.Create(L"SSAO Low Res", divisionHelperFunc(bufferWidth), divisionHelperFunc(bufferHeight), 1, DXGI_FORMAT_R8_UNORM);
+
+    g_DepthDownsize1FullRes.Create(L"Depth Down-Sized 1 Full Res", bufferWidth1, bufferHeight1, 1, DXGI_FORMAT_R32_FLOAT );
+    g_DepthDownsize2FullRes.Create(L"Depth Down-Sized 2 Full Res", bufferWidth2, bufferHeight2, 1, DXGI_FORMAT_R32_FLOAT );
+    g_DepthDownsize3FullRes.Create(L"Depth Down-Sized 3 Full Res", bufferWidth3, bufferHeight3, 1, DXGI_FORMAT_R32_FLOAT );
+    g_DepthDownsize4FullRes.Create(L"Depth Down-Sized 4 Full Res", bufferWidth4, bufferHeight4, 1, DXGI_FORMAT_R32_FLOAT );
+    g_DepthTiled1FullRes.CreateArray(L"Depth De-Interleaved 1 Full Res", bufferWidth3, bufferHeight3, 16, DXGI_FORMAT_R16_FLOAT );
+    g_DepthTiled2FullRes.CreateArray(L"Depth De-Interleaved 2 Full Res", bufferWidth4, bufferHeight4, 16, DXGI_FORMAT_R16_FLOAT );
+    g_DepthTiled3FullRes.CreateArray(L"Depth De-Interleaved 3 Full Res", bufferWidth5, bufferHeight5, 16, DXGI_FORMAT_R16_FLOAT );
+    g_DepthTiled4FullRes.CreateArray(L"Depth De-Interleaved 4 Full Res", bufferWidth6, bufferHeight6, 16, DXGI_FORMAT_R16_FLOAT );
+    g_AOMerged1FullRes.Create(L"AO Re-Interleaved 1 Full Res", bufferWidth1, bufferHeight1, 1, DXGI_FORMAT_R8_UNORM );
+    g_AOMerged2FullRes.Create(L"AO Re-Interleaved 2 Full Res", bufferWidth2, bufferHeight2, 1, DXGI_FORMAT_R8_UNORM );
+    g_AOMerged3FullRes.Create(L"AO Re-Interleaved 3 Full Res", bufferWidth3, bufferHeight3, 1, DXGI_FORMAT_R8_UNORM );
+    g_AOMerged4FullRes.Create(L"AO Re-Interleaved 4 Full Res", bufferWidth4, bufferHeight4, 1, DXGI_FORMAT_R8_UNORM );
+    g_AOSmooth1FullRes.Create(L"AO Smoothed 1 Full Res", bufferWidth1, bufferHeight1, 1, DXGI_FORMAT_R8_UNORM );
+    g_AOSmooth2FullRes.Create(L"AO Smoothed 2 Full Res", bufferWidth2, bufferHeight2, 1, DXGI_FORMAT_R8_UNORM );
+    g_AOSmooth3FullRes.Create(L"AO Smoothed 3 Full Res", bufferWidth3, bufferHeight3, 1, DXGI_FORMAT_R8_UNORM );
+    g_AOHighQuality1FullRes.Create(L"AO High Quality 1 Full Res", bufferWidth1, bufferHeight1, 1, DXGI_FORMAT_R8_UNORM );
+    g_AOHighQuality2FullRes.Create(L"AO High Quality 2 Full Res", bufferWidth2, bufferHeight2, 1, DXGI_FORMAT_R8_UNORM );
+    g_AOHighQuality3FullRes.Create(L"AO High Quality 3 Full Res", bufferWidth3, bufferHeight3, 1, DXGI_FORMAT_R8_UNORM );
+    g_AOHighQuality4FullRes.Create(L"AO High Quality 4 Full Res", bufferWidth4, bufferHeight4, 1, DXGI_FORMAT_R8_UNORM );
+    g_DepthDownsize1LowRes.Create(L"Depth Down-Sized 1 Low Res", divisionHelperFunc(bufferWidth1), divisionHelperFunc(bufferHeight1), 1, DXGI_FORMAT_R32_FLOAT );
+    g_DepthDownsize2LowRes.Create(L"Depth Down-Sized 2 Low Res", divisionHelperFunc(bufferWidth2), divisionHelperFunc(bufferHeight2), 1, DXGI_FORMAT_R32_FLOAT );
+    g_DepthDownsize3LowRes.Create(L"Depth Down-Sized 3 Low Res", divisionHelperFunc(bufferWidth3), divisionHelperFunc(bufferHeight3), 1, DXGI_FORMAT_R32_FLOAT );
+    g_DepthDownsize4LowRes.Create(L"Depth Down-Sized 4 Low Res", divisionHelperFunc(bufferWidth4), divisionHelperFunc(bufferHeight4), 1, DXGI_FORMAT_R32_FLOAT );
+    g_DepthTiled1LowRes.CreateArray(L"Depth De-Interleaved 1 Low Res", divisionHelperFunc(bufferWidth3), divisionHelperFunc(bufferHeight3), 16, DXGI_FORMAT_R16_FLOAT );
+    g_DepthTiled2LowRes.CreateArray(L"Depth De-Interleaved 2 Low Res", divisionHelperFunc(bufferWidth4), divisionHelperFunc(bufferHeight4), 16, DXGI_FORMAT_R16_FLOAT );
+    g_DepthTiled3LowRes.CreateArray(L"Depth De-Interleaved 3 Low Res", divisionHelperFunc(bufferWidth5), divisionHelperFunc(bufferHeight5), 16, DXGI_FORMAT_R16_FLOAT );
+    g_DepthTiled4LowRes.CreateArray(L"Depth De-Interleaved 4 Low Res", divisionHelperFunc(bufferWidth6), divisionHelperFunc(bufferHeight6), 16, DXGI_FORMAT_R16_FLOAT );
+    g_AOMerged1LowRes.Create(L"AO Re-Interleaved 1 Low Res", divisionHelperFunc(bufferWidth1), divisionHelperFunc(bufferHeight1), 1, DXGI_FORMAT_R8_UNORM );
+    g_AOMerged2LowRes.Create(L"AO Re-Interleaved 2 Low Res", divisionHelperFunc(bufferWidth2), divisionHelperFunc(bufferHeight2), 1, DXGI_FORMAT_R8_UNORM );
+    g_AOMerged3LowRes.Create(L"AO Re-Interleaved 3 Low Res", divisionHelperFunc(bufferWidth3), divisionHelperFunc(bufferHeight3), 1, DXGI_FORMAT_R8_UNORM );
+    g_AOMerged4LowRes.Create(L"AO Re-Interleaved 4 Low Res", divisionHelperFunc(bufferWidth4), divisionHelperFunc(bufferHeight4), 1, DXGI_FORMAT_R8_UNORM );
+    g_AOSmooth1LowRes.Create(L"AO Smoothed 1 Low Res", divisionHelperFunc(bufferWidth1), divisionHelperFunc(bufferHeight1), 1, DXGI_FORMAT_R8_UNORM );
+    g_AOSmooth2LowRes.Create(L"AO Smoothed 2 Low Res", divisionHelperFunc(bufferWidth2), divisionHelperFunc(bufferHeight2), 1, DXGI_FORMAT_R8_UNORM );
+    g_AOSmooth3LowRes.Create(L"AO Smoothed 3 Low Res", divisionHelperFunc(bufferWidth3), divisionHelperFunc(bufferHeight3), 1, DXGI_FORMAT_R8_UNORM );
+    g_AOHighQuality1LowRes.Create(L"AO High Quality 1 Low Res", divisionHelperFunc(bufferWidth1), divisionHelperFunc(bufferHeight1), 1, DXGI_FORMAT_R8_UNORM );
+    g_AOHighQuality2LowRes.Create(L"AO High Quality 2 Low Res", divisionHelperFunc(bufferWidth2), divisionHelperFunc(bufferHeight2), 1, DXGI_FORMAT_R8_UNORM );
+    g_AOHighQuality3LowRes.Create(L"AO High Quality 3 Low Res", divisionHelperFunc(bufferWidth3), divisionHelperFunc(bufferHeight3), 1, DXGI_FORMAT_R8_UNORM );
+    g_AOHighQuality4LowRes.Create(L"AO High Quality 4 Low Res", divisionHelperFunc(bufferWidth4), divisionHelperFunc(bufferHeight4), 1, DXGI_FORMAT_R8_UNORM );
 }
 
 void Graphics::DestroyRenderingBuffers()

@@ -223,7 +223,7 @@ void ImGui::BuildGUI()
             	
                 //bool reset = Settings::TriggerReset;
                 //ImGui::Checkbox("Reset", &reset);
-                Settings::TriggerReset = ImGui::Button("Reset", { 150, 20 });;
+                Settings::TriggerReset = ImGui::Button("Reset", { 150, 20 });
 
                 
             	
@@ -594,6 +594,52 @@ void ImGui::BuildGUI()
         // ===================
         ImGui::Indent(-indent);
     } // VR
+
+    if (ImGui::CollapsingHeader("LOD", ImGuiTreeNodeFlags_CollapsingHeader | ImGuiTreeNodeFlags_Framed))
+    { // LOD
+        ImGui::Indent(indent);
+        // ==================
+
+        if (ImGui::CollapsingHeader("TMP", ImGuiTreeNodeFlags_CollapsingHeader | ImGuiTreeNodeFlags_Framed))
+        { // TMP
+            ImGui::Indent(indent);
+            // ==================
+
+            ImGui::Text("TMP Mode");
+        	
+            int mode = Settings::TMPMode;
+
+            ImGui::PushItemWidth(-1);
+            ImGui::ListBox("TMP Mode Selection", &mode, Settings::TMPDebugLabels, Settings::TMPDebug::kCount, Settings::TMPDebug::kCount);
+            ImGui::PopItemWidth();
+
+            Settings::TMPMode = mode;
+
+            // These setting breaks the program. Not spending the time fixing it, as it is not important.
+        	/*
+            ImGui::Text("Resolution Divisor");
+
+            int div = Settings::LowResDivisor;
+
+            ImGui::RadioButton("2", &div, 2); ImGui::SameLine();
+            ImGui::RadioButton("4", &div, 4); ImGui::SameLine();
+            ImGui::RadioButton("8", &div, 8); ImGui::SameLine();
+            ImGui::RadioButton("16", &div, 16); ImGui::SameLine();
+            ImGui::RadioButton("32", &div, 32); ImGui::SameLine();
+            ImGui::RadioButton("64", &div, 64);
+
+            Settings::LowResDivisor = div;
+
+            Settings::ForceResize = ImGui::Button("Reload Resolution", { 150, 20 });
+            */
+        	
+            // ===================
+            ImGui::Indent(-indent);
+        } // TMP
+
+        // ===================
+        ImGui::Indent(-indent);
+    } // LOD
 	
     { // Other
 
