@@ -1770,7 +1770,7 @@ void D3D12RaytracingMiniEngineSample::RenderCenter(
 	
 	ctx.Finish();
 	
-	if (s_MonoStereoCopyToEye)
+	if (Settings::MonoStereoCopyToEye)
 	{
 		RenderCenterViewToEye(Cam::kLeft);
 		RenderCenterViewToEye(Cam::kRight);

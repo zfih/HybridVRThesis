@@ -82,10 +82,6 @@ namespace Graphics
     extern uint32_t g_DisplayWidth;
     extern uint32_t g_DisplayHeight;
 
-    extern EnumVar g_VRDepthStencil;
-    extern BoolVar s_MonoStereoCopyToEye;
-    extern BoolVar s_MonoStereoRenderCenter;
-
     extern StructuredBuffer &ScreenQuadVB;
     extern StructuredBuffer &ScreenQuadIB;
     extern StructuredBuffer &ScreenQuadCenterVB;

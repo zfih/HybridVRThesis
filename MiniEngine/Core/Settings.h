@@ -140,4 +140,10 @@ namespace Settings
 	extern BoolVar LimitTo30Hz;
 	extern BoolVar DropRandomFrames;
 	// Timing
+
+
+	// LOD
+	extern BoolVar MonoStereoCopyToEye;
+	extern BoolVar MonoStereoRenderCenter;
+	// LOD
 }

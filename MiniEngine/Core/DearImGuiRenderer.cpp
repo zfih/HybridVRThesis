@@ -594,6 +594,25 @@ void ImGui::BuildGUI()
         // ===================
         ImGui::Indent(-indent);
     } // VR
+
+
+    if (ImGui::CollapsingHeader("LOD", ImGuiTreeNodeFlags_CollapsingHeader | ImGuiTreeNodeFlags_Framed))
+    { // LOD
+        ImGui::Indent(indent);
+        // ==================
+
+        bool copy = Settings::MonoStereoCopyToEye;
+        ImGui::Checkbox("Copy Center to Eye", &copy);
+        Settings::MonoStereoCopyToEye = copy;
+
+    	
+        bool center = Settings::MonoStereoRenderCenter;
+        ImGui::Checkbox("Render Center view to Window", &center);
+        Settings::MonoStereoRenderCenter = center;
+
+        // ===================
+        ImGui::Indent(-indent);
+    } // LOD
 	
     { // Other
 

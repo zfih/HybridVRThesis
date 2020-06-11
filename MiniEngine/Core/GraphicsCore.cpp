@@ -127,6 +127,9 @@ namespace Settings
     enum DebugZoomLevel { kDebugZoomOff, kDebugZoom2x, kDebugZoom4x, kDebugZoom8x, kDebugZoom16x, kDebugZoomCount };
     const char* DebugZoomLabels[] = { "Off", "2x Zoom", "4x Zoom", "8x Zoom", "16x Zoom" };
     EnumVar DebugZoom("Graphics/Display/Magnify Pixels", kDebugZoomOff, kDebugZoomCount, DebugZoomLabels);
+
+    BoolVar MonoStereoCopyToEye = BoolVar("LOD/Mono Stereo/Copy Center To Eye", true);
+    BoolVar MonoStereoRenderCenter = BoolVar("LOD/Mono Stereo/Render Center View", false);
 }
 
 namespace Graphics
@@ -159,9 +162,6 @@ namespace Graphics
     uint32_t g_DisplayWidth = 1920;
     uint32_t g_DisplayHeight = 1080;
     ColorBuffer g_PreDisplayBuffer;
-	
-    BoolVar s_MonoStereoCopyToEye = BoolVar("LOD/Mono Stereo/Copy Center To Eye", true);
-    BoolVar s_MonoStereoRenderCenter = BoolVar("LOD/Mono Stereo/Render Center View", false);
 
     void SetNativeResolution(uint32_t NativeWidth, uint32_t NativeHeight)
     {
@@ -811,7 +811,7 @@ void Graphics::CompositeOverlays( GraphicsContext& Context )
     Context.SetDynamicDescriptor(0, 0, g_OverlayBuffer.GetSRV());
     Context.SetPipelineState(s_BlendUIPSO);
     Context.SetConstants(1, 1.0f / g_NativeWidth, 1.0f / g_NativeHeight);
-    if (s_MonoStereoRenderCenter)
+    if (Settings::MonoStereoRenderCenter)
     {
         Context.SetVertexBuffer(0, ScreenQuadCenterVB.VertexBufferView());
         Context.SetIndexBuffer(ScreenQuadCenterIB.IndexBufferView());
@@ -863,7 +863,7 @@ void Graphics::PreparePresentLDR(void)
         Context.TransitionResource(UpsampleDest, D3D12_RESOURCE_STATE_RENDER_TARGET);
 		Context.SetRenderTarget(UpsampleDest.GetRTV());
         Context.SetViewportAndScissor(0, 0, g_DisplayWidth, g_DisplayHeight);
-        if (s_MonoStereoRenderCenter)
+        if (Settings::MonoStereoRenderCenter)
         {
             Context.SetVertexBuffer(0, ScreenQuadCenterVB.VertexBufferView());
             Context.SetIndexBuffer(ScreenQuadCenterIB.IndexBufferView());
