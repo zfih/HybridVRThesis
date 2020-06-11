@@ -202,9 +202,9 @@
     <ClInclude Include="VR.h">
       <Filter>Source Files\Graphics</Filter>
     </ClInclude>
-<<<<<<< HEAD
     <ClInclude Include="CameraType.h">
-=======
+	  <Filter>Source Files</Filter>
+	</ClInclude>
     <ClInclude Include="ImGui\imconfig.h">
       <Filter>Source Files\Graphics\imgui</Filter>
     </ClInclude>
@@ -233,7 +233,6 @@
       <Filter>Source Files\Graphics</Filter>
     </ClInclude>
     <ClInclude Include="Settings.h">
->>>>>>> master
       <Filter>Source Files</Filter>
     </ClInclude>
   </ItemGroup>
