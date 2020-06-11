@@ -971,8 +971,13 @@ void D3D12RaytracingMiniEngineSample::Startup(void)
 	m_ReprojectionComputePSO.SetComputeShader(g_pQuadLevelCompute, sizeof(g_pQuadLevelCompute));
 	m_ReprojectionComputePSO.Finalize();
 
+	SamplerDesc ClampSamplerDesc;
+	ClampSamplerDesc.AddressU = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+	ClampSamplerDesc.AddressV = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+	ClampSamplerDesc.AddressW = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+
 	m_ReprojectionRS.Reset(3, 1);
-	m_ReprojectionRS.InitStaticSampler(0, DefaultSamplerDesc);
+	m_ReprojectionRS.InitStaticSampler(0, ClampSamplerDesc);
 	m_ReprojectionRS[0].InitAsDescriptorRange(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 0, 2);
 	m_ReprojectionRS[1].InitAsDescriptorRange(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 0, 1);
 	m_ReprojectionRS[2].InitAsConstantBuffer(0);
