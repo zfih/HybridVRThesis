@@ -63,7 +63,7 @@ namespace Settings
     // half of our result.  Accentuation gives more range to the effect, but it will darken all AO values in the
     // process.  It will also cause "under occluded" geometry to appear to be highlighted.  If your ambient light
     // is determined by the surface normal (such as with IBL), you might not want this side effect.
-    NumVar Accentuation("Graphics/SSAO/Accentuation", 0.1f, 0.0f, 1.0f, 0.1f);
+    NumVar Accentuation("Graphics/SSAO/Accentuation", 0.0f, 0.0f, 1.0f, 0.1f);
 
     IntVar HierarchyDepth("Graphics/SSAO/Hierarchy Depth", 3, 1, 4);
 }

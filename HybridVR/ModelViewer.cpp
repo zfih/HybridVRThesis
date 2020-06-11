@@ -1903,6 +1903,9 @@ void D3D12RaytracingMiniEngineSample::RenderSSAO()
 
 	SSAO::Render(gfxContext, *m_Camera[VRCamera::RIGHT], VRCamera::RIGHT);
 
+	ctx.SetRootSignature(m_SSAOComputeRS);
+	ctx.SetPipelineState(m_SSAOComputePSO);
+
 	//ctx.SetDynamicDescriptors(0, 0, 1, &g_SSAOFullScreen.GetSRV());
 	ctx.SetDynamicDescriptors(
 		1, 0, 1, &g_SceneColorBuffer.GetSubUAV(VRCamera::RIGHT));
