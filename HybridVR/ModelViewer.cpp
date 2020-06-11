@@ -1762,7 +1762,7 @@ void D3D12RaytracingMiniEngineSample::RenderScene(UINT cam)
 				// prepass
 				if (Settings::VRDepthStencil == 1)
 				{
-					gfxContext.ClearDepthAndStencil(g_SceneDepthBuffer);
+					gfxContext.ClearDepthAndStencil(g_SceneDepthBuffer, cam);
 				}
 
 				gfxContext.SetPipelineState(m_DepthPSO[0]);
@@ -1887,10 +1887,10 @@ void D3D12RaytracingMiniEngineSample::RenderSSAO()
 	gfxContext.TransitionResource(
 		g_SceneColorBuffer, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 
-	SSAO::Render(gfxContext, *m_Camera[VRCamera::LEFT], VRCamera::LEFT);
-
 	ComputeContext& ctx = gfxContext.GetComputeContext();
 	//ComputeContext& ctx = ComputeContext::Begin(L"Render SSAO Compute");
+
+	SSAO::Render(gfxContext, *m_Camera[VRCamera::LEFT], VRCamera::LEFT);
 
 	ctx.SetRootSignature(m_SSAOComputeRS);
 	ctx.SetPipelineState(m_SSAOComputePSO);
@@ -1906,7 +1906,7 @@ void D3D12RaytracingMiniEngineSample::RenderSSAO()
 	ctx.SetRootSignature(m_SSAOComputeRS);
 	ctx.SetPipelineState(m_SSAOComputePSO);
 
-	//ctx.SetDynamicDescriptors(0, 0, 1, &g_SSAOFullScreen.GetSRV());
+	ctx.SetDynamicDescriptors(0, 0, 1, &g_SSAOFullScreen.GetSRV());
 	ctx.SetDynamicDescriptors(
 		1, 0, 1, &g_SceneColorBuffer.GetSubUAV(VRCamera::RIGHT));
 	ctx.Dispatch2D(g_SceneColorBuffer.GetWidth(),
