@@ -47,6 +47,11 @@ struct DIMOUSESTATE2
 
 #endif
 
+namespace GameInput
+{
+    bool g_MouseLock = true;
+}
+
 namespace
 {
     bool s_Buttons[2][GameInput::kNumDigitalInputs];
@@ -392,8 +397,15 @@ namespace
         }
         else
         {
-            s_Mouse->Acquire();
-            s_Mouse->GetDeviceState(sizeof(DIMOUSESTATE2), &s_MouseState);
+        	if(GameInput::g_MouseLock)
+        	{
+                s_Mouse->Acquire();
+                s_Mouse->GetDeviceState(sizeof(DIMOUSESTATE2), &s_MouseState);
+        	}
+            else
+            {
+                s_Mouse->Unacquire();
+            }
             s_Keyboard->Acquire();
             s_Keyboard->GetDeviceState(sizeof(s_Keybuffer), s_Keybuffer);
         }

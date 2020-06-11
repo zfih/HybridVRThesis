@@ -184,18 +184,6 @@
       <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Release|x64'"> -HV 2017 -Zpr </AdditionalOptions>
       <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Profile|x64'"> -HV 2017 -Zpr </AdditionalOptions>
     </FxCompile>
-    <FxCompile Include="..\MiniEngine\ModelViewer\Shaders\CombineColourCS.hlsl" />
-    <FxCompile Include="..\MiniEngine\ModelViewer\Shaders\CombineColourPS.hlsl">
-      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Pixel</ShaderType>
-      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Pixel</ShaderType>
-      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">Pixel</ShaderType>
-    </FxCompile>
-    <FxCompile Include="..\MiniEngine\ModelViewer\Shaders\CombineColourVS.hlsl">
-      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Vertex</ShaderType>
-      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Vertex</ShaderType>
-      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">Vertex</ShaderType>
-    </FxCompile>
-    <FxCompile Include="..\MiniEngine\ModelViewer\Shaders\CombineDepthsCS.hlsl" />
     <FxCompile Include="DiffuseHitShaderLib.hlsl">
       <ShaderType>Compute</ShaderType>
       <ShaderModel>4.0</ShaderModel>
@@ -287,6 +275,14 @@
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">Library</ShaderType>
       <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">6.3</ShaderModel>
     </FxCompile>
+    <FxCompile Include="Shaders\CombineColourCS.hlsl" />
+    <FxCompile Include="Shaders\CombineColourPS.hlsl">
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Pixel</ShaderType>
+    </FxCompile>
+    <FxCompile Include="Shaders\CombineColourVS.hlsl">
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Vertex</ShaderType>
+    </FxCompile>
+    <FxCompile Include="Shaders\CombineDepthsCS.hlsl" />
     <FxCompile Include="Shaders\DepthViewerPS.hlsl">
       <ShaderType>Pixel</ShaderType>
     </FxCompile>

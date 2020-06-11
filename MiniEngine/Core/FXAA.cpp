@@ -37,6 +37,22 @@
 
 using namespace Graphics;
 
+namespace Settings
+{
+    BoolVar FXAA_Enable("Graphics/AA/FXAA/Enable", true);
+    BoolVar FXAA_DebugDraw("Graphics/AA/FXAA/Debug", false);
+
+    // With a properly encoded luma buffer, [0.25 = "low", 0.2 = "medium", 0.15 = "high", 0.1 = "ultra"]
+    NumVar FXAA_ContrastThreshold("Graphics/AA/FXAA/Contrast Threshold", 0.175f, 0.05f, 0.5f, 0.025f);
+
+    // Controls how much to blur isolated pixels that have little-to-no edge length.
+    NumVar FXAA_SubpixelRemoval("Graphics/AA/FXAA/Subpixel Removal", 0.50f, 0.0f, 1.0f, 0.25f);
+
+    // This is for testing the performance of computing luma on the fly rather than reusing
+    // the luma buffer output of tone mapping.
+    BoolVar FXAA_ForceOffPreComputedLuma("Graphics/AA/FXAA/Always Recompute Log-Luma", false);
+}
+
 namespace FXAA
 {
     RootSignature RootSig;
@@ -48,19 +64,6 @@ namespace FXAA
     ComputePSO Pass2HDebugCS;
     ComputePSO Pass2VDebugCS;
     IndirectArgsBuffer IndirectParameters;
-
-    BoolVar Enable("Graphics/AA/FXAA/Enable", true);
-    BoolVar DebugDraw("Graphics/AA/FXAA/Debug", false);
-
-    // With a properly encoded luma buffer, [0.25 = "low", 0.2 = "medium", 0.15 = "high", 0.1 = "ultra"]
-    NumVar ContrastThreshold("Graphics/AA/FXAA/Contrast Threshold", 0.175f, 0.05f, 0.5f, 0.025f);
-
-    // Controls how much to blur isolated pixels that have little-to-no edge length.
-    NumVar SubpixelRemoval("Graphics/AA/FXAA/Subpixel Removal", 0.50f, 0.0f, 1.0f, 0.25f);
-
-    // This is for testing the performance of computing luma on the fly rather than reusing
-    // the luma buffer output of tone mapping.
-    BoolVar ForceOffPreComputedLuma("Graphics/AA/FXAA/Always Recompute Log-Luma", false);
 }
 
 void FXAA::Initialize( void )
@@ -107,17 +110,17 @@ void FXAA::Shutdown(void)
     IndirectParameters.Destroy();
 }
 
-void FXAA::Render( ComputeContext& Context, bool bUsePreComputedLuma )
+void FXAA::Render( ComputeContext& Context, bool bUsePreComputedLuma, UINT curCam )
 {
     ScopedTimer _prof(L"FXAA", Context);
 
-    if (ForceOffPreComputedLuma)
+    if (Settings::FXAA_ForceOffPreComputedLuma)
         bUsePreComputedLuma = false;
 
     ColorBuffer& Target = g_bTypedUAVLoadSupport_R11G11B10_FLOAT ? g_SceneColorBuffer : g_PostEffectsBuffer;
 
     Context.SetRootSignature(RootSig);
-    Context.SetConstants(0, 1.0f / Target.GetWidth(), 1.0f / Target.GetHeight(), (float)ContrastThreshold, (float)SubpixelRemoval);
+    Context.SetConstants(0, 1.0f / Target.GetWidth(), 1.0f / Target.GetHeight(), (float)Settings::FXAA_ContrastThreshold, (float)Settings::FXAA_SubpixelRemoval);
     Context.SetConstant(0, g_FXAAWorkQueue.GetElementCount() - 1, 4);
 
     // Apply algorithm to each quarter of the screen separately to reduce maximum size of work buffers.
@@ -151,7 +154,7 @@ void FXAA::Render( ComputeContext& Context, bool bUsePreComputedLuma )
 
             D3D12_CPU_DESCRIPTOR_HANDLE Pass1SRVs[] =
             {
-                Target.GetSRV(),
+                Target.GetSubSRV(curCam),
                 g_LumaBuffer.GetSRV()
             };
 
@@ -192,7 +195,7 @@ void FXAA::Render( ComputeContext& Context, bool bUsePreComputedLuma )
             Context.TransitionResource(g_FXAAColorQueue, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
             Context.TransitionResource(Target, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 
-            Context.SetDynamicDescriptor(1, 0, Target.GetUAV());
+            Context.SetDynamicDescriptor(1, 0, Target.GetSubUAV(curCam));
             Context.SetDynamicDescriptor(2, 0, g_LumaBuffer.GetSRV());
             Context.SetDynamicDescriptor(2, 1, g_FXAAWorkQueue.GetSRV());
             Context.SetDynamicDescriptor(2, 2, g_FXAAColorQueue.GetSRV());
@@ -202,9 +205,9 @@ void FXAA::Render( ComputeContext& Context, bool bUsePreComputedLuma )
             // blending are held in the work queue, this does not require also sampling from
             // the target color buffer (i.e. no read/modify/write, just write.)
 
-            Context.SetPipelineState(DebugDraw ? Pass2HDebugCS : Pass2HCS);
+            Context.SetPipelineState(Settings::FXAA_DebugDraw ? Pass2HDebugCS : Pass2HCS);
             Context.DispatchIndirect(IndirectParameters, 0);
-            Context.SetPipelineState(DebugDraw ? Pass2VDebugCS : Pass2VCS);
+            Context.SetPipelineState(Settings::FXAA_DebugDraw ? Pass2VDebugCS : Pass2VCS);
             Context.DispatchIndirect(IndirectParameters, 12);
 
             Context.InsertUAVBarrier(Target);

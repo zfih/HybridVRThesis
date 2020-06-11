@@ -43,10 +43,13 @@ struct LightData
 
 enum { kMinLightGridDim = 8 };
 
+namespace Settings
+{
+    IntVar LightGridDim("Application/Forward+/Light Grid Dim", 16, kMinLightGridDim, 32, 8);
+}
+
 namespace Lighting
 {
-    IntVar LightGridDim("Application/Forward+/Light Grid Dim", 16, kMinLightGridDim, 32, 8 );
-
     RootSignature m_FillLightRootSig;
     ComputePSO m_FillLightGridCS_8;
     ComputePSO m_FillLightGridCS_16;
@@ -262,7 +265,7 @@ void Lighting::FillLightGrid(GraphicsContext& gfxContext, const Camera& camera, 
 
     Context.SetRootSignature(m_FillLightRootSig);
 
-    switch ((int)LightGridDim)
+    switch ((int)Settings::LightGridDim)
     {
     case  8: Context.SetPipelineState(m_FillLightGridCS_8 ); break;
     case 16: Context.SetPipelineState(m_FillLightGridCS_16); break;
@@ -286,8 +289,8 @@ void Lighting::FillLightGrid(GraphicsContext& gfxContext, const Camera& camera, 
     Context.SetDynamicDescriptor(2, 1, m_LightGridBitMask.GetUAV());
 
     // todo: assumes 1920x1080 resolution
-    uint32_t tileCountX = Math::DivideByMultiple(g_SceneColorBuffer.GetWidth(), LightGridDim);
-    uint32_t tileCountY = Math::DivideByMultiple(g_SceneColorBuffer.GetHeight(), LightGridDim);
+    uint32_t tileCountX = Math::DivideByMultiple(g_SceneColorBuffer.GetWidth(), Settings::LightGridDim);
+    uint32_t tileCountY = Math::DivideByMultiple(g_SceneColorBuffer.GetHeight(), Settings::LightGridDim);
 
     float FarClipDist = camera.GetFarClip();
     float NearClipDist = camera.GetNearClip();
@@ -304,7 +307,7 @@ void Lighting::FillLightGrid(GraphicsContext& gfxContext, const Camera& camera, 
     // todo: assumes 1920x1080 resolution
     csConstants.ViewportWidth = g_SceneColorBuffer.GetWidth();
     csConstants.ViewportHeight = g_SceneColorBuffer.GetHeight();
-    csConstants.InvTileDim = 1.0f / LightGridDim;
+    csConstants.InvTileDim = 1.0f / Settings::LightGridDim;
     csConstants.RcpZMagic = RcpZMagic;
     csConstants.TileCount = tileCountX;
     csConstants.ViewProjMatrix = camera.GetViewProjMatrix();

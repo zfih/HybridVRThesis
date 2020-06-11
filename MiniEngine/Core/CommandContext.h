@@ -159,6 +159,8 @@ public:
 
     void SetPredication(ID3D12Resource* Buffer, UINT64 BufferOffset, D3D12_PREDICATION_OP Op);
 
+    DynamicDescriptorHeap GetDynamicViewDescriptorHeap() { return m_DynamicViewDescriptorHeap;  }
+	
 protected:
 
     void BindDescriptorHeaps( void );

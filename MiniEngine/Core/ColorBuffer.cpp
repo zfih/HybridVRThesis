@@ -113,6 +113,7 @@ void ColorBuffer::CreateDerivedViews(ID3D12Device* Device, DXGI_FORMAT Format, u
 	{
 		m_RTVSubHandles.reserve(ArraySize);
 		m_SRVSubHandles.reserve(ArraySize);
+		m_UAVSubHandles.reserve(ArraySize);
 		for (int i = 0; i < ArraySize; i++)
 		{
 			{
@@ -145,6 +146,21 @@ void ColorBuffer::CreateDerivedViews(ID3D12Device* Device, DXGI_FORMAT Format, u
 				srvHandle = Graphics::AllocateDescriptor(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 				Device->CreateShaderResourceView(Resource, &SRVDesc, srvHandle);
 				m_SRVSubHandles.push_back(srvHandle);
+			}
+
+			{
+				D3D12_UNORDERED_ACCESS_VIEW_DESC UAVDesc = {};
+				UAVDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2DARRAY;
+				UAVDesc.Texture2DArray.MipSlice = 0;
+				UAVDesc.Texture2DArray.FirstArraySlice = i;
+				UAVDesc.Texture2DArray.ArraySize = (UINT)(ArraySize - i);
+				UAVDesc.Format = Format;
+				D3D12_CPU_DESCRIPTOR_HANDLE uavHandle{};
+				uavHandle = Graphics::AllocateDescriptor(
+					D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+				Device->CreateUnorderedAccessView(
+					Resource, nullptr, &UAVDesc, uavHandle);
+				m_UAVSubHandles.push_back(uavHandle);
 			}
 		}
 	}

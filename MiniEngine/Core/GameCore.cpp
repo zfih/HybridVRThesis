@@ -18,7 +18,12 @@
 #include "GameInput.h"
 #include "BufferManager.h"
 #include "CommandContext.h"
+#include "DearImGuiRenderer.h"
+#include "ImGui/imgui.h"
+#include "ImGui/imgui_impl_win32.h"
+#include "ImGui/imgui_impl_dx12.h"
 #include "PostEffects.h"
+#include "Settings.h"
 #include "VR.h"
 
 #if WINAPI_FAMILY_PARTITION(WINAPI_PARTITION_DESKTOP)
@@ -68,11 +73,15 @@ namespace GameCore
         float DeltaTime = Graphics::GetFrameTime();
     
         GameInput::Update(DeltaTime);
-        EngineTuning::Update(DeltaTime);
+
+    	if(!Settings::UseImGui)
+    	{
+            EngineTuning::Update(DeltaTime);
+    	}
         
         game.Update(DeltaTime);
 
-        if (g_VRDepthStencil == 0)
+        if (Settings::VRDepthStencil == 0)
         {
             Graphics::HiddenMeshDepthPrepass();
         }
@@ -80,7 +89,8 @@ namespace GameCore
         
         game.RenderScene();
 
-        PostEffects::Render();
+        PostEffects::Render(0);
+        PostEffects::Render(1);
 
         if (TestGenerateMips)
         {
@@ -98,17 +108,25 @@ namespace GameCore
             MipsContext.Finish();
         }
 
-        GraphicsContext& UiContext = GraphicsContext::Begin(L"Render UI");
-        UiContext.TransitionResource(g_OverlayBuffer, D3D12_RESOURCE_STATE_RENDER_TARGET, true);
-        UiContext.ClearColor(g_OverlayBuffer);
-        UiContext.SetRenderTarget(g_OverlayBuffer.GetRTV());
-        UiContext.SetViewportAndScissor(0, 0, g_OverlayBuffer.GetWidth(), g_OverlayBuffer.GetHeight());
-        game.RenderUI(UiContext);
+    	if(!Settings::UseImGui)
+    	{
+			GraphicsContext& UiContext = GraphicsContext::Begin(L"Render UI");
+			UiContext.TransitionResource(g_OverlayBuffer, D3D12_RESOURCE_STATE_RENDER_TARGET, true);
+			UiContext.ClearColor(g_OverlayBuffer);
+			UiContext.SetRenderTarget(g_OverlayBuffer.GetRTV());
+			UiContext.SetViewportAndScissor(0, 0, g_OverlayBuffer.GetWidth(), g_OverlayBuffer.GetHeight());
+			game.RenderUI(UiContext);
 
-        EngineTuning::Display( UiContext, 10.0f, 40.0f, 1900.0f, 1040.0f );
+			EngineTuning::Display( UiContext, 10.0f, 40.0f, 1900.0f, 1040.0f );
 
-        UiContext.Finish();
-
+			UiContext.Finish();
+    	}
+        else
+        {
+            ImGui::BuildGUI();
+            ImGui::RenderGUI();
+        }
+    	
         Graphics::Present();
 
         return !game.IsDone();
@@ -368,11 +386,18 @@ namespace GameCore
         Graphics::Shutdown();
     }
 
+
+    // ImGui message
+    //extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
+	
     //--------------------------------------------------------------------------------------
     // Called every time the application receives a message
     //--------------------------------------------------------------------------------------
     LRESULT CALLBACK WndProc( HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam )
     {
+        if (ImGui_ImplWin32_WndProcHandler(hWnd, message, wParam, lParam))
+            return true;
+
         switch( message )
         {
             case WM_SIZE:

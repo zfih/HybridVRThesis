@@ -41,10 +41,10 @@
 
 using namespace Graphics;
 
-namespace DepthOfField
+namespace Settings
 {
-    BoolVar Enable("Graphics/Depth of Field/Enable", false);
-    BoolVar EnablePreFilter("Graphics/Depth of Field/PreFilter", true);
+    BoolVar DOF_Enable("Graphics/Depth of Field/Enable", false);
+    BoolVar DOF_EnablePreFilter("Graphics/Depth of Field/PreFilter", true);
     BoolVar MedianFilter("Graphics/Depth of Field/Median Filter", true);
     BoolVar MedianAlpha("Graphics/Depth of Field/Median Alpha", false);
     NumVar FocalDepth("Graphics/Depth of Field/Focal Center", 0.1f, 0.0f, 1.0f, 0.01f);
@@ -52,10 +52,14 @@ namespace DepthOfField
     NumVar ForegroundRange("Graphics/Depth of Field/FG Range", 100.0f, 10.0f, 1000.0f, 10.0f);
     NumVar AntiSparkleWeight("Graphics/Depth of Field/AntiSparkle", 1.0f, 0.0f, 10.0f, 1.0f);
     const char* DebugLabels[] = { "Off", "Foreground", "Background", "FG Alpha", "CoC" };
-    EnumVar DebugMode("Graphics/Depth of Field/Debug Mode", 0, _countof(DebugLabels), DebugLabels);
+    EnumVar DOF_DebugMode("Graphics/Depth of Field/Debug Mode", 0, _countof(DebugLabels), DebugLabels);
     BoolVar DebugTiles("Graphics/Depth of Field/Debug Tiles", false);
     BoolVar ForceSlow("Graphics/Depth of Field/Force Slow Path", false);
     BoolVar ForceFast("Graphics/Depth of Field/Force Fast Path", false);
+}
+
+namespace DepthOfField
+{
 
     RootSignature s_RootSignature;
 
@@ -140,14 +144,14 @@ void DepthOfField::Shutdown( void )
     s_IndirectParameters.Destroy();
 }
 
-void DepthOfField::Render( CommandContext& BaseContext, float /*NearClipDist*/, float FarClipDist )
+void DepthOfField::Render( CommandContext& BaseContext, float /*NearClipDist*/, float FarClipDist, UINT curCam )
 {
     ScopedTimer _prof(L"Depth of Field", BaseContext);
 
     if (!g_bTypedUAVLoadSupport_R11G11B10_FLOAT)
     {
         WARN_ONCE_IF(!g_bTypedUAVLoadSupport_R11G11B10_FLOAT, "Unable to perform final pass of DoF without support for R11G11B10F UAV loads");
-        Enable = false;
+        Settings::DOF_Enable = false;
     }
 
     ComputeContext& Context = BaseContext.GetComputeContext();
@@ -174,15 +178,15 @@ void DepthOfField::Render( CommandContext& BaseContext, float /*NearClipDist*/, 
     };
     DoFConstantBuffer cbuffer =
     {
-        (float)FocalDepth, 1.0f / (float)FocalRange,
-        (float)FocalDepth - (float)FocalRange, (float)FocalDepth + (float)FocalRange,
+        (float)Settings::FocalDepth, 1.0f / (float)Settings::FocalRange,
+        (float)Settings::FocalDepth - (float)Settings::FocalRange, (float)Settings::FocalDepth + (float)Settings::FocalRange,
         1.0f / BufferWidth, 1.0f / BufferHeight,
         BufferWidth, BufferHeight,
         (int32_t)Math::DivideByMultiple(BufferWidth, 2), (int32_t)Math::DivideByMultiple(BufferHeight, 2),
         TiledWidth, TiledHeight,
         1.0f / TiledWidth, 1.0f / TiledHeight,
-        (uint32_t)DebugMode, EnablePreFilter ? 0u : 1u,
-        ForegroundRange / FarClipDist, FarClipDist / ForegroundRange, (float)AntiSparkleWeight
+        (uint32_t)Settings::DOF_DebugMode, Settings::DOF_EnablePreFilter ? 0u : 1u,
+        Settings::ForegroundRange / FarClipDist, FarClipDist / Settings::ForegroundRange, (float)Settings::AntiSparkleWeight
     };
     Context.SetDynamicConstantBufferView(0, sizeof(cbuffer), &cbuffer);
 
@@ -235,7 +239,7 @@ void DepthOfField::Render( CommandContext& BaseContext, float /*NearClipDist*/, 
     {
         ScopedTimer _prof2(L"DoF PreFilter", Context);
 
-        if (ForceFast && !DebugMode)
+        if (Settings::ForceFast && !Settings::DOF_DebugMode)
             Context.SetPipelineState(s_DoFPreFilterFastCS);
         else
             Context.SetPipelineState(s_DoFPreFilterCS);
@@ -244,13 +248,13 @@ void DepthOfField::Render( CommandContext& BaseContext, float /*NearClipDist*/, 
         Context.TransitionResource(g_DoFPrefilter, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
         Context.SetDynamicDescriptor(1, 0, LinearDepth.GetSRV());
         Context.SetDynamicDescriptor(1, 1, g_DoFTileClass[1].GetSRV());
-        Context.SetDynamicDescriptor(1, 2, g_SceneColorBuffer.GetSRV());
+        Context.SetDynamicDescriptor(1, 2, g_SceneColorBuffer.GetSubSRV(curCam));
         Context.SetDynamicDescriptor(1, 3, g_DoFWorkQueue.GetSRV());
         Context.SetDynamicDescriptor(2, 0, g_DoFPresortBuffer.GetUAV());
         Context.SetDynamicDescriptor(2, 1, g_DoFPrefilter.GetUAV());
         Context.DispatchIndirect(s_IndirectParameters, 0);
 
-        if (!ForceSlow && !DebugMode)
+        if (!Settings::ForceSlow && !Settings::DOF_DebugMode)
             Context.SetPipelineState(s_DoFPreFilterFastCS);
         Context.SetDynamicDescriptor(1, 3, g_DoFFastQueue.GetSRV());
         Context.DispatchIndirect(s_IndirectParameters, 12);
@@ -266,10 +270,10 @@ void DepthOfField::Render( CommandContext& BaseContext, float /*NearClipDist*/, 
         Context.TransitionResource(g_DoFPrefilter, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
         Context.TransitionResource(g_DoFBlurColor[0], D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
         Context.TransitionResource(g_DoFBlurAlpha[0], D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-        if (ForceFast && !DebugMode)
+        if (Settings::ForceFast && !Settings::DOF_DebugMode)
             Context.SetPipelineState(s_DoFPass2FastCS);
         else
-            Context.SetPipelineState(DebugMode > 0 ? s_DoFPass2DebugCS : s_DoFPass2CS);
+            Context.SetPipelineState(Settings::DOF_DebugMode > 0 ? s_DoFPass2DebugCS : s_DoFPass2CS);
         Context.SetDynamicDescriptor(1, 0, g_DoFPrefilter.GetSRV());
         Context.SetDynamicDescriptor(1, 1, g_DoFPresortBuffer.GetSRV());
         Context.SetDynamicDescriptor(1, 2, g_DoFTileClass[1].GetSRV());
@@ -278,7 +282,7 @@ void DepthOfField::Render( CommandContext& BaseContext, float /*NearClipDist*/, 
         Context.SetDynamicDescriptor(2, 1, g_DoFBlurAlpha[0].GetUAV());
         Context.DispatchIndirect(s_IndirectParameters, 0);
 
-        if (!ForceSlow && !DebugMode)
+        if (!Settings::ForceSlow && !Settings::DOF_DebugMode)
             Context.SetPipelineState(s_DoFPass2FastCS);
         Context.SetDynamicDescriptor(1, 3, g_DoFFastQueue.GetSRV());
         Context.DispatchIndirect(s_IndirectParameters, 12);
@@ -293,11 +297,11 @@ void DepthOfField::Render( CommandContext& BaseContext, float /*NearClipDist*/, 
         Context.TransitionResource(g_DoFBlurColor[0], D3D12_RESOURCE_STATE_GENERIC_READ);
         Context.TransitionResource(g_DoFBlurAlpha[0], D3D12_RESOURCE_STATE_GENERIC_READ);
 
-        if (MedianFilter)
+        if (Settings::MedianFilter)
         {
             Context.TransitionResource(g_DoFBlurColor[1], D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
             Context.TransitionResource(g_DoFBlurAlpha[1], D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-            Context.SetPipelineState(MedianAlpha ? s_DoFMedianFilterSepAlphaCS : s_DoFMedianFilterCS);
+            Context.SetPipelineState(Settings::MedianAlpha ? s_DoFMedianFilterSepAlphaCS : s_DoFMedianFilterCS);
             Context.SetDynamicDescriptor(1, 0, g_DoFBlurColor[0].GetSRV());
             Context.SetDynamicDescriptor(1, 1, g_DoFBlurAlpha[0].GetSRV());
             Context.SetDynamicDescriptor(1, 2, g_DoFWorkQueue.GetSRV());
@@ -321,11 +325,11 @@ void DepthOfField::Render( CommandContext& BaseContext, float /*NearClipDist*/, 
         ScopedTimer _prof2(L"DoF Final Combine", Context);
         Context.TransitionResource(g_SceneColorBuffer, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 
-        if (DebugTiles)
+        if (Settings::DebugTiles)
         {
             Context.SetPipelineState(s_DoFDebugRedCS);
             Context.SetDynamicDescriptor(1, 5, g_DoFWorkQueue.GetSRV());
-            Context.SetDynamicDescriptor(2, 0, g_SceneColorBuffer.GetUAV());
+            Context.SetDynamicDescriptor(2, 0, g_SceneColorBuffer.GetSubUAV(curCam));
             Context.DispatchIndirect(s_IndirectParameters, 0);
 
             Context.SetPipelineState(s_DoFDebugGreenCS);
@@ -339,12 +343,12 @@ void DepthOfField::Render( CommandContext& BaseContext, float /*NearClipDist*/, 
         else
         {
             Context.SetPipelineState(s_DoFCombineCS);
-            Context.SetDynamicDescriptor(1, 0, g_DoFBlurColor[MedianFilter ? 1 : 0].GetSRV());
-            Context.SetDynamicDescriptor(1, 1, g_DoFBlurAlpha[MedianFilter ? 1 : 0].GetSRV());
+            Context.SetDynamicDescriptor(1, 0, g_DoFBlurColor[Settings::MedianFilter ? 1 : 0].GetSRV());
+            Context.SetDynamicDescriptor(1, 1, g_DoFBlurAlpha[Settings::MedianFilter ? 1 : 0].GetSRV());
             Context.SetDynamicDescriptor(1, 2, g_DoFTileClass[1].GetSRV());
             Context.SetDynamicDescriptor(1, 3, LinearDepth.GetSRV());
             Context.SetDynamicDescriptor(1, 4, g_DoFWorkQueue.GetSRV());
-            Context.SetDynamicDescriptor(2, 0, g_SceneColorBuffer.GetUAV());
+            Context.SetDynamicDescriptor(2, 0, g_SceneColorBuffer.GetSubUAV(curCam));
             Context.DispatchIndirect(s_IndirectParameters, 0);
 
             Context.SetPipelineState(s_DoFCombineFastCS);

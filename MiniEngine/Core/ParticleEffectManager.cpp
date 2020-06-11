@@ -74,9 +74,9 @@ using namespace Graphics;
 using namespace Math;
 using namespace ParticleEffects;
 
-namespace ParticleEffects
+namespace Settings
 {
-    BoolVar Enable("Graphics/Particle Effects/Enable", true);
+    BoolVar Particles_Enable("Graphics/Particle Effects/Enable", true);
     BoolVar EnableSpriteSort("Graphics/Particle Effects/Sort Sprites", true);
     BoolVar EnableTiledRendering("Graphics/Particle Effects/Tiled Rendering", true);
     BoolVar PauseSim("Graphics/Particle Effects/Pause Simulation", false);
@@ -84,6 +84,10 @@ namespace ParticleEffects
     EnumVar TiledRes("Graphics/Particle Effects/Tiled Sample Rate", 2, 3, ResolutionLabels);
     NumVar DynamicResLevel("Graphics/Particle Effects/Dynamic Resolution Cutoff", 0.0f, -4.0f, 4.0f, 0.5f);
     NumVar MipBias("Graphics/Particle Effects/Mip Bias", 0.0f, -4.0f, 4.0f, 0.5f);
+}
+
+namespace ParticleEffects
+{
     
     ComputePSO s_ParticleSpawnCS;
     ComputePSO s_ParticleUpdateCS;
@@ -326,19 +330,19 @@ namespace
             };
             CompContext.SetDynamicDescriptors(4, 0, _countof(SRVs), SRVs);
 
-            CompContext.SetConstants(0, (float)DynamicResLevel, (float)MipBias);
+            CompContext.SetConstants(0, (float)Settings::DynamicResLevel, (float)Settings::MipBias);
 
-            CompContext.SetPipelineState(s_ParticleTileRenderSlowCS[TiledRes]);
+            CompContext.SetPipelineState(s_ParticleTileRenderSlowCS[Settings::TiledRes]);
             CompContext.DispatchIndirect(TileDrawDispatchIndirectArgs, 0);
 
-            CompContext.SetPipelineState(s_ParticleTileRenderFastCS[TiledRes]);
+            CompContext.SetPipelineState(s_ParticleTileRenderFastCS[Settings::TiledRes]);
             CompContext.DispatchIndirect(TileDrawDispatchIndirectArgs, 12);
         }
     }
     
     void RenderSprites(GraphicsContext& GrContext, ColorBuffer& ColorTarget, DepthBuffer& DepthTarget, ColorBuffer& LinearDepth)
     {
-        if (EnableSpriteSort)
+        if (Settings::EnableSpriteSort)
         {
             ScopedTimer _p(L"Sort Particles", GrContext);
             ComputeContext& CompContext = GrContext.GetComputeContext();
@@ -385,7 +389,7 @@ namespace
         viewport.MaxDepth = 1.0;
 
         GrContext.SetRootSignature(RootSig);
-        GrContext.SetPipelineState(s_NoTileRasterizationPSO[EnableSpriteSort ? 0 : 1]);
+        GrContext.SetPipelineState(s_NoTileRasterizationPSO[Settings::EnableSpriteSort ? 0 : 1]);
         GrContext.TransitionResource(SpriteVertexBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
         GrContext.TransitionResource(DrawIndirectArgs, D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT);
         GrContext.TransitionResource(TextureArray, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
@@ -643,15 +647,15 @@ EffectHandle ParticleEffects::InstantiateEffect( ParticleEffectProperties& effec
 
 void ParticleEffects::Update(ComputeContext& Context, float timeDelta )
 {
-    if (!Enable || !s_InitComplete || ParticleEffectsActive.size() == 0)
+    if (!Settings::Particles_Enable || !s_InitComplete || ParticleEffectsActive.size() == 0)
         return;
 
     ScopedTimer _prof(L"Particle Update", Context);
 
     if (++TotalElapsedFrames == s_ReproFrame)
-        PauseSim = true;
+	    Settings::PauseSim = true;
 
-    if (PauseSim)
+    if (Settings::PauseSim)
         return;
 
     Context.ResetCounter(SpriteVertexBuffer);
@@ -691,7 +695,7 @@ void ParticleEffects::Update(ComputeContext& Context, float timeDelta )
 
 void ParticleEffects::Render( CommandContext& Context, const Camera& Camera, ColorBuffer& ColorTarget, DepthBuffer& DepthTarget, ColorBuffer& LinearDepth)
 {
-    if (!Enable || !s_InitComplete || ParticleEffectsActive.size() == 0)
+    if (!Settings::Particles_Enable || !s_InitComplete || ParticleEffectsActive.size() == 0)
         return;
 
     uint32_t Width = (uint32_t)ColorTarget.GetWidth();
@@ -728,11 +732,11 @@ void ParticleEffects::Render( CommandContext& Context, const Camera& Camera, Col
 
     // For now, UAV load support for R11G11B10 is required to read-modify-write the color buffer, but
     // the compositing could be deferred.
-    WARN_ONCE_IF(EnableTiledRendering && !g_bTypedUAVLoadSupport_R11G11B10_FLOAT,
+    WARN_ONCE_IF(Settings::EnableTiledRendering && !g_bTypedUAVLoadSupport_R11G11B10_FLOAT,
         "Unable to composite tiled particles without support for R11G11B10F UAV loads");
-    EnableTiledRendering = EnableTiledRendering && g_bTypedUAVLoadSupport_R11G11B10_FLOAT;
+    Settings::EnableTiledRendering = Settings::EnableTiledRendering && g_bTypedUAVLoadSupport_R11G11B10_FLOAT;
 
-    if (EnableTiledRendering)
+    if (Settings::EnableTiledRendering)
     {
         ComputeContext& CompContext = Context.GetComputeContext();
         CompContext.TransitionResource(ColorTarget, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
@@ -775,7 +779,7 @@ void ParticleEffects::ClearAll()
 
 void ParticleEffects::ResetEffect(EffectHandle EffectID)
 {
-    if (!s_InitComplete || ParticleEffectsActive.size() == 0 || PauseSim || EffectID >= ParticleEffectsActive.size())
+    if (!s_InitComplete || ParticleEffectsActive.size() == 0 || Settings::PauseSim || EffectID >= ParticleEffectsActive.size())
         return;
     
     ParticleEffectsActive[EffectID]->Reset();
@@ -784,7 +788,7 @@ void ParticleEffects::ResetEffect(EffectHandle EffectID)
 
 float ParticleEffects::GetCurrentLife(EffectHandle EffectID)
 {
-    if (!s_InitComplete || ParticleEffectsActive.size() == 0 || PauseSim || EffectID >= ParticleEffectsActive.size())
+    if (!s_InitComplete || ParticleEffectsActive.size() == 0 || Settings::PauseSim || EffectID >= ParticleEffectsActive.size())
         return -1.0;
     
     return ParticleEffectsActive[EffectID]->GetElapsedTime();

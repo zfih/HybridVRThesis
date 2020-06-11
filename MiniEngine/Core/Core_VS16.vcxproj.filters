@@ -202,7 +202,38 @@
     <ClInclude Include="VR.h">
       <Filter>Source Files\Graphics</Filter>
     </ClInclude>
+<<<<<<< HEAD
     <ClInclude Include="CameraType.h">
+=======
+    <ClInclude Include="ImGui\imconfig.h">
+      <Filter>Source Files\Graphics\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="ImGui\imgui.h">
+      <Filter>Source Files\Graphics\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="ImGui\imgui_impl_dx12.h">
+      <Filter>Source Files\Graphics\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="ImGui\imgui_impl_win32.h">
+      <Filter>Source Files\Graphics\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="ImGui\imgui_internal.h">
+      <Filter>Source Files\Graphics\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="ImGui\imstb_rectpack.h">
+      <Filter>Source Files\Graphics\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="ImGui\imstb_textedit.h">
+      <Filter>Source Files\Graphics\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="ImGui\imstb_truetype.h">
+      <Filter>Source Files\Graphics\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="DearImGuiRenderer.h">
+      <Filter>Source Files\Graphics</Filter>
+    </ClInclude>
+    <ClInclude Include="Settings.h">
+>>>>>>> master
       <Filter>Source Files</Filter>
     </ClInclude>
   </ItemGroup>
@@ -360,6 +391,27 @@
     <ClCompile Include="VR.cpp">
       <Filter>Source Files\Graphics</Filter>
     </ClCompile>
+    <ClCompile Include="ImGui\imgui.cpp">
+      <Filter>Source Files\Graphics\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="ImGui\imgui_demo.cpp">
+      <Filter>Source Files\Graphics\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="ImGui\imgui_draw.cpp">
+      <Filter>Source Files\Graphics\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="ImGui\imgui_impl_dx12.cpp">
+      <Filter>Source Files\Graphics\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="ImGui\imgui_impl_win32.cpp">
+      <Filter>Source Files\Graphics\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="ImGui\imgui_widgets.cpp">
+      <Filter>Source Files\Graphics\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="DearImGuiRenderer.cpp">
+      <Filter>Source Files\Graphics</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Source Files">
@@ -412,6 +464,9 @@
     </Filter>
     <Filter Include="Shaders\BitonicSort">
       <UniqueIdentifier>{29bbd948-3d9f-4b00-a170-52bc3e18d6ce}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\Graphics\imgui">
+      <UniqueIdentifier>{7a1126f6-77fb-40f0-a1dc-58fb7579b559}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>

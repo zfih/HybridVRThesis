@@ -128,7 +128,22 @@
     <FxCompile Include="Shaders\ModelViewerVS.hlsl">
       <Filter>Shaders</Filter>
     </FxCompile>
-    <FxCompile Include="*Lib.hlsl">
+    <FxCompile Include="hitShaderLib.hlsl">
+      <Filter>Shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="missShaderLib.hlsl">
+      <Filter>Shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="missShadowsLib.hlsl">
+      <Filter>Shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="RayGenerationShaderLib.hlsl">
+      <Filter>Shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="RayGenerationShaderSSRLib.hlsl">
+      <Filter>Shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="RayGenerationShadowsLib.hlsl">
       <Filter>Shaders</Filter>
     </FxCompile>
     <FxCompile Include="*Lib.hlsl">
@@ -335,24 +350,12 @@
     <FxCompile Include="*Lib.hlsl" />
     <FxCompile Include="*Lib.hlsl" />
     <FxCompile Include="*Lib.hlsl" />
-    <FxCompile Include="..\MiniEngine\ModelViewer\Shaders\CombineDepthsCS.hlsl">
-      <Filter>Shaders</Filter>
-    </FxCompile>
-    <FxCompile Include="..\MiniEngine\ModelViewer\Shaders\CombineColourCS.hlsl">
-      <Filter>Shaders</Filter>
-    </FxCompile>
     <FxCompile Include="*Lib.hlsl" />
     <FxCompile Include="*Lib.hlsl" />
     <FxCompile Include="*Lib.hlsl" />
     <FxCompile Include="*Lib.hlsl" />
     <FxCompile Include="*Lib.hlsl" />
     <FxCompile Include="*Lib.hlsl" />
-    <FxCompile Include="..\MiniEngine\ModelViewer\Shaders\CombineColourPS.hlsl">
-      <Filter>Shaders</Filter>
-    </FxCompile>
-    <FxCompile Include="..\MiniEngine\ModelViewer\Shaders\CombineColourVS.hlsl">
-      <Filter>Shaders</Filter>
-    </FxCompile>
     <FxCompile Include="*Lib.hlsl" />
     <FxCompile Include="*Lib.hlsl" />
     <FxCompile Include="*Lib.hlsl" />
@@ -363,6 +366,18 @@
     <FxCompile Include="Shaders\ScreenTexturePS.hlsl" />
     <FxCompile Include="DiffuseHitShaderLib.hlsl" />
     <FxCompile Include="AlphaTransparencyAnyHit.hlsl" />
+    <FxCompile Include="Shaders\CombineColourVS.hlsl">
+      <Filter>Shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="Shaders\CombineDepthsCS.hlsl">
+      <Filter>Shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="Shaders\CombineColourCS.hlsl">
+      <Filter>Shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="Shaders\CombineColourPS.hlsl">
+      <Filter>Shaders</Filter>
+    </FxCompile>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="ForwardPlusLighting.cpp" />

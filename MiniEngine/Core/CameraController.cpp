@@ -17,6 +17,7 @@
 #include "GameInput.h"
 #include <iostream>
 #include <fstream>
+#include "Settings.h"
 
 using namespace Math;
 using namespace GameCore;
@@ -50,17 +51,12 @@ CameraController::CameraController( Camera& camera, Vector3 worldUp ) : m_Target
     m_LastAscent = 0.0f;
 }
 
-namespace Graphics
-{
-    extern EnumVar DebugZoom;
-}
-
 void CameraController::Update( float deltaTime )
 {
     (deltaTime);
     m_TargetCamera.Update();
 
-    float timeScale = Graphics::DebugZoom == 0 ? 1.0f : Graphics::DebugZoom == 1 ? 0.5f : 0.25f;
+    float timeScale = Settings::DebugZoom == 0 ? 1.0f : Settings::DebugZoom == 1 ? 0.5f : 0.25f;
 
     if (GameInput::IsFirstPressed(GameInput::kLThumbClick) || GameInput::IsFirstPressed(GameInput::kKey_lshift))
         m_FineMovement = !m_FineMovement;
