@@ -65,6 +65,10 @@
 
 #include <iostream>
 #include <fstream>
+#include <iso646.h>
+
+
+#include "GlobalState.h"
 
 using namespace GameCore;
 using namespace Math;
@@ -72,6 +76,9 @@ using namespace Graphics;
 
 extern ByteAddressBuffer g_bvh_bottomLevelAccelerationStructure;
 ColorBuffer g_SceneNormalBuffer;
+
+Camera* LODGlobal::g_camera = nullptr;
+CameraController* LODGlobal::g_cameraController = nullptr;
 
 CComPtr<ID3D12Device5> g_pRaytracingDevice;
 
@@ -89,7 +96,7 @@ __declspec(align(16)) struct HitShaderConstants
 ByteAddressBuffer g_hitConstantBuffer;
 ByteAddressBuffer g_dynamicConstantBuffer;
 
-D3D12_GPU_DESCRIPTOR_HANDLE g_GpuSceneMaterialSrvs[27];
+D3D12_GPU_DESCRIPTOR_HANDLE g_GpuSceneMaterialSrvs[200];
 D3D12_CPU_DESCRIPTOR_HANDLE g_SceneMeshInfo;
 D3D12_CPU_DESCRIPTOR_HANDLE g_SceneIndices;
 
@@ -270,8 +277,6 @@ namespace Settings
 	NumVar ShadowDimY("Application/Lighting/Shadow Dim Y", 3000, 1000, 10000, 100);
 	NumVar ShadowDimZ("Application/Lighting/Shadow Dim Z", 3000, 1000, 10000, 100);
 
-	IntVar m_TestValueSuperDuper("Test/Test/Shadow Dim Z", 5, 0, 10, 1);
-
 
 	BoolVar ShowWaveTileCounts("Application/Forward+/Show Wave Tile Counts", false);
 
@@ -305,7 +310,7 @@ void InitializeSceneInfo(
 			attrib[Model::attrib_bitangent].offset;
 		meshInfoData[i].m_attributeStrideBytes = model.m_pMesh[i].vertexStride;
 		meshInfoData[i].m_materialInstanceId = model.m_pMesh[i].materialIndex;
-		ASSERT(meshInfoData[i].m_materialInstanceId < 27);
+		ASSERT(meshInfoData[i].m_materialInstanceId < 200);
 	}
 
 	g_hitShaderMeshInfoBuffer.Create(L"RayTraceMeshInfo",
@@ -813,6 +818,13 @@ void InitializeStateObjects(const Model& model, UINT numMeshes)
 	}
 }
 
+int pow4(int **&b)
+{
+	int*& bPtrRef = *b;
+	int& bRef = *bPtrRef;
+	int bVal = bRef;
+	return bVal * bRef * *bPtrRef * **b;
+}
 
 void D3D12RaytracingMiniEngineSample::Startup(void)
 {
@@ -932,14 +944,17 @@ void D3D12RaytracingMiniEngineSample::Startup(void)
 	m_ExtraTextures[1] = g_ShadowBuffer.GetSRV();
 
 #define ASSET_DIRECTORY "../MiniEngine/ModelViewer/"
-	TextureManager::Initialize(ASSET_DIRECTORY L"Textures/");
-	bool bModelLoadSuccess = m_Model.Load(ASSET_DIRECTORY "Models/sponza.h3d");
+	
+	TextureManager::Initialize(ASSET_DIRECTORY L"Textures/bistro/");
+	bool bModelLoadSuccess = m_Model.Load(ASSET_DIRECTORY "Models/bistro.h3d");
 	ASSERT(bModelLoadSuccess, "Failed to load model");
 	ASSERT(m_Model.m_Header.meshCount > 0, "Model contains no meshes");
 
 	// The caller of this function can override which materials are considered cutouts
 	m_pMaterialIsCutout.resize(m_Model.m_Header.materialCount);
 	m_pMaterialIsReflective.resize(m_Model.m_Header.materialCount);
+	
+	// TODO: Fix what we hardcode -.-
 	for (uint32_t i = 0; i < m_Model.m_Header.materialCount; ++i)
 	{
 		const Model::Material& mat = m_Model.m_pMaterial[i];
@@ -1020,8 +1035,9 @@ void D3D12RaytracingMiniEngineSample::Startup(void)
 
 	m_Camera.Setup(false);
     m_Camera.SetZRange(1.0f, 10000.0f);
-
+	LODGlobal::g_camera = &m_Camera;
     m_CameraController.reset(new VRCameraController(m_Camera, Vector3(kYUnitVector)));
+	LODGlobal::g_cameraController = m_CameraController.get();
     
     Settings::MotionBlur_Enable = false;//true;
     Settings::TAA_Enable = false;//true;

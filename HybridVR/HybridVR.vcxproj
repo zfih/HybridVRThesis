@@ -299,6 +299,7 @@
     <ClInclude Include="DescriptorHeapStack.h" />
     <ClInclude Include="DXSampleHelper.h" />
     <ClInclude Include="ForwardPlusLighting.h" />
+    <ClInclude Include="GlobalState.h" />
     <ClInclude Include="ModelViewerRayTracing.h" />
     <ClInclude Include="Raytracing.h" />
     <ClInclude Include="RayTracingHlslCompat.h" />

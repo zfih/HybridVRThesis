@@ -256,9 +256,16 @@ const ManagedTexture* TextureManager::LoadFromFile( const std::wstring& fileName
 {
     std::wstring CatPath = fileName;
 
+
     const ManagedTexture* Tex = LoadDDSFromFile( CatPath + L".dds", sRGB );
     if (!Tex->IsValid())
+    {
         Tex = LoadTGAFromFile( CatPath + L".tga", sRGB );
+	    if(!Tex->IsValid())
+	    {
+	        printf("Unsupported image format for file: %ws\n", fileName.c_str());
+	    }
+    }
 
     return Tex;
 }

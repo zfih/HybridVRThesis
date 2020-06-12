@@ -69,6 +69,10 @@ namespace Math
         static INLINE Matrix4 MakeScale( float scale ) { return Matrix4(XMMatrixScaling(scale, scale, scale)); }
         static INLINE Matrix4 MakeScale( Vector3 scale ) { return Matrix4(XMMatrixScalingFromVector(scale)); }
 
+        static INLINE Matrix4 MakeRotationX(float angle) { return Matrix4(XMMatrixRotationX(angle)); }
+        static INLINE Matrix4 MakeRotationY(float angle) { return Matrix4(XMMatrixRotationY(angle)); }
+        static INLINE Matrix4 MakeRotationZ(float angle) { return Matrix4(XMMatrixRotationZ(angle)); }
+
 
     private:
         XMMATRIX m_mat;

@@ -25,6 +25,7 @@
 #include "PostEffects.h"
 #include "Settings.h"
 #include "VR.h"
+#include "../../HybridVR/GlobalState.h"
 
 #if WINAPI_FAMILY_PARTITION(WINAPI_PARTITION_DESKTOP)
     #pragma comment(lib, "runtimeobject.lib")
@@ -124,7 +125,7 @@ namespace GameCore
     	}
         else
         {
-            ImGui::BuildGUI();
+            ImGui::BuildGUI(LODGlobal::g_camera, LODGlobal::g_cameraController);
             ImGui::RenderGUI();
         }
     	
