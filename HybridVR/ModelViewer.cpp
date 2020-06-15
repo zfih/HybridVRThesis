@@ -1859,11 +1859,11 @@ void D3D12RaytracingMiniEngineSample::RenderPrepass(
 
 
 			Ctx.TransitionResource(g_SceneDepthBuffer,
-			                       D3D12_RESOURCE_STATE_DEPTH_WRITE, true);
+				D3D12_RESOURCE_STATE_DEPTH_WRITE, true);
 
 			// TODO(freemedude 15:55 04-05): Maybe needs to be per subresource
 			// instead of the entire thing
-			if (Settings::VRDepthStencil == 1)
+			if (!Settings::VRDepthStencil)
 			{
 				Ctx.ClearDepthAndStencil(g_SceneDepthBuffer, CameraType);
 			}
