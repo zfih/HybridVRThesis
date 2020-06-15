@@ -1742,8 +1742,8 @@ void D3D12RaytracingMiniEngineSample::RenderCenter(
 		ctx.TransitionResource(g_SceneCenterColourDepthBuffer,
 		                       D3D12_RESOURCE_STATE_UNORDERED_ACCESS, true);
 
-		ComputeContext& cmpContext =
-			ComputeContext::Begin(L"Combine Depth m_Buffers", true);
+		ComputeContext& cmpContext = ctx.GetComputeContext();
+			//ComputeContext::Begin(L"Combine Depth m_Buffers", true);
 	
 
 		cmpContext.SetRootSignature(m_ComputeRootSig);
@@ -1762,7 +1762,7 @@ void D3D12RaytracingMiniEngineSample::RenderCenter(
 			g_SceneDepthBuffer.GetWidth(),
 			g_SceneDepthBuffer.GetHeight());
 
-		cmpContext.Finish();
+		cmpContext.Flush();
 	}
 
 	MainRender(ctx, Cam::kCenter, camera,
