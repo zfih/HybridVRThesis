@@ -102,7 +102,7 @@ namespace Settings
 	// Motion Blur
 
 	// VR
-	extern EnumVar VRDepthStencil;
+	extern BoolVar VRDepthStencil;
 	// VR
 
 	// Particles
