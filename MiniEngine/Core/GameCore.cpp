@@ -88,7 +88,7 @@ namespace GameCore
         
         game.Update(DeltaTime);
 
-        if (Settings::VRDepthStencil == 0)
+        if (Settings::VRDepthStencil)
         {
             Graphics::HiddenMeshDepthPrepass();
         }

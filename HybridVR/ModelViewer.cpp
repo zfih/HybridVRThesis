@@ -1539,8 +1539,7 @@ void D3D12RaytracingMiniEngineSample::RenderScene(UINT curCam)
 				gfxContext.TransitionResource(*SceneDepthBuffer(), D3D12_RESOURCE_STATE_DEPTH_WRITE, true);
 				// note: we no longer clear because we need the stencil from engine
 				// prepass
-				auto fuckyou = Settings::VRDepthStencil;
-				if (Settings::VRDepthStencil == 1)
+				if (!Settings::VRDepthStencil)
 				{
 					gfxContext.ClearDepthAndStencil(*SceneDepthBuffer());
 				}
