@@ -267,6 +267,11 @@ const ManagedTexture* TextureManager::LoadFromFile( const std::wstring& fileName
 	    }
     }
 
+    if(Tex->IsValid())
+    {
+        printf("Imported image for file: %ws\n", fileName.c_str());
+    }
+	
     return Tex;
 }
 

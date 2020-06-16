@@ -74,6 +74,10 @@ namespace Math
         static INLINE Matrix4 MakeRotationZ(float angle) { return Matrix4(XMMatrixRotationZ(angle)); }
 
 
+        static INLINE Matrix4 MakeTranslation(float x, float y, float z) { return Matrix4(XMMatrixTranslation(x, y, z)); }
+        static INLINE Matrix4 MakeTranslation(Vector3 scale) { return MakeTranslation(scale.GetX(), scale.GetY(), scale.GetZ()); }
+
+
     private:
         XMMATRIX m_mat;
     };

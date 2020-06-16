@@ -1005,7 +1005,7 @@ void D3D12RaytracingMiniEngineSample::Startup(void)
 	m_Camera.SetEyeAtUp(eye, Vector3(kZero), Vector3(kYUnitVector));
 
 	m_CameraPosArrayCurrentPosition = 0;
-
+	
 	// Lion's head
 	m_CameraPosArray[0].position = Vector3(-1100.0f, 170.0f, -30.0f);
 	m_CameraPosArray[0].heading = 1.5707f;
@@ -1030,7 +1030,6 @@ void D3D12RaytracingMiniEngineSample::Startup(void)
 	m_CameraPosArray[4].position = Vector3(-1463.0f, 600.0f, 394.52f);
 	m_CameraPosArray[4].heading = -1.236f;
 	m_CameraPosArray[4].pitch = 0.0f;
-
 	LoadCamPos();
 
 	m_Camera.Setup(false);
@@ -1038,6 +1037,7 @@ void D3D12RaytracingMiniEngineSample::Startup(void)
 	LODGlobal::g_camera = &m_Camera;
     m_CameraController.reset(new VRCameraController(m_Camera, Vector3(kYUnitVector)));
 	LODGlobal::g_cameraController = m_CameraController.get();
+	SetCameraToPredefinedPosition(0);
     
     Settings::MotionBlur_Enable = false;//true;
     Settings::TAA_Enable = false;//true;
@@ -1156,13 +1156,19 @@ void D3D12RaytracingMiniEngineSample::RenderObjects(GraphicsContext& gfxContext,
 		Matrix4 modelToShadow;
 		XMFLOAT3 viewerPos;
 		UINT curCam;
-	} vsConstants;
-	vsConstants.curCam = curCam;
-	vsConstants.modelToProjection = ViewProjMat;
-	vsConstants.modelToShadow = m_SunShadow.GetShadowMatrix();
-	XMStoreFloat3(&vsConstants.viewerPos, m_Camera[curCam]->GetPosition());
+	};
 
-	gfxContext.SetDynamicConstantBufferView(0, sizeof(vsConstants), &vsConstants);
+	VSConstants constants;
+
+	Matrix4 rotation = Matrix4::MakeRotationX(-XM_PIDIV2);
+	Matrix4 model = rotation;
+	constants.modelToProjection = ViewProjMat * model;
+	constants.curCam = curCam;
+
+	constants.modelToShadow = m_SunShadow.GetShadowMatrix();
+	XMStoreFloat3(&constants.viewerPos, m_Camera[curCam]->GetPosition());
+
+	gfxContext.SetDynamicConstantBufferView(0, sizeof(constants), &constants);
 
 	uint32_t materialIdx = 0xFFFFFFFFul;
 
@@ -1643,8 +1649,12 @@ void Raytracebarycentrics(
 
 	// Prepare constants
 	DynamicCB inputs = g_dynamicCb;
-	auto m0 = camera.GetViewProjMatrix();
+
+	Matrix4 model = Matrix4::MakeRotationX(-XM_PIDIV2);
+	model = Matrix4::MakeTranslation(-camera.GetPosition()) * model;
+	auto m0 = camera.GetViewProjMatrix() * model;
 	auto m1 = Transpose(Invert(m0));
+	
 	memcpy(&inputs.cameraToWorld, &m1, sizeof(inputs.cameraToWorld));
 	memcpy(&inputs.worldCameraPosition, &camera.GetPosition(), sizeof(inputs.worldCameraPosition));
 	inputs.resolution.x = (float)colorTarget.GetWidth();
@@ -1693,8 +1703,11 @@ void RaytracebarycentricsSSR(
 	ScopedTimer _p0(L"Raytracing SSR barycentrics", context);
 
 	DynamicCB inputs = g_dynamicCb;
-	auto m0 = camera.GetViewProjMatrix();
+
+	Matrix4 model = Matrix4::MakeRotationX(-XM_PIDIV2);
+	auto m0 = camera.GetViewProjMatrix() * model;
 	auto m1 = Transpose(Invert(m0));
+	
 	memcpy(&inputs.cameraToWorld, &m1, sizeof(inputs.cameraToWorld));
 	memcpy(&inputs.worldCameraPosition, &camera.GetPosition(), sizeof(inputs.worldCameraPosition));
 	inputs.resolution.x = (float)colorTarget.GetWidth();
@@ -1745,7 +1758,8 @@ void D3D12RaytracingMiniEngineSample::RaytraceShadows(
 	ScopedTimer _p0(L"Raytracing Shadows", context);
 
 	DynamicCB inputs = g_dynamicCb;
-	auto m0 = camera.GetViewProjMatrix();
+	Matrix4 model = Matrix4::MakeRotationX(-XM_PIDIV2);
+	auto m0 = camera.GetViewProjMatrix() * model;
 	auto m1 = Transpose(Invert(m0));
 	memcpy(&inputs.cameraToWorld, &m1, sizeof(inputs.cameraToWorld));
 	memcpy(&inputs.worldCameraPosition, &camera.GetPosition(), sizeof(inputs.worldCameraPosition));
@@ -1804,7 +1818,8 @@ void D3D12RaytracingMiniEngineSample::RaytraceDiffuse(
 
 	// Prepare constants
 	DynamicCB inputs = g_dynamicCb;
-	auto m0 = camera.GetViewProjMatrix();
+	Matrix4 model = Matrix4::MakeRotationX(-XM_PIDIV2);
+	auto m0 = camera.GetViewProjMatrix() * model;
 	auto m1 = Transpose(Invert(m0));
 	memcpy(&inputs.cameraToWorld, &m1, sizeof(inputs.cameraToWorld));
 	memcpy(&inputs.worldCameraPosition, &camera.GetPosition(), sizeof(inputs.worldCameraPosition));
@@ -1862,7 +1877,8 @@ void D3D12RaytracingMiniEngineSample::RaytraceReflections(
 
 	// Prepare constants
 	DynamicCB inputs = g_dynamicCb;
-	auto m0 = camera.GetViewProjMatrix();
+	Matrix4 model = Matrix4::MakeRotationX(-XM_PIDIV2);
+	auto m0 = camera.GetViewProjMatrix() * model;
 	auto m1 = Transpose(Invert(m0));
 	memcpy(&inputs.cameraToWorld, &m1, sizeof(inputs.cameraToWorld));
 	memcpy(&inputs.worldCameraPosition, &camera.GetPosition(), sizeof(inputs.worldCameraPosition));

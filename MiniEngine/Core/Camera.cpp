@@ -40,11 +40,7 @@ void BaseCamera::Update()
 {
     m_PreviousViewProjMatrix = m_ViewProjMatrix;
 
-	// TODO: Prolly rads
-    Matrix4 rotation = Matrix4::MakeRotationZ(0);
-
-	
-    m_ViewMatrix = Matrix4(~m_CameraToWorld) * rotation;
+    m_ViewMatrix = Matrix4(~m_CameraToWorld);
     m_ViewProjMatrix = m_ProjMatrix * m_ViewMatrix;
     m_ReprojectMatrix = m_PreviousViewProjMatrix * Invert(GetViewProjMatrix());
 
