@@ -74,6 +74,9 @@ using namespace GameCore;
 using namespace Math;
 using namespace Graphics;
 
+#define ASSET_DIRECTORY "../MiniEngine/ModelViewer/"
+
+
 extern ByteAddressBuffer g_bvh_bottomLevelAccelerationStructure;
 ColorBuffer g_SceneNormalBuffer;
 
@@ -125,6 +128,44 @@ const static UINT MaxRayRecursion = 2;
 
 const static UINT c_NumCameraPositions = 5;
 
+//// SCENE
+enum class Scene
+{
+	kBistro = 0,
+	kSponza,
+	
+	kCount,
+	kUnknown
+};
+
+Scene g_CurrentScene = Scene::kUnknown;
+Matrix4 g_SceneMatrix;
+std::pair<std::string, std::wstring> g_ScenePath;
+
+void g_SetScene(Scene Scene)
+{
+	switch(Scene)
+	{
+	case Scene::kBistro:
+		g_CurrentScene = Scene;
+		g_SceneMatrix = Matrix4::MakeRotationX(-XM_PIDIV2);
+		g_ScenePath.first = ASSET_DIRECTORY "Models/bistro.h3d";
+		g_ScenePath.second = ASSET_DIRECTORY L"Textures/bistro/";
+		break;
+	case Scene::kSponza:
+		g_CurrentScene = Scene;
+		g_SceneMatrix = Matrix4(XMMatrixIdentity());
+		g_ScenePath.first = ASSET_DIRECTORY "Models/sponza.h3d";
+		g_ScenePath.second = ASSET_DIRECTORY L"Textures/sponza/";
+		break;
+	default:
+		g_SetScene(Scene::kSponza);
+		break;
+		
+	}
+}
+
+//// SCENE END
 
 struct MaterialRootConstant
 {
@@ -132,7 +173,7 @@ struct MaterialRootConstant
 };
 
 RaytracingDispatchRayInputs g_RaytracingInputs[RaytracingTypes::NumTypes];
-D3D12_CPU_DESCRIPTOR_HANDLE g_bvh_attributeSrvs[34];
+D3D12_CPU_DESCRIPTOR_HANDLE g_bvh_attributeSrvs[34]; // TODO: Oh boi
 bool g_RayTraceSupport = false;
 
 class D3D12RaytracingMiniEngineSample : public GameCore::IGameApp
@@ -215,6 +256,8 @@ private:
 
 int wmain(int argc, wchar_t** argv)
 {
+	g_SetScene(Scene::kBistro);
+	
 #if _DEBUG
 	CComPtr<ID3D12Debug> debugInterface;
 	if (SUCCEEDED(D3D12GetDebugInterface(IID_PPV_ARGS(&debugInterface))))
@@ -943,10 +986,10 @@ void D3D12RaytracingMiniEngineSample::Startup(void)
 	m_ExtraTextures[0] = g_SSAOFullScreen.GetSRV();
 	m_ExtraTextures[1] = g_ShadowBuffer.GetSRV();
 
-#define ASSET_DIRECTORY "../MiniEngine/ModelViewer/"
+
 	
-	TextureManager::Initialize(ASSET_DIRECTORY L"Textures/bistro/");
-	bool bModelLoadSuccess = m_Model.Load(ASSET_DIRECTORY "Models/bistro.h3d");
+	TextureManager::Initialize(g_ScenePath.second);
+	bool bModelLoadSuccess = m_Model.Load(g_ScenePath.first.c_str());
 	ASSERT(bModelLoadSuccess, "Failed to load model");
 	ASSERT(m_Model.m_Header.meshCount > 0, "Model contains no meshes");
 
@@ -1326,13 +1369,15 @@ void D3D12RaytracingMiniEngineSample::CreateRayTraceAccelerationStructures(UINT 
 		instanceDesc.Transform[1][1] = 1.0f;
 		instanceDesc.Transform[2][2] = 1.0f;
 
+		XMStoreFloat3x4((XMFLOAT3X4 *)instanceDesc.Transform, g_SceneMatrix);
+
 		instanceDesc.AccelerationStructure = g_bvh_bottomLevelAccelerationStructures[i]->GetGPUVirtualAddress();
 		instanceDesc.Flags = 0;
 		instanceDesc.InstanceID = 0;
 		instanceDesc.InstanceMask = 1;
 		instanceDesc.InstanceContributionToHitGroupIndex = i;
 	}
-
+	
 	ByteAddressBuffer instanceDataBuffer;
 	instanceDataBuffer.Create(L"Instance Data Buffer", numBottomLevels, sizeof(D3D12_RAYTRACING_INSTANCE_DESC),
 	                          instanceDescs.data());
@@ -1650,9 +1695,7 @@ void Raytracebarycentrics(
 	// Prepare constants
 	DynamicCB inputs = g_dynamicCb;
 
-	Matrix4 model = Matrix4::MakeRotationX(-XM_PIDIV2);
-	model = Matrix4::MakeTranslation(-camera.GetPosition()) * model;
-	auto m0 = camera.GetViewProjMatrix() * model;
+	auto m0 = camera.GetViewProjMatrix();
 	auto m1 = Transpose(Invert(m0));
 	
 	memcpy(&inputs.cameraToWorld, &m1, sizeof(inputs.cameraToWorld));
@@ -1703,9 +1746,7 @@ void RaytracebarycentricsSSR(
 	ScopedTimer _p0(L"Raytracing SSR barycentrics", context);
 
 	DynamicCB inputs = g_dynamicCb;
-
-	Matrix4 model = Matrix4::MakeRotationX(-XM_PIDIV2);
-	auto m0 = camera.GetViewProjMatrix() * model;
+	auto m0 = camera.GetViewProjMatrix();
 	auto m1 = Transpose(Invert(m0));
 	
 	memcpy(&inputs.cameraToWorld, &m1, sizeof(inputs.cameraToWorld));
@@ -1758,9 +1799,9 @@ void D3D12RaytracingMiniEngineSample::RaytraceShadows(
 	ScopedTimer _p0(L"Raytracing Shadows", context);
 
 	DynamicCB inputs = g_dynamicCb;
-	Matrix4 model = Matrix4::MakeRotationX(-XM_PIDIV2);
-	auto m0 = camera.GetViewProjMatrix() * model;
+	auto m0 = camera.GetViewProjMatrix() ;
 	auto m1 = Transpose(Invert(m0));
+	
 	memcpy(&inputs.cameraToWorld, &m1, sizeof(inputs.cameraToWorld));
 	memcpy(&inputs.worldCameraPosition, &camera.GetPosition(), sizeof(inputs.worldCameraPosition));
 	inputs.resolution.x = (float)colorTarget.GetWidth();
@@ -1818,8 +1859,7 @@ void D3D12RaytracingMiniEngineSample::RaytraceDiffuse(
 
 	// Prepare constants
 	DynamicCB inputs = g_dynamicCb;
-	Matrix4 model = Matrix4::MakeRotationX(-XM_PIDIV2);
-	auto m0 = camera.GetViewProjMatrix() * model;
+	auto m0 = camera.GetViewProjMatrix();
 	auto m1 = Transpose(Invert(m0));
 	memcpy(&inputs.cameraToWorld, &m1, sizeof(inputs.cameraToWorld));
 	memcpy(&inputs.worldCameraPosition, &camera.GetPosition(), sizeof(inputs.worldCameraPosition));
@@ -1877,8 +1917,7 @@ void D3D12RaytracingMiniEngineSample::RaytraceReflections(
 
 	// Prepare constants
 	DynamicCB inputs = g_dynamicCb;
-	Matrix4 model = Matrix4::MakeRotationX(-XM_PIDIV2);
-	auto m0 = camera.GetViewProjMatrix() * model;
+	auto m0 = camera.GetViewProjMatrix();
 	auto m1 = Transpose(Invert(m0));
 	memcpy(&inputs.cameraToWorld, &m1, sizeof(inputs.cameraToWorld));
 	memcpy(&inputs.worldCameraPosition, &camera.GetPosition(), sizeof(inputs.worldCameraPosition));
