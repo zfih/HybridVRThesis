@@ -143,6 +143,7 @@ h3d_save_fail:
 	return ok;
 }
 
+Texture* g_ZeroTexture = nullptr;
 void Model::ReleaseTextures()
 {
 	/*
@@ -163,65 +164,54 @@ void Model::ReleaseTextures()
 }
 
 
-
 void Model::LoadTextures(void)
 {
 	ReleaseTextures();
 
+	
 	m_SRVs = new D3D12_CPU_DESCRIPTOR_HANDLE[m_Header.materialCount * 6];
+	ZeroMemory(m_SRVs, sizeof(D3D12_CPU_DESCRIPTOR_HANDLE) * m_Header.materialCount * 6);
 
 	const ManagedTexture *MatTextures[6] = {};
 
+	// Create a ZERO texture
+	const int textureWidth = 16;
+	const int textureHeight = 16;
+	const int textureSizeInBytes = textureWidth * textureHeight * 4;
+	char zeroBufferData[textureSizeInBytes];
+	ZeroMemory(zeroBufferData, textureSizeInBytes);
+
+	g_ZeroTexture = new Texture;
+	g_ZeroTexture->Create(
+		textureWidth, textureHeight, 
+		DXGI_FORMAT_B8G8R8A8_UNORM, zeroBufferData);
+	
 	for(uint32_t materialIdx = 0; materialIdx < m_Header.materialCount; ++materialIdx)
 	{
 		const Material &pMaterial = m_pMaterial[materialIdx];
 
 		// Load diffuse
 		MatTextures[0] = TextureManager::LoadFromFile(pMaterial.texDiffusePath, true);
-		if(!MatTextures[0]->IsValid())
+		if (!MatTextures[0]->IsValid())
 		{
-			MatTextures[0] = TextureManager::LoadFromFile("default", true);
-			if(!MatTextures[0]->IsValid())
-			{
-				printf("Could not find file: %s\n", pMaterial.texDiffusePath);
-			}
+			printf("Unsupported image format for file: %s\n", pMaterial.texDiffusePath);
 		}
-		
 		// Load specular
 		MatTextures[1] = TextureManager::LoadFromFile(pMaterial.texSpecularPath, true);
-		if(!MatTextures[1]->IsValid())
+		if (!MatTextures[1]->IsValid())
 		{
-			MatTextures[1] =
-				TextureManager::LoadFromFile(std::string(pMaterial.texDiffusePath) + "_specular", true);
-			if(!MatTextures[1]->IsValid())
-			{
-				MatTextures[1] = TextureManager::LoadFromFile("default_specular", true);
-				if(!MatTextures[1]->IsValid())
-				{
-					printf("Could not find file: %s\n", pMaterial.texSpecularPath);
-				}
-			}
+			m_SRVs[materialIdx * 6 + 1] = g_ZeroTexture->GetSRV();
 		}
-
 
 		// Load emissive
 		//MatTextures[2] = TextureManager::LoadFromFile(pMaterial.texEmissivePath, true);
 
 		// Load normal
 		MatTextures[3] = TextureManager::LoadFromFile(pMaterial.texNormalPath, false);
-		if(!MatTextures[3]->IsValid())
+		if (!MatTextures[3]->IsValid())
 		{
-			MatTextures[3] = TextureManager::LoadFromFile(std::string(pMaterial.texDiffusePath) + "_normal", false);
-			if(!MatTextures[3]->IsValid())
-			{
-				MatTextures[3] = TextureManager::LoadFromFile("default_normal", false);
-				if(!MatTextures[3]->IsValid())
-				{
-					printf("Could not find file: %s\n", pMaterial.texNormalPath);
-				}
-			}
+			printf("Unsupported image format for file: %s\n", pMaterial.texNormalPath);
 		}
-
 
 		// Load lightmap
 		//MatTextures[4] = TextureManager::LoadFromFile(pMaterial.texLightmapPath, true);
@@ -229,10 +219,17 @@ void Model::LoadTextures(void)
 		// Load reflection
 		//MatTextures[5] = TextureManager::LoadFromFile(pMaterial.texReflectionPath, true);
 
+		auto setIfMissing = [](D3D12_CPU_DESCRIPTOR_HANDLE *srvs, int index, D3D12_CPU_DESCRIPTOR_HANDLE value)
+		{
+			if (srvs[index].ptr == NULL)
+				srvs[index] = value;
+		};
+		
 		m_SRVs[materialIdx * 6 + 0] = MatTextures[0]->GetSRV();
-		m_SRVs[materialIdx * 6 + 1] = MatTextures[1]->GetSRV();
-		m_SRVs[materialIdx * 6 + 2] = MatTextures[0]->GetSRV();
-		m_SRVs[materialIdx * 6 + 3] = MatTextures[3]->GetSRV();
+		setIfMissing(m_SRVs, materialIdx * 6 + 1, MatTextures[1]->GetSRV());
+		
+		m_SRVs[materialIdx * 6 + 2] = MatTextures[0]->GetSRV();	
+		setIfMissing(m_SRVs, materialIdx * 6 + 3, MatTextures[3]->GetSRV());
 		m_SRVs[materialIdx * 6 + 4] = MatTextures[0]->GetSRV();
 		m_SRVs[materialIdx * 6 + 5] = MatTextures[0]->GetSRV();
 	}

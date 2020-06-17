@@ -261,15 +261,6 @@ const ManagedTexture* TextureManager::LoadFromFile( const std::wstring& fileName
     if (!Tex->IsValid())
     {
         Tex = LoadTGAFromFile( CatPath + L".tga", sRGB );
-	    if(!Tex->IsValid())
-	    {
-	        printf("Unsupported image format for file: %ws\n", fileName.c_str());
-	    }
-    }
-
-    if(Tex->IsValid())
-    {
-        printf("Imported image for file: %ws\n", fileName.c_str());
     }
 	
     return Tex;
