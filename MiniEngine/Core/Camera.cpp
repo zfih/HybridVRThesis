@@ -226,7 +226,7 @@ void VRCamera::Setup(float nearPlane, float midPlane,
 	float farPlane, bool reverseZ, ScreenTextureData& Data)
 {
 	//TODO: Maybe find a better value.
-	const float BlendRegionSize = midPlane / 5.1f;
+	const float BlendRegionSize = midPlane / 1.1f;
     VROffset = Vector3(0, 0, 0);
 	if (VR::GetHMD()) // TODO: Have setting for this we can check
 	{
