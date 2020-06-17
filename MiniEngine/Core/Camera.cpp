@@ -237,7 +237,7 @@ void VRCamera::Setup(float nearPlane, float midPlane,
 			m_cameras[i].ReverseZ(reverseZ);
 			m_eyeToHead[i] = VR::GetEyeToHeadTransform(vr::EVREye(i));
 			GetHMDProjVals(vr::EVREye(i));
-			m_eyeProj[i] = CustomProj(Cam::CameraType(i), nearPlane, midPlane);
+			m_eyeProj[i] = CustomProj(Cam::CameraType(i), nearPlane, midPlane + BlendRegionSize / 2);
 		}
 
 		m_IPD = calcIPD(m_eyeToHead[0], m_eyeToHead[1]);

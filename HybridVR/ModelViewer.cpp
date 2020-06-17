@@ -244,6 +244,7 @@ private:
 
 	RootSignature m_RootSig;
 	GraphicsPSO m_DepthPSO;
+	GraphicsPSO m_CenterDepthPSO;
 	GraphicsPSO m_CutoutDepthPSO;
 	GraphicsPSO m_ModelPSO;
 	GraphicsPSO m_CutoutModelPSO;
@@ -972,8 +973,7 @@ void D3D12RaytracingMiniEngineSample::Startup(void)
 	m_DepthPSO.SetRasterizerState(RasterizerDefault);
 	m_DepthPSO.SetBlendState(BlendNoColorWrite);
 
-	// TODO(freemedude 09:10 05-05): Possibly wrong DS State
-	m_DepthPSO.SetDepthStencilState(DepthReadWriteStencilReadState);
+	m_DepthPSO.SetDepthStencilState(DepthReadWriteStencilReadWriteState);
 	m_DepthPSO.SetInputLayout(_countof(vertElem), vertElem);
 	m_DepthPSO.SetPrimitiveTopologyType(D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE);
 	m_DepthPSO.SetRenderTargetFormats(0, nullptr, DepthFormat);
@@ -982,8 +982,12 @@ void D3D12RaytracingMiniEngineSample::Startup(void)
 	// Make a copy of the desc before we mess with it
 	m_CutoutDepthPSO = m_DepthPSO;
 	m_ShadowPSO = m_DepthPSO;
+	
+	m_CenterDepthPSO = m_DepthPSO;
+	m_CenterDepthPSO.SetDepthStencilState(DepthReadWriteStencilReadState);
 
 	m_DepthPSO.Finalize();
+	m_CenterDepthPSO.Finalize();
 
 	// Depth-only shading but with alpha testing
 
@@ -1851,7 +1855,14 @@ void D3D12RaytracingMiniEngineSample::RenderPrepass(
 	{
 		ScopedTimer _prof(L"Z PrePass", Ctx);
 
-		Ctx.SetStencilRef(0);
+		if (CameraType == Cam::kCenter)
+		{
+			Ctx.SetStencilRef(0x0);
+		}
+		else
+		{
+			Ctx.SetStencilRef(0x2);
+		}
 
 		Ctx.SetDynamicConstantBufferView(1, sizeof(Constants), &Constants);
 		{
@@ -1869,7 +1880,15 @@ void D3D12RaytracingMiniEngineSample::RenderPrepass(
 			}
 			//Ctx.ClearDepth(g_SceneDepthBuffer, CameraType);
 
-			Ctx.SetPipelineState(m_DepthPSO);
+			if(CameraType == Cam::kCenter)
+			{
+				Ctx.SetPipelineState(m_CenterDepthPSO);
+			}
+			else
+			{
+				Ctx.SetPipelineState(m_DepthPSO);
+			}
+			
 
 			Ctx.SetViewportAndScissor(m_MainViewport, m_MainScissor);
 

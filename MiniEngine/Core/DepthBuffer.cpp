@@ -26,7 +26,7 @@ void DepthBuffer::Create(const std::wstring& Name, uint32_t Width, uint32_t Heig
 	                                                 D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL);
 	D3D12_CLEAR_VALUE ClearValue = {};
 	ClearValue.Format = Format;
-	ClearValue.DepthStencil.Stencil = 0xFF;
+	ClearValue.DepthStencil.Stencil = 0x0;
 
 	m_ClearStencil = ClearValue.DepthStencil.Stencil;
 
@@ -43,7 +43,7 @@ void DepthBuffer::Create(const std::wstring& Name, uint32_t Width, uint32_t Heig
 
 	D3D12_CLEAR_VALUE ClearValue = {};
 	ClearValue.Format = Format;
-	ClearValue.DepthStencil.Stencil = 0xFF;
+	ClearValue.DepthStencil.Stencil = 0x0;
 
 	m_ClearStencil = ClearValue.DepthStencil.Stencil;
 
@@ -72,7 +72,7 @@ void DepthBuffer::CreateArray(const std::wstring& Name, uint32_t Width, uint32_t
 	D3D12_CLEAR_VALUE ClearValue = {};
 	ClearValue.Format = Format;
 	ClearValue.DepthStencil.Depth = 0;
-	ClearValue.DepthStencil.Stencil = 0xFF;
+	ClearValue.DepthStencil.Stencil = 0x0;
 
 	m_ClearStencil = ClearValue.DepthStencil.Stencil;
 

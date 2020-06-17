@@ -969,7 +969,7 @@ void Graphics::HiddenMeshDepthPrepass()
 	// Set pipelinestate
     context.SetRootSignature(HiddenMeshDepthRS);
     context.SetPipelineState(HiddenMeshDepthPSO);
-    context.SetStencilRef(0x0);
+    context.SetStencilRef(0xff);
     context.SetViewportAndScissor(0, 0, g_SceneDepthBuffer.GetWidth(), g_SceneDepthBuffer.GetHeight());
 
     auto renderEye = [&](StructuredBuffer& Buffer, Cam::CameraType CameraType)
