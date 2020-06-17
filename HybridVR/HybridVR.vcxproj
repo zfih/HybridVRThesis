@@ -325,14 +325,12 @@
       </Message>
     </PostBuildEvent>
     <PostBuildEvent>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">
-      </Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">xcopy /y /d "$(SolutionDir)Libraries\OpenVR\bin\*.dll" "$(OutDir)"</Command>
       <Message Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">
       </Message>
     </PostBuildEvent>
     <PostBuildEvent>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-      </Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">xcopy /y /d "$(SolutionDir)Libraries\OpenVR\bin\*.dll" "$(OutDir)"</Command>
       <Message Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
       </Message>
     </PostBuildEvent>
