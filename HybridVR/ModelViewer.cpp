@@ -1685,6 +1685,45 @@ void D3D12RaytracingMiniEngineSample::RenderScene(UINT curCam)
 // Tests traversal
 //
 
+DynamicCB g_create_dynamicCb(
+	CommandContext &Context,
+	const Camera &Camera, 
+	const ColorBuffer &colorTarget,
+	ByteAddressBuffer &Buffer)
+{
+	DynamicCB inputs = g_dynamicCb;
+	auto m0 = Camera.GetViewProjMatrix();
+	auto m1 = Transpose(Invert(m0));
+
+	memcpy(&inputs.cameraToWorld, &m1, sizeof(inputs.cameraToWorld));
+	memcpy(&inputs.worldCameraPosition, &Camera.GetPosition(), sizeof(inputs.worldCameraPosition));
+	inputs.resolution.x = (float)colorTarget.GetWidth();
+	inputs.resolution.y = (float)colorTarget.GetHeight();
+
+	Context.WriteBuffer(Buffer, 0, &inputs, sizeof(inputs));
+
+	return inputs;
+}
+
+HitShaderConstants g_create_hit_shader_constants(
+	CommandContext &Context, 
+	const DynamicCB &Inputs, 
+	ColorBuffer &ColorTarget,
+	ByteAddressBuffer &Buffer)
+{
+	HitShaderConstants hitShaderConstants = {};
+	hitShaderConstants.IsReflection = false;
+	Context.WriteBuffer(Buffer, 0, &hitShaderConstants, sizeof(hitShaderConstants));
+	Context.TransitionResource(Buffer, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER);
+	Context.TransitionResource(Buffer, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER);
+	Context.TransitionResource(ColorTarget, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+	Context.FlushResourceBarriers();
+
+	return hitShaderConstants;
+
+}
+
+
 void Raytracebarycentrics(
 	CommandContext& context,
 	const Math::Camera& camera,
@@ -1693,16 +1732,8 @@ void Raytracebarycentrics(
 	ScopedTimer _p0(L"Raytracing barycentrics", context);
 
 	// Prepare constants
-	DynamicCB inputs = g_dynamicCb;
-
-	auto m0 = camera.GetViewProjMatrix();
-	auto m1 = Transpose(Invert(m0));
+	DynamicCB inputs = g_create_dynamicCb(context, camera, colorTarget, g_dynamicConstantBuffer);
 	
-	memcpy(&inputs.cameraToWorld, &m1, sizeof(inputs.cameraToWorld));
-	memcpy(&inputs.worldCameraPosition, &camera.GetPosition(), sizeof(inputs.worldCameraPosition));
-	inputs.resolution.x = (float)colorTarget.GetWidth();
-	inputs.resolution.y = (float)colorTarget.GetHeight();
-
 	HitShaderConstants hitShaderConstants = {};
 	hitShaderConstants.IsReflection = false;
 	context.WriteBuffer(g_hitConstantBuffer, 0, &hitShaderConstants, sizeof(hitShaderConstants));
@@ -1745,14 +1776,7 @@ void RaytracebarycentricsSSR(
 {
 	ScopedTimer _p0(L"Raytracing SSR barycentrics", context);
 
-	DynamicCB inputs = g_dynamicCb;
-	auto m0 = camera.GetViewProjMatrix();
-	auto m1 = Transpose(Invert(m0));
-	
-	memcpy(&inputs.cameraToWorld, &m1, sizeof(inputs.cameraToWorld));
-	memcpy(&inputs.worldCameraPosition, &camera.GetPosition(), sizeof(inputs.worldCameraPosition));
-	inputs.resolution.x = (float)colorTarget.GetWidth();
-	inputs.resolution.y = (float)colorTarget.GetHeight();
+	DynamicCB inputs = g_create_dynamicCb(context, camera, colorTarget, g_dynamicConstantBuffer);
 
 	HitShaderConstants hitShaderConstants = {};
 	hitShaderConstants.IsReflection = false;
@@ -1798,14 +1822,8 @@ void D3D12RaytracingMiniEngineSample::RaytraceShadows(
 {
 	ScopedTimer _p0(L"Raytracing Shadows", context);
 
-	DynamicCB inputs = g_dynamicCb;
-	auto m0 = camera.GetViewProjMatrix() ;
-	auto m1 = Transpose(Invert(m0));
-	
-	memcpy(&inputs.cameraToWorld, &m1, sizeof(inputs.cameraToWorld));
-	memcpy(&inputs.worldCameraPosition, &camera.GetPosition(), sizeof(inputs.worldCameraPosition));
-	inputs.resolution.x = (float)colorTarget.GetWidth();
-	inputs.resolution.y = (float)colorTarget.GetHeight();
+
+	DynamicCB inputs = g_create_dynamicCb(context, camera, colorTarget, g_dynamicConstantBuffer);
 
 	HitShaderConstants hitShaderConstants = {};
 	hitShaderConstants.sunDirection = m_SunDirection;
@@ -1857,14 +1875,8 @@ void D3D12RaytracingMiniEngineSample::RaytraceDiffuse(
 {
 	ScopedTimer _p0(L"RaytracingWithHitShader", context);
 
-	// Prepare constants
-	DynamicCB inputs = g_dynamicCb;
-	auto m0 = camera.GetViewProjMatrix();
-	auto m1 = Transpose(Invert(m0));
-	memcpy(&inputs.cameraToWorld, &m1, sizeof(inputs.cameraToWorld));
-	memcpy(&inputs.worldCameraPosition, &camera.GetPosition(), sizeof(inputs.worldCameraPosition));
-	inputs.resolution.x = (float)colorTarget.GetWidth();
-	inputs.resolution.y = (float)colorTarget.GetHeight();
+
+	DynamicCB inputs = g_create_dynamicCb(context, camera, colorTarget, g_dynamicConstantBuffer);
 
 	HitShaderConstants hitShaderConstants = {};
 	hitShaderConstants.sunDirection = m_SunDirection;
@@ -1915,14 +1927,8 @@ void D3D12RaytracingMiniEngineSample::RaytraceReflections(
 {
 	ScopedTimer _p0(L"RaytracingWithHitShader", context);
 
-	// Prepare constants
-	DynamicCB inputs = g_dynamicCb;
-	auto m0 = camera.GetViewProjMatrix();
-	auto m1 = Transpose(Invert(m0));
-	memcpy(&inputs.cameraToWorld, &m1, sizeof(inputs.cameraToWorld));
-	memcpy(&inputs.worldCameraPosition, &camera.GetPosition(), sizeof(inputs.worldCameraPosition));
-	inputs.resolution.x = (float)colorTarget.GetWidth();
-	inputs.resolution.y = (float)colorTarget.GetHeight();
+
+	DynamicCB inputs = g_create_dynamicCb(context, camera, colorTarget, g_dynamicConstantBuffer);
 
 	HitShaderConstants hitShaderConstants = {};
 	hitShaderConstants.sunDirection = m_SunDirection;
