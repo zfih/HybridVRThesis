@@ -112,7 +112,7 @@ namespace Settings
     const char* HDRModeLabels[] = { "HDR", "SDR", "Side-by-Side" };
     EnumVar HDRDebugMode("Graphics/Display/HDR Debug Mode", 0, 3, HDRModeLabels);
 
-    BoolVar VRDepthStencil("VR Depth Stencil", false);
+    BoolVar VRDepthStencil("VR Depth Stencil", true);
 
     enum { kBilinear, kBicubic, kSharpening, kFilterCount };
     const char* FilterLabels[] = { "Bilinear", "Bicubic", "Sharpening" };
@@ -961,7 +961,6 @@ void Graphics::HiddenMeshDepthPrepass()
     context.SetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
 	// Transition and clear depth
-    // TODO(freemedude 15:43 04-05): Maybe needs to be per subresource
     context.TransitionResource(g_SceneDepthBuffer, D3D12_RESOURCE_STATE_DEPTH_WRITE);
     context.TransitionResource(g_DisplayPlane[g_CurrentBuffer], D3D12_RESOURCE_STATE_RENDER_TARGET, true);
     context.ClearDepthAndStencil(g_SceneDepthBuffer);
@@ -969,7 +968,7 @@ void Graphics::HiddenMeshDepthPrepass()
 	// Set pipelinestate
     context.SetRootSignature(HiddenMeshDepthRS);
     context.SetPipelineState(HiddenMeshDepthPSO);
-    context.SetStencilRef(0xff);
+    context.SetStencilRef(0x0);
     context.SetViewportAndScissor(0, 0, g_SceneDepthBuffer.GetWidth(), g_SceneDepthBuffer.GetHeight());
 
     auto renderEye = [&](StructuredBuffer& Buffer, Cam::CameraType CameraType)

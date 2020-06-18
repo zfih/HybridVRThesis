@@ -973,7 +973,7 @@ void D3D12RaytracingMiniEngineSample::Startup(void)
 	m_DepthPSO.SetRasterizerState(RasterizerDefault);
 	m_DepthPSO.SetBlendState(BlendNoColorWrite);
 
-	m_DepthPSO.SetDepthStencilState(DepthReadWriteStencilReadWriteState);
+	m_DepthPSO.SetDepthStencilState(DepthReadWriteStencilWriteState);
 	m_DepthPSO.SetInputLayout(_countof(vertElem), vertElem);
 	m_DepthPSO.SetPrimitiveTopologyType(D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE);
 	m_DepthPSO.SetRenderTargetFormats(0, nullptr, DepthFormat);
@@ -1861,7 +1861,7 @@ void D3D12RaytracingMiniEngineSample::RenderPrepass(
 		}
 		else
 		{
-			Ctx.SetStencilRef(0x2);
+			Ctx.SetStencilRef(0x1);
 		}
 
 		Ctx.SetDynamicConstantBufferView(1, sizeof(Constants), &Constants);
@@ -1888,7 +1888,7 @@ void D3D12RaytracingMiniEngineSample::RenderPrepass(
 			{
 				Ctx.SetPipelineState(m_DepthPSO);
 			}
-			
+
 
 			Ctx.SetViewportAndScissor(m_MainViewport, m_MainScissor);
 

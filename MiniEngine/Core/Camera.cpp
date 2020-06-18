@@ -237,7 +237,7 @@ void VRCamera::Setup(float nearPlane, float midPlane,
 			m_cameras[i].ReverseZ(reverseZ);
 			m_eyeToHead[i] = VR::GetEyeToHeadTransform(vr::EVREye(i));
 			GetHMDProjVals(vr::EVREye(i));
-			m_eyeProj[i] = CustomProj(Cam::CameraType(i), nearPlane, midPlane + BlendRegionSize / 2);
+			m_eyeProj[i] = CustomProj(Cam::CameraType(i), nearPlane, midPlane + BlendRegionSize);
 		}
 
 		m_IPD = calcIPD(m_eyeToHead[0], m_eyeToHead[1]);
@@ -252,8 +252,8 @@ void VRCamera::Setup(float nearPlane, float midPlane,
 	}
 	else
 	{
-		m_cameras[Cam::kLeft].SetZRange(nearPlane, midPlane);
-		m_cameras[Cam::kRight].SetZRange(nearPlane, midPlane);
+		m_cameras[Cam::kLeft].SetZRange(nearPlane, midPlane + BlendRegionSize);
+		m_cameras[Cam::kRight].SetZRange(nearPlane, midPlane + BlendRegionSize);
 		m_cameras[Cam::kCenter].SetZRange(midPlane - BlendRegionSize, farPlane);
 	}
 
@@ -297,13 +297,16 @@ void VRCamera::Setup(float nearPlane, float midPlane,
 			translation = 0.005f;
 		}
 
-		if (Camera == Cam::kLeft)
+		if(!VR::GetHMD)
 		{
-			mapping = mapping * Matrix4::MakeTranslate({ translation, 0, 0 });
-		}
-		else
-		{
-			mapping = mapping * Matrix4::MakeTranslate({ -translation, 0, 0 });
+			if (Camera == Cam::kLeft)
+			{
+				mapping = mapping * Matrix4::MakeTranslate({ translation, 0, 0 });
+			}
+			else
+			{
+				mapping = mapping * Matrix4::MakeTranslate({ -translation, 0, 0 });
+			}
 		}
 
 		float depth = 1;
