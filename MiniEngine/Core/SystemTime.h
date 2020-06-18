@@ -53,10 +53,14 @@ class CpuTimer
 {
 public:
 
+#define MAX_TICKS 120
+	
     CpuTimer()
     {
         m_StartTick = 0ll;
         m_ElapsedTicks = 0ll;
+
+        memset(m_pastTicks, 0, MAX_TICKS * sizeof(int64_t));
     }
 
     void Start()
@@ -76,6 +80,9 @@ public:
 
     void Reset()
     {
+        m_pastTicks[m_currentTick] = m_ElapsedTicks;
+        m_currentTick = (m_currentTick + 1) % MAX_TICKS;
+    	
         m_ElapsedTicks = 0ll;
         m_StartTick = 0ll;
     }
@@ -85,8 +92,30 @@ public:
         return SystemTime::TicksToSeconds(m_ElapsedTicks);
     }
 
+	double GetTimeMilliseconds() const
+    {
+        return SystemTime::TicksToMillisecs(m_ElapsedTicks);
+    }
+
+	double GetAverageTimeMilliseconds() const
+    {
+        int64_t avg = 0;
+    	
+	    for (long long tick : m_pastTicks)
+	    {
+            avg += tick;
+	    }
+
+        avg /= MAX_TICKS;
+
+        return SystemTime::TicksToMillisecs(avg);
+    }
+
 private:
 
     int64_t m_StartTick;
     int64_t m_ElapsedTicks;
+
+    UINT m_currentTick = 0;
+    int64_t m_pastTicks[MAX_TICKS];
 };

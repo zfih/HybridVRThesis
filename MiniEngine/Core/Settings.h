@@ -1,7 +1,13 @@
 #pragma once
 
+#include "SystemTime.h"
+
 namespace Settings
 {
+	// Profiling
+	extern CpuTimer g_timer;
+	// Profiling
+	
 	// ImGui
 	extern BoolVar UseImGui;
 	// ImGui
