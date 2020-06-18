@@ -88,8 +88,8 @@ namespace GameCore
         }
 
         game.RenderShadowMap();
-        game.RenderScene(0);
         game.RenderScene(1);
+        game.RenderScene(0);
 
         PostEffects::Render(0);
         PostEffects::Render(1);
