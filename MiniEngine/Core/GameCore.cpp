@@ -45,11 +45,16 @@ namespace Graphics
     extern ColorBuffer g_GenMipsBuffer;
 }
 
+namespace Settings
+{
+    CpuTimer g_NoSyncTimer(true, "NoSync");
+}
+
 namespace GameCore
 {
     using namespace Graphics;
     const bool TestGenerateMips = false;
-
+	
     void InitializeApplication( IGameApp& game )
     {
         Graphics::Initialize();
@@ -57,6 +62,8 @@ namespace GameCore
         GameInput::Initialize();
         EngineTuning::Initialize();
 
+        //Settings::g_NoSyncTimer;
+    	
         game.Startup();
     }
 
@@ -69,6 +76,27 @@ namespace GameCore
 
     bool UpdateApplication( IGameApp& game )
     {
+        if (!Settings::UseImGui)
+        {
+            GraphicsContext& UiContext = GraphicsContext::Begin(L"Render UI");
+            UiContext.TransitionResource(g_OverlayBuffer, D3D12_RESOURCE_STATE_RENDER_TARGET, true);
+            UiContext.ClearColor(g_OverlayBuffer);
+            UiContext.SetRenderTarget(g_OverlayBuffer.GetRTV());
+            UiContext.SetViewportAndScissor(0, 0, g_OverlayBuffer.GetWidth(), g_OverlayBuffer.GetHeight());
+            game.RenderUI(UiContext);
+
+            EngineTuning::Display(UiContext, 10.0f, 40.0f, 1900.0f, 1040.0f);
+
+            UiContext.Finish();
+        }
+        else
+        {
+            ImGui::BuildGUI(LODGlobal::g_camera, LODGlobal::g_cameraController);
+        	ImGui::RenderGUI();
+        }
+    	
+        Settings::g_NoSyncTimer.Reset();
+        Settings::g_NoSyncTimer.Start();
         EngineProfiling::Update();
 
         float DeltaTime = Graphics::GetFrameTime();
@@ -107,25 +135,6 @@ namespace GameCore
             EngineProfiling::EndBlock(&MipsContext);
             
             MipsContext.Finish();
-        }
-
-    	if(!Settings::UseImGui)
-    	{
-			GraphicsContext& UiContext = GraphicsContext::Begin(L"Render UI");
-			UiContext.TransitionResource(g_OverlayBuffer, D3D12_RESOURCE_STATE_RENDER_TARGET, true);
-			UiContext.ClearColor(g_OverlayBuffer);
-			UiContext.SetRenderTarget(g_OverlayBuffer.GetRTV());
-			UiContext.SetViewportAndScissor(0, 0, g_OverlayBuffer.GetWidth(), g_OverlayBuffer.GetHeight());
-			game.RenderUI(UiContext);
-
-			EngineTuning::Display( UiContext, 10.0f, 40.0f, 1900.0f, 1040.0f );
-
-			UiContext.Finish();
-    	}
-        else
-        {
-            ImGui::BuildGUI(LODGlobal::g_camera, LODGlobal::g_cameraController);
-            ImGui::RenderGUI();
         }
     	
         Graphics::Present();
