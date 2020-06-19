@@ -185,17 +185,19 @@ void Model::LoadTextures(void)
 	g_ZeroTexture->Create(
 		textureWidth, textureHeight, 
 		DXGI_FORMAT_B8G8R8A8_UNORM, zeroBufferData);
+
 	
 	for(uint32_t materialIdx = 0; materialIdx < m_Header.materialCount; ++materialIdx)
 	{
 		const Material &pMaterial = m_pMaterial[materialIdx];
-
+		
 		// Load diffuse
 		MatTextures[0] = TextureManager::LoadFromFile(pMaterial.texDiffusePath, true);
 		if (!MatTextures[0]->IsValid())
 		{
-			printf("Unsupported image format for file: %s\n", pMaterial.texDiffusePath);
+			printf("Could not import asset: %s\n", pMaterial.texDiffusePath);
 		}
+
 		// Load specular
 		MatTextures[1] = TextureManager::LoadFromFile(pMaterial.texSpecularPath, true);
 		if (!MatTextures[1]->IsValid())
@@ -210,7 +212,7 @@ void Model::LoadTextures(void)
 		MatTextures[3] = TextureManager::LoadFromFile(pMaterial.texNormalPath, false);
 		if (!MatTextures[3]->IsValid())
 		{
-			printf("Unsupported image format for file: %s\n", pMaterial.texNormalPath);
+			m_SRVs[materialIdx * 6 + 1] = g_ZeroTexture->GetSRV();
 		}
 
 		// Load lightmap

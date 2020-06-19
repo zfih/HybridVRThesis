@@ -97,7 +97,7 @@ __declspec(align(16)) struct HitShaderConstants
 };
 
 ByteAddressBuffer g_hitConstantBuffer;
-ByteAddressBuffer g_dynamicConstantBuffer[2];
+ByteAddressBuffer g_dynamicConstantBuffer;
 
 D3D12_GPU_DESCRIPTOR_HANDLE g_GpuSceneMaterialSrvs[200];
 D3D12_CPU_DESCRIPTOR_HANDLE g_SceneMeshInfo;
@@ -128,6 +128,7 @@ const static UINT MaxRayRecursion = 2;
 const static UINT c_NumCameraPositions = 5;
 
 //// SCENE
+
 enum class Scene
 {
 	kBistro = 0,
@@ -137,30 +138,43 @@ enum class Scene
 	kUnknown
 };
 
-Scene g_CurrentScene = Scene::kUnknown;
-Matrix4 g_SceneMatrix;
-std::pair<std::string, std::wstring> g_ScenePath;
-
-void g_SetScene(Scene Scene)
+struct SceneData
 {
-	switch(Scene)
+	Scene Scene;
+	Matrix4 Matrix;
+	std::string ModelPath;
+	std::wstring TextureFolderPath;
+	std::vector<std::string> Reflective;
+	std::vector<std::string> CutOuts;
+};
+
+SceneData g_Scene {};
+
+void g_CreateScene(Scene Scene)
+{
+	g_Scene.Scene = Scene;
+
+	switch (Scene)
 	{
-	case Scene::kBistro:
-		g_CurrentScene = Scene;
-		g_SceneMatrix = Matrix4::MakeRotationX(-XM_PIDIV2);
-		g_ScenePath.first = ASSET_DIRECTORY "Models/bistro.h3d";
-		g_ScenePath.second = ASSET_DIRECTORY L"Textures/bistro/";
-		break;
+	case Scene::kBistro: {
+		g_Scene.Matrix = Matrix4::MakeRotationX(-XM_PIDIV2);
+		g_Scene.ModelPath = ASSET_DIRECTORY "Models/bistro.h3d";
+		g_Scene.TextureFolderPath = ASSET_DIRECTORY L"Textures/bistro/";
+		g_Scene.Reflective = { "floor", "glass" };
+		g_Scene.CutOuts = {  };
+	} break;
 	case Scene::kSponza:
-		g_CurrentScene = Scene;
-		g_SceneMatrix = Matrix4(XMMatrixIdentity());
-		g_ScenePath.first = ASSET_DIRECTORY "Models/sponza.h3d";
-		g_ScenePath.second = ASSET_DIRECTORY L"Textures/sponza/";
-		break;
+	{
+		g_Scene.Matrix = Matrix4(XMMatrixIdentity());
+		g_Scene.ModelPath = ASSET_DIRECTORY "Models/sponza.h3d";
+		g_Scene.TextureFolderPath = ASSET_DIRECTORY L"Textures/sponza/";
+		g_Scene.Reflective = { "floor" };
+		g_Scene.CutOuts = { "thorn", "plant", "chain" };
+	} break;
 	default:
-		g_SetScene(Scene::kSponza);
+		g_CreateScene(Scene::kSponza);
 		break;
-		
+
 	}
 }
 
@@ -254,7 +268,7 @@ private:
 
 int wmain(int argc, wchar_t** argv)
 {
-	g_SetScene(Scene::kBistro);
+	g_CreateScene(Scene::kBistro);
 	
 #if _DEBUG
 	CComPtr<ID3D12Debug> debugInterface;
@@ -857,12 +871,34 @@ void InitializeStateObjects(const Model& model, UINT numMeshes)
 	}
 }
 
-int pow4(int **&b)
+// Returns true if string s
+bool string_contains_any_from(
+	const std::string &string, 
+	const std::vector<std::string>& words)
 {
-	int*& bPtrRef = *b;
-	int& bRef = *bPtrRef;
-	int bVal = bRef;
-	return bVal * bRef * *bPtrRef * **b;
+	for(const std::string &part : words)
+		if(string.find(part) != std::string::npos) return true;
+	return false;
+}
+
+
+void set_hard_coded_material_properties(
+	Model &Model, 
+	std::vector<bool> &Cutout, 
+	std::vector<bool> &Reflective)
+{
+	Cutout.resize(Model.m_Header.materialCount);
+	Reflective.resize(Model.m_Header.materialCount);
+
+	for (uint32_t i = 0; i < Model.m_Header.materialCount; ++i)
+	{
+		const std::string path = Model.m_pMaterial[i].texDiffusePath;
+
+		Reflective[i] = string_contains_any_from(path, g_Scene.Reflective);
+
+		Cutout[i] = string_contains_any_from(path, g_Scene.CutOuts);
+	}
+
 }
 
 void D3D12RaytracingMiniEngineSample::Startup(void)
@@ -984,44 +1020,17 @@ void D3D12RaytracingMiniEngineSample::Startup(void)
 
 
 	
-	TextureManager::Initialize(g_ScenePath.second);
-	bool bModelLoadSuccess = m_Model.Load(g_ScenePath.first.c_str());
+	TextureManager::Initialize(g_Scene.TextureFolderPath);
+	bool bModelLoadSuccess = m_Model.Load(g_Scene.ModelPath.c_str());
 	ASSERT(bModelLoadSuccess, "Failed to load model");
 	ASSERT(m_Model.m_Header.meshCount > 0, "Model contains no meshes");
 
-	// The caller of this function can override which materials are considered cutouts
-	m_pMaterialIsCutout.resize(m_Model.m_Header.materialCount);
-	m_pMaterialIsReflective.resize(m_Model.m_Header.materialCount);
-	
-	// TODO: Fix what we hardcode -.-
-	for (uint32_t i = 0; i < m_Model.m_Header.materialCount; ++i)
-	{
-		m_pMaterialIsReflective[i] = 1;
-		const Model::Material& mat = m_Model.m_pMaterial[i];
-		if (std::string(mat.texDiffusePath).find("thorn") != std::string::npos ||
-			std::string(mat.texDiffusePath).find("plant") != std::string::npos ||
-			std::string(mat.texDiffusePath).find("chain") != std::string::npos)
-		{
-			m_pMaterialIsCutout[i] = true;
-		}
-		else
-		{
-			m_pMaterialIsCutout[i] = false;
-		}
-
-		if (std::string(mat.texDiffusePath).find("floor") != std::string::npos)
-		{
-			m_pMaterialIsReflective[i] = true;
-		}
-		else
-		{
-			m_pMaterialIsReflective[i] = false;
-		}
-	}
+	set_hard_coded_material_properties(
+		m_Model, m_pMaterialIsCutout, m_pMaterialIsReflective
+	);
 
 	g_hitConstantBuffer.Create(L"Hit Constant Buffer", 1, sizeof(HitShaderConstants));
-	g_dynamicConstantBuffer[VRCamera::LEFT].Create(L"Dynamic Constant Buffer", 1, sizeof(DynamicCB));
-	g_dynamicConstantBuffer[VRCamera::RIGHT].Create(L"Dynamic Constant Buffer", 1, sizeof(DynamicCB));
+	g_dynamicConstantBuffer.Create(L"Dynamic Constant Buffer", 1, sizeof(DynamicCB));
 
 	InitializeSceneInfo(m_Model);
 	InitializeViews(m_Model);
@@ -1199,8 +1208,7 @@ void D3D12RaytracingMiniEngineSample::RenderObjects(GraphicsContext& gfxContext,
 
 	VSConstants constants;
 
-	Matrix4 rotation = Matrix4::MakeRotationX(-XM_PIDIV2);
-	Matrix4 model = rotation;
+	Matrix4 model = g_Scene.Matrix;
 	constants.modelToProjection = ViewProjMat * model;
 	constants.curCam = curCam;
 
@@ -1365,7 +1373,7 @@ void D3D12RaytracingMiniEngineSample::CreateRayTraceAccelerationStructures(UINT 
 		instanceDesc.Transform[1][1] = 1.0f;
 		instanceDesc.Transform[2][2] = 1.0f;
 
-		XMStoreFloat3x4((XMFLOAT3X4 *)instanceDesc.Transform, g_SceneMatrix);
+		XMStoreFloat3x4((XMFLOAT3X4 *)instanceDesc.Transform, g_Scene.Matrix);
 
 		instanceDesc.AccelerationStructure = g_bvh_bottomLevelAccelerationStructures[i]->GetGPUVirtualAddress();
 		instanceDesc.Flags = 0;
@@ -1691,11 +1699,6 @@ void g_initialize_dynamicCb(
 	inputs.curCam = CurCam;
 
 	Matrix4 viewProj = Camera[CurCam]->GetViewProjMatrix();
-	if(inputs.curCam == VRCamera::LEFT)
-	{
-		viewProj = Matrix4::MakeScale(1);
-	}
-
 	const Matrix4 transInvViewProj = Transpose(Invert(viewProj));
 	memcpy(&inputs.cameraToWorld, &transInvViewProj, sizeof(inputs.cameraToWorld));
 
@@ -1715,25 +1718,32 @@ void Raytracebarycentrics(
 {
 	ScopedTimer _p0(L"Raytracing barycentrics", context);
 
+	// Create hit constants
 	HitShaderConstants hitShaderConstants = {};
 	hitShaderConstants.IsReflection = false;
 	context.WriteBuffer(g_hitConstantBuffer, 0, &hitShaderConstants, sizeof(hitShaderConstants));
 
+	// Transition resources
+	// HITCB VERTEX AND CONSTANT BUFFER
+	// DynCB VERTEX AND CONSTANT BUFFER
+	// ColorTarget UAV
 	context.TransitionResource(g_hitConstantBuffer, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER);
-	context.TransitionResource(g_dynamicConstantBuffer[CurCam], D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER);
+	context.TransitionResource(g_dynamicConstantBuffer, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER);
 	context.TransitionResource(colorTarget, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 	context.FlushResourceBarriers();
 
+	// Set bind resources
 	CComPtr<ID3D12GraphicsCommandList4> pCmdList;
 	context.GetCommandList()->QueryInterface(IID_PPV_ARGS(&pCmdList));
 
 	ID3D12DescriptorHeap* pDescriptorHeaps[] = {&g_pRaytracingDescriptorHeap->GetDescriptorHeap()};
 	pCmdList->SetDescriptorHeaps(ARRAYSIZE(pDescriptorHeaps), pDescriptorHeaps);
 
+	// 0,1,2,3,4,7 
 	pCmdList->SetComputeRootSignature(g_GlobalRaytracingRootSignature);
 	pCmdList->SetComputeRootDescriptorTable(0, g_SceneSrvs);
 	pCmdList->SetComputeRootConstantBufferView(1, g_hitConstantBuffer.GetGpuVirtualAddress());
-	pCmdList->SetComputeRootConstantBufferView(2, g_dynamicConstantBuffer[CurCam].GetGpuVirtualAddress());
+	pCmdList->SetComputeRootConstantBufferView(2, g_dynamicConstantBuffer.GetGpuVirtualAddress());
 	pCmdList->SetComputeRootDescriptorTable(4, g_OutputUAV);
 	pCmdList->SetComputeRootShaderResourceView(
 		7, g_bvh_topLevelAccelerationStructure->GetGPUVirtualAddress());
@@ -1760,7 +1770,7 @@ void RaytracebarycentricsSSR(
 	ComputeContext& ctx = context.GetComputeContext();
 	ID3D12GraphicsCommandList* pCommandList = context.GetCommandList();
 
-	ctx.TransitionResource(g_dynamicConstantBuffer[CurCam], D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER);
+	ctx.TransitionResource(g_dynamicConstantBuffer, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER);
 	ctx.TransitionResource(g_hitConstantBuffer, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER);
 	ctx.TransitionResource(normals, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 	ctx.TransitionResource(depth, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
@@ -1776,7 +1786,7 @@ void RaytracebarycentricsSSR(
 
 	pCommandList->SetComputeRootSignature(g_GlobalRaytracingRootSignature);
 	pCommandList->SetComputeRootConstantBufferView(1, g_hitConstantBuffer.GetGpuVirtualAddress());
-	pCommandList->SetComputeRootConstantBufferView(2, g_dynamicConstantBuffer[CurCam].GetGpuVirtualAddress());
+	pCommandList->SetComputeRootConstantBufferView(2, g_dynamicConstantBuffer.GetGpuVirtualAddress());
 	pCommandList->SetComputeRootDescriptorTable(3, g_DepthAndNormalsTable);
 	pCommandList->SetComputeRootDescriptorTable(4, g_OutputUAV);
 	pRaytracingCommandList->SetComputeRootShaderResourceView(
@@ -1787,6 +1797,7 @@ void RaytracebarycentricsSSR(
 	pRaytracingCommandList->SetPipelineState1(g_RaytracingInputs[Reflectionbarycentric].m_pPSO);
 	pRaytracingCommandList->DispatchRays(&dispatchRaysDesc);
 }
+
 
 void D3D12RaytracingMiniEngineSample::RaytraceShadows(
 	GraphicsContext& context,
@@ -1809,7 +1820,7 @@ void D3D12RaytracingMiniEngineSample::RaytraceShadows(
 	ComputeContext& ctx = context.GetComputeContext();
 	ID3D12GraphicsCommandList* pCommandList = context.GetCommandList();
 
-	ctx.TransitionResource(g_dynamicConstantBuffer[CurCam], D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER);
+	ctx.TransitionResource(g_dynamicConstantBuffer, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER);
 	ctx.TransitionResource(g_SceneNormalBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 	ctx.TransitionResource(g_SSAOFullScreen, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 	ctx.TransitionResource(g_hitConstantBuffer, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER);
@@ -1826,7 +1837,7 @@ void D3D12RaytracingMiniEngineSample::RaytraceShadows(
 
 	pCommandList->SetComputeRootSignature(g_GlobalRaytracingRootSignature);
 	pCommandList->SetComputeRootConstantBufferView(1, g_hitConstantBuffer.GetGpuVirtualAddress());
-	pCommandList->SetComputeRootConstantBufferView(2, g_dynamicConstantBuffer[CurCam]->GetGPUVirtualAddress());
+	pCommandList->SetComputeRootConstantBufferView(2, g_dynamicConstantBuffer->GetGPUVirtualAddress());
 	pCommandList->SetComputeRootDescriptorTable(4, g_OutputUAV);
 	pCommandList->SetComputeRootDescriptorTable(3, g_DepthAndNormalsTable);
 	pRaytracingCommandList->SetComputeRootShaderResourceView(
@@ -1856,7 +1867,7 @@ void D3D12RaytracingMiniEngineSample::RaytraceDiffuse(
 	hitShaderConstants.UseShadowRays = Settings::RayTracingMode == Settings::RTM_DIFFUSE_WITH_SHADOWRAYS;
 	context.WriteBuffer(g_hitConstantBuffer, 0, &hitShaderConstants, sizeof(hitShaderConstants));
 
-	context.TransitionResource(g_dynamicConstantBuffer[CurCam], D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER);
+	context.TransitionResource(g_dynamicConstantBuffer, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER);
 	context.TransitionResource(g_SSAOFullScreen, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 	context.TransitionResource(g_hitConstantBuffer, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER);
 	context.TransitionResource(g_ShadowBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
@@ -1874,7 +1885,7 @@ void D3D12RaytracingMiniEngineSample::RaytraceDiffuse(
 	pCommandList->SetComputeRootSignature(g_GlobalRaytracingRootSignature);
 	pCommandList->SetComputeRootDescriptorTable(0, g_SceneSrvs);
 	pCommandList->SetComputeRootConstantBufferView(1, g_hitConstantBuffer.GetGpuVirtualAddress());
-	pCommandList->SetComputeRootConstantBufferView(2, g_dynamicConstantBuffer[CurCam].GetGpuVirtualAddress());
+	pCommandList->SetComputeRootConstantBufferView(2, g_dynamicConstantBuffer.GetGpuVirtualAddress());
 	pCommandList->SetComputeRootDescriptorTable(4, g_OutputUAV);
 	pRaytracingCommandList->SetComputeRootShaderResourceView(
 		7, g_bvh_topLevelAccelerationStructure->GetGPUVirtualAddress());
@@ -1905,7 +1916,7 @@ void D3D12RaytracingMiniEngineSample::RaytraceReflections(
 	hitShaderConstants.UseShadowRays = false;
 	context.WriteBuffer(g_hitConstantBuffer, 0, &hitShaderConstants, sizeof(hitShaderConstants));
 
-	context.TransitionResource(g_dynamicConstantBuffer[CurCam], D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER);
+	context.TransitionResource(g_dynamicConstantBuffer, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER);
 	context.TransitionResource(g_SSAOFullScreen, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 	context.TransitionResource(depth, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 	context.TransitionResource(g_ShadowBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
@@ -1925,7 +1936,7 @@ void D3D12RaytracingMiniEngineSample::RaytraceReflections(
 	pCommandList->SetComputeRootSignature(g_GlobalRaytracingRootSignature);
 	pCommandList->SetComputeRootDescriptorTable(0, g_SceneSrvs);
 	pCommandList->SetComputeRootConstantBufferView(1, g_hitConstantBuffer.GetGpuVirtualAddress());
-	pCommandList->SetComputeRootConstantBufferView(2, g_dynamicConstantBuffer[CurCam].GetGpuVirtualAddress());
+	pCommandList->SetComputeRootConstantBufferView(2, g_dynamicConstantBuffer.GetGpuVirtualAddress());
 	pCommandList->SetComputeRootDescriptorTable(3, g_DepthAndNormalsTable);
 	pCommandList->SetComputeRootDescriptorTable(4, g_OutputUAV);
 	pRaytracingCommandList->SetComputeRootShaderResourceView(
@@ -1969,7 +1980,7 @@ void D3D12RaytracingMiniEngineSample::Raytrace(class GraphicsContext& gfxContext
 
 	gfxContext.TransitionResource(g_SSAOFullScreen, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 
-	g_initialize_dynamicCb(gfxContext, m_Camera, CurCam, g_SceneColorBuffer, g_dynamicConstantBuffer[CurCam]);
+	g_initialize_dynamicCb(gfxContext, m_Camera, CurCam, g_SceneColorBuffer, g_dynamicConstantBuffer);
 
 	switch (Settings::RayTracingMode)
 	{
