@@ -73,6 +73,8 @@ void ImGui::BuildGUI()
 
     ImGui::Text("Application average %3.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
     ImGui::Text("Application average %3.3f ms/frame render (no sync)", Settings::g_timer.GetAverageTimeMilliseconds());
+    ImGui::Text("Longest frame %3.3f ms/frame : Shortest frame %3.3f ms/frame",
+        Settings::g_timer.GetLongestTickToMilliseconds(), Settings::g_timer.GetShortestTickToMilliseconds());
 	
     const float indent = 10.0f;
 
