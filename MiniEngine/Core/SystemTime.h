@@ -59,8 +59,14 @@ class CpuTimer
 public:
 #define MAX_TICKS 120
 
-// Force logging to file off for day to day run sessions
+#ifdef _DEBUG
+	
+// Force logging to file off for day to day run sessions.
+// Overrides logging for all timers with false.
+// Logging options should not be forced on non Debug builds.
 #define FORCE_NO_LOG
+	
+#endif
 	
     CpuTimer(bool logging = false, std::string name = "UNKNOWN")
     {
