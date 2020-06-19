@@ -99,7 +99,7 @@ __declspec(align(16)) struct HitShaderConstants
 ByteAddressBuffer g_hitConstantBuffer;
 ByteAddressBuffer g_dynamicConstantBuffer;
 
-D3D12_GPU_DESCRIPTOR_HANDLE g_GpuSceneMaterialSrvs[200];
+D3D12_GPU_DESCRIPTOR_HANDLE *g_GpuSceneMaterialSrvs;
 D3D12_CPU_DESCRIPTOR_HANDLE g_SceneMeshInfo;
 D3D12_CPU_DESCRIPTOR_HANDLE g_SceneIndices;
 
@@ -160,7 +160,7 @@ void g_CreateScene(Scene Scene)
 		g_Scene.Matrix = Matrix4::MakeRotationX(-XM_PIDIV2);
 		g_Scene.ModelPath = ASSET_DIRECTORY "Models/bistro.h3d";
 		g_Scene.TextureFolderPath = ASSET_DIRECTORY L"Textures/bistro/";
-		g_Scene.Reflective = { "floor", "glass" };
+		g_Scene.Reflective = { "floor", "glass", "metal" };
 		g_Scene.CutOuts = {  };
 	} break;
 	case Scene::kSponza:
@@ -178,7 +178,9 @@ void g_CreateScene(Scene Scene)
 	}
 }
 
-//// SCENE END
+// SCENE END
+
+static const int MAX_RT_DESCRIPTORS = 200;
 
 struct MaterialRootConstant
 {
@@ -186,7 +188,10 @@ struct MaterialRootConstant
 };
 
 RaytracingDispatchRayInputs g_RaytracingInputs[RaytracingTypes::NumTypes];
-D3D12_CPU_DESCRIPTOR_HANDLE g_bvh_attributeSrvs[34]; // TODO: Oh boi
+
+// TODO: Oh boi
+D3D12_CPU_DESCRIPTOR_HANDLE g_bvh_attributeSrvs[34];
+
 bool g_RayTraceSupport = false;
 
 class D3D12RaytracingMiniEngineSample : public GameCore::IGameApp
@@ -352,20 +357,25 @@ void InitializeSceneInfo(
 	std::vector<RayTraceMeshInfo> meshInfoData(model.m_Header.meshCount);
 	for (UINT i = 0; i < model.m_Header.meshCount; ++i)
 	{
-		meshInfoData[i].m_indexOffsetBytes = model.m_pMesh[i].indexDataByteOffset;
-		meshInfoData[i].m_uvAttributeOffsetBytes = model.m_pMesh[i].vertexDataByteOffset + model.m_pMesh[i].attrib[Model
-			::attrib_texcoord0].offset;
-		meshInfoData[i].m_normalAttributeOffsetBytes = model.m_pMesh[i].vertexDataByteOffset + model.m_pMesh[i].attrib[
-			Model::attrib_normal].offset;
-		meshInfoData[i].m_positionAttributeOffsetBytes = model.m_pMesh[i].vertexDataByteOffset + model.m_pMesh[i].attrib
-			[Model::attrib_position].offset;
-		meshInfoData[i].m_tangentAttributeOffsetBytes = model.m_pMesh[i].vertexDataByteOffset + model.m_pMesh[i].attrib[
-			Model::attrib_tangent].offset;
-		meshInfoData[i].m_bitangentAttributeOffsetBytes = model.m_pMesh[i].vertexDataByteOffset + model.m_pMesh[i].
-			attrib[Model::attrib_bitangent].offset;
-		meshInfoData[i].m_attributeStrideBytes = model.m_pMesh[i].vertexStride;
-		meshInfoData[i].m_materialInstanceId = model.m_pMesh[i].materialIndex;
-		ASSERT(meshInfoData[i].m_materialInstanceId < 200);
+		RayTraceMeshInfo& data = meshInfoData[i];
+		Model::Mesh& mesh = model.m_pMesh[i];
+		
+		data.m_indexOffsetBytes = mesh.indexDataByteOffset;
+
+		const auto offset = [&](const int att) -> uint
+		{
+			return mesh.vertexDataByteOffset + mesh.attrib[att].offset;
+		};
+		
+		data.m_positionAttributeOffsetBytes = offset(Model::attrib_position);
+		data.m_normalAttributeOffsetBytes = offset(Model::attrib_normal);
+		data.m_tangentAttributeOffsetBytes = offset(Model::attrib_tangent);
+		data.m_bitangentAttributeOffsetBytes = offset(Model::attrib_tangent);
+		data.m_uvAttributeOffsetBytes = offset(Model::attrib_texcoord0);
+
+		data.m_materialInstanceId = mesh.materialIndex;
+		data.m_attributeStrideBytes = mesh.vertexStride;
+		ASSERT(data.m_materialInstanceId < model.m_Header.materialCount);
 	}
 
 	g_hitShaderMeshInfoBuffer.Create(L"RayTraceMeshInfo",
@@ -382,6 +392,7 @@ void InitializeViews(const Model& model)
 {
 	D3D12_CPU_DESCRIPTOR_HANDLE uavHandle;
 	UINT uavDescriptorIndex;
+	g_GpuSceneMaterialSrvs = new D3D12_GPU_DESCRIPTOR_HANDLE[model.m_Header.materialCount];
 	g_pRaytracingDescriptorHeap->AllocateDescriptor(uavHandle, uavDescriptorIndex);
 	Graphics::g_Device->CopyDescriptorsSimple(1, uavHandle, g_SceneColorBuffer.GetUAV(),
 	                                          D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
@@ -876,9 +887,10 @@ bool string_contains_any_from(
 	const std::string &string, 
 	const std::vector<std::string>& words)
 {
-	for(const std::string &part : words)
-		if(string.find(part) != std::string::npos) return true;
-	return false;
+	std::string allLower = string;
+    std::transform(allLower.begin(), allLower.end(), allLower.begin(), ::tolower);
+	
+	return std::any_of(words.begin(), words.end(), [&](auto word) {return allLower.find(word) != std::string::npos; });
 }
 
 
@@ -917,9 +929,8 @@ void D3D12RaytracingMiniEngineSample::Startup(void)
 	                           DXGI_FORMAT_R8G8B8A8_UNORM);
 #endif
 
-
 	g_pRaytracingDescriptorHeap = std::unique_ptr<DescriptorHeapStack>(
-		new DescriptorHeapStack(*g_Device, 200, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, 0));
+		new DescriptorHeapStack(*g_Device, MAX_RT_DESCRIPTORS, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, 0));
 
 	D3D12_FEATURE_DATA_D3D12_OPTIONS1 options1;
 	HRESULT hr = g_Device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS1, &options1, sizeof(options1));
@@ -1028,6 +1039,7 @@ void D3D12RaytracingMiniEngineSample::Startup(void)
 	set_hard_coded_material_properties(
 		m_Model, m_pMaterialIsCutout, m_pMaterialIsReflective
 	);
+
 
 	g_hitConstantBuffer.Create(L"Hit Constant Buffer", 1, sizeof(HitShaderConstants));
 	g_dynamicConstantBuffer.Create(L"Dynamic Constant Buffer", 1, sizeof(DynamicCB));
