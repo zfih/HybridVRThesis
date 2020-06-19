@@ -46,7 +46,7 @@ namespace Graphics
 
 namespace Settings
 {
-    CpuTimer g_timer;
+    CpuTimer g_NoSyncTimer("NoSync");
 }
 
 namespace GameCore
@@ -61,7 +61,7 @@ namespace GameCore
         GameInput::Initialize();
         EngineTuning::Initialize();
 
-        //Settings::g_timer;
+        //Settings::g_NoSyncTimer;
     	
         game.Startup();
     }
@@ -94,8 +94,8 @@ namespace GameCore
             ImGui::RenderGUI();
         }
     	
-        Settings::g_timer.Reset();
-        Settings::g_timer.Start();
+        Settings::g_NoSyncTimer.Reset();
+        Settings::g_NoSyncTimer.Start();
         EngineProfiling::Update();
 
         float DeltaTime = Graphics::GetFrameTime();

@@ -59,8 +59,13 @@ class CpuTimer
 public:
 
 #define MAX_TICKS 120
-	
+
     CpuTimer()
+    {
+        CpuTimer("UNKNOWN");
+    }
+	
+    CpuTimer(std::string name)
     {
         m_StartTick = 0ll;
         m_ElapsedTicks = 0ll;
@@ -68,9 +73,9 @@ public:
         memset(m_pastTicks, 0, MAX_TICKS * sizeof(int64_t));
 
 #if _DEBUG
-        auto filename = "logs/debug_log_" + currentDateTime() + ".txt";
+        const auto filename = "logs/debug_" + name + "_log_" + currentDateTime() + ".txt";
 #else
-        auto filename = "logs/log_" + currentDateTime() + ".txt";
+        const auto filename = "logs/" + name + "_log_" + currentDateTime() + ".txt";
 #endif
         char buf[1024];
     	
@@ -82,7 +87,8 @@ public:
         m_outputFile = std::ofstream(filename);
 
         if (m_outputFile.fail()) {
-            std::cerr << "Open failed: " << strerror(errno) << '\n';
+            strerror_s(buf, 1024, errno);
+            std::cerr << "Open failed: " << buf << '\n';
         }
     }
 
@@ -90,7 +96,6 @@ public:
     {
 		if(m_outputFile.is_open())
 		{
-			// TODO: STATISTICS (?)
             m_outputFile.close();
 		}
     }
@@ -180,9 +185,9 @@ public:
 private:
 
 	// Stolen from https://stackoverflow.com/questions/997946/how-to-get-current-time-and-date-in-c/10467633#10467633
-    // Get current date/time, format is YYYY-MM-DD_HH-mm-ss
-    const std::string currentDateTime() {
-        time_t     now = time(0);
+    // Get current date/time, format is YYYY-MM-DD_HHmmss
+    static const std::string currentDateTime() {
+        time_t     now = time(nullptr);
         struct tm  tstruct;
         char       buf[80];
         tstruct = *localtime(&now);
@@ -194,6 +199,8 @@ private:
     }
 	
     std::ofstream m_outputFile;
+
+    std::string m_name;
 	
     int64_t m_StartTick;
     int64_t m_ElapsedTicks;

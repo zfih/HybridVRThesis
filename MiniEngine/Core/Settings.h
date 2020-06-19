@@ -5,7 +5,8 @@
 namespace Settings
 {
 	// Profiling
-	extern CpuTimer g_timer;
+	extern CpuTimer g_NoSyncTimer;
+	extern CpuTimer g_ImGUITimer;
 	// Profiling
 	
 	// ImGui

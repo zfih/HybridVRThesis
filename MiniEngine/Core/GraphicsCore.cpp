@@ -966,7 +966,7 @@ void Graphics::Present(void)
 
     SetNativeResolution(g_NativeWidth, g_NativeHeight);
 
-    Settings::g_timer.Stop();
+    Settings::g_NoSyncTimer.Stop();
 	
     VR::Sync();
 }
