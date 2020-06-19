@@ -46,7 +46,7 @@ namespace Graphics
 
 namespace Settings
 {
-    CpuTimer g_NoSyncTimer("NoSync");
+    CpuTimer g_NoSyncTimer(true, "NoSync");
 }
 
 namespace GameCore
