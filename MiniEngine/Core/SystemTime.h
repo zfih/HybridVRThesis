@@ -15,6 +15,11 @@
 
 #pragma once
 
+#include <fstream>
+#include <iostream>
+#include <chrono>
+#include <ctime>
+
 class SystemTime
 {
 public:
@@ -61,6 +66,33 @@ public:
         m_ElapsedTicks = 0ll;
 
         memset(m_pastTicks, 0, MAX_TICKS * sizeof(int64_t));
+
+#if _DEBUG
+        auto filename = "logs/debug_log_" + currentDateTime() + ".txt";
+#else
+        auto filename = "logs/log_" + currentDateTime() + ".txt";
+#endif
+        char buf[1024];
+    	
+        GetCurrentDirectoryA(1024, buf);
+    	
+        printf_s("Wrote file to: %s\n", filename.c_str());
+        printf_s("Dir: %s\n", buf);
+    	
+        m_outputFile = std::ofstream(filename);
+
+        if (m_outputFile.fail()) {
+            std::cerr << "Open failed: " << strerror(errno) << '\n';
+        }
+    }
+
+    ~CpuTimer()
+    {
+		if(m_outputFile.is_open())
+		{
+			// TODO: STATISTICS (?)
+            m_outputFile.close();
+		}
     }
 
     void Start()
@@ -79,10 +111,19 @@ public:
     }
 
     void Reset()
-    {
+    {	
         m_pastTicks[m_currentTick] = m_ElapsedTicks;
         m_currentTick = (m_currentTick + 1) % MAX_TICKS;
 
+    	if(m_currentTick == 0)
+    	{
+	        for (int i = 0; i < MAX_TICKS; ++i)
+	        {
+				m_outputFile << m_frameCount + i << "," << SystemTime::TicksToMillisecs(m_pastTicks[i]) << "\n";
+	        }
+            m_frameCount += MAX_TICKS;
+    	}
+    	
         if(m_ElapsedTicks > m_longestTick)
         {
             m_longestTick = m_ElapsedTicks;
@@ -129,14 +170,38 @@ public:
     {
         return SystemTime::TicksToMillisecs(m_shortestTick);
     }
+
+	void WriteTicksToFile()
+    {
+        std::ofstream m_outputFile;
+	    
+    }
 	
 private:
 
+	// Stolen from https://stackoverflow.com/questions/997946/how-to-get-current-time-and-date-in-c/10467633#10467633
+    // Get current date/time, format is YYYY-MM-DD_HH-mm-ss
+    const std::string currentDateTime() {
+        time_t     now = time(0);
+        struct tm  tstruct;
+        char       buf[80];
+        tstruct = *localtime(&now);
+        // Visit http://en.cppreference.com/w/cpp/chrono/c/strftime
+        // for more information about date/time format
+        strftime(buf, sizeof(buf), "%Y-%m-%d_%H%M%S", &tstruct);
+
+        return buf;
+    }
+	
+    std::ofstream m_outputFile;
+	
     int64_t m_StartTick;
     int64_t m_ElapsedTicks;
 
     int64_t m_shortestTick = INT64_MAX;
     int64_t m_longestTick = INT64_MIN;
+
+    uint64_t m_frameCount = 0;
 	
     UINT m_currentTick = 0;
     int64_t m_pastTicks[MAX_TICKS];

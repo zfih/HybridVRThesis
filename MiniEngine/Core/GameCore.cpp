@@ -46,7 +46,7 @@ namespace Graphics
 
 namespace Settings
 {
-    CpuTimer g_timer = CpuTimer();
+    CpuTimer g_timer;
 }
 
 namespace GameCore
@@ -61,7 +61,7 @@ namespace GameCore
         GameInput::Initialize();
         EngineTuning::Initialize();
 
-        Settings::g_timer = CpuTimer();
+        //Settings::g_timer;
     	
         game.Startup();
     }
