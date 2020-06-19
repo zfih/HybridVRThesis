@@ -62,36 +62,14 @@ public:
 
     CpuTimer()
     {
-        CpuTimer("UNKNOWN");
+        Initialize("UNKNOWN");
     }
 	
     CpuTimer(std::string name)
     {
-        m_StartTick = 0ll;
-        m_ElapsedTicks = 0ll;
-
-        memset(m_pastTicks, 0, MAX_TICKS * sizeof(int64_t));
-
-#if _DEBUG
-        const auto filename = "logs/debug_" + name + "_log_" + currentDateTime() + ".txt";
-#else
-        const auto filename = "logs/" + name + "_log_" + currentDateTime() + ".txt";
-#endif
-        char buf[1024];
-    	
-        GetCurrentDirectoryA(1024, buf);
-    	
-        printf_s("Wrote file to: %s\n", filename.c_str());
-        printf_s("Dir: %s\n", buf);
-    	
-        m_outputFile = std::ofstream(filename);
-
-        if (m_outputFile.fail()) {
-            strerror_s(buf, 1024, errno);
-            std::cerr << "Open failed: " << buf << '\n';
-        }
+        Initialize(name);
     }
-
+	
     ~CpuTimer()
     {
 		if(m_outputFile.is_open())
@@ -184,6 +162,33 @@ public:
 	
 private:
 
+    void Initialize(std::string name)
+    {
+        m_StartTick = 0ll;
+        m_ElapsedTicks = 0ll;
+
+        memset(m_pastTicks, 0, MAX_TICKS * sizeof(int64_t));
+
+#if _DEBUG
+        const auto filename = "logs/debug_" + name + "_log_" + currentDateTime() + ".txt";
+#else
+        const auto filename = "logs/" + name + "_log_" + currentDateTime() + ".txt";
+#endif
+        char buf[1024];
+
+        GetCurrentDirectoryA(1024, buf);
+
+        printf_s("Wrote file to: %s\n", filename.c_str());
+        printf_s("Dir: %s\n", buf);
+
+        m_outputFile = std::ofstream(filename);
+
+        if (m_outputFile.fail()) {
+            strerror_s(buf, 1024, errno);
+            std::cerr << "Open failed: " << buf << '\n';
+        }
+    }
+	
 	// Stolen from https://stackoverflow.com/questions/997946/how-to-get-current-time-and-date-in-c/10467633#10467633
     // Get current date/time, format is YYYY-MM-DD_HHmmss
     static const std::string currentDateTime() {
