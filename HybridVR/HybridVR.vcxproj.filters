@@ -364,6 +364,11 @@
     <FxCompile Include="*Lib.hlsl" />
     <FxCompile Include="Shaders\ScreenTextureVS.hlsl" />
     <FxCompile Include="Shaders\ScreenTexturePS.hlsl" />
+=======
+    <FxCompile Include="Shaders\WaveTileCountPS.hlsl">
+      <Filter>Shaders</Filter>
+    </FxCompile>
+>>>>>>> master
     <FxCompile Include="DiffuseHitShaderLib.hlsl" />
     <FxCompile Include="AlphaTransparencyAnyHit.hlsl" />
     <FxCompile Include="Shaders\CombineColourVS.hlsl">
@@ -394,6 +399,7 @@
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="Raytracing.h" />
     <ClInclude Include="DescriptorHeapStack.h" />
+    <ClInclude Include="GlobalState.h" />
   </ItemGroup>
   <ItemGroup>
     <Image Include="Textures\Models\background.DDS">
