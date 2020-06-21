@@ -1603,6 +1603,7 @@ void D3D12RaytracingMiniEngineSample::RenderScene(UINT curCam)
 
 	SSAO::Render(gfxContext, *m_Camera[curCam], curCam);
 
+	// TODO: This part is nonsense, just move it to the check below
 	if (!skipDiffusePass)
 	{
 		Lighting::FillLightGrid(gfxContext, *m_Camera[curCam]);
