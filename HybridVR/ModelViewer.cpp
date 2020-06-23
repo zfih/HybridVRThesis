@@ -341,6 +341,10 @@ namespace Settings
 	BoolVar ShowWaveTileCounts("Application/Forward+/Show Wave Tile Counts", false);
 
 	EnumVar RayTracingMode("Application/Raytracing/RayTraceMode", RTM_DIFFUSE_WITH_SHADOWMAPS, _countof(rayTracingModes), rayTracingModes);
+
+	CpuTimer g_ZPrepassTimer[2]{ {true, "ZPrepassLeft"}, {true, "ZPrepassRight"} };
+	CpuTimer g_SSAOTimer[2]{ {true, "SSAOLeft"}, {true, "SSAORight"} };
+	CpuTimer g_RaytraceTimer[2]{ {true, "RaytraceLeft"}, {true, "RaytraceRight"} };
 }
 
 std::unique_ptr<DescriptorHeapStack> g_pRaytracingDescriptorHeap;
@@ -1565,6 +1569,8 @@ void D3D12RaytracingMiniEngineSample::RenderScene(UINT curCam)
 
 	RenderLightShadows(gfxContext, curCam);
 
+	Settings::g_ZPrepassTimer[curCam].Reset();
+	Settings::g_ZPrepassTimer[curCam].Start();
 	{
 		gfxContext.SetStencilRef(0x0);
 		
@@ -1600,9 +1606,14 @@ void D3D12RaytracingMiniEngineSample::RenderScene(UINT curCam)
 			RenderObjects(gfxContext, curCam, m_Camera[curCam]->GetViewProjMatrix(), kCutout);
 		}
 	}
+	Settings::g_ZPrepassTimer[curCam].Stop();
 
+	Settings::g_SSAOTimer[curCam].Reset();
+	Settings::g_SSAOTimer[curCam].Start();
 	SSAO::Render(gfxContext, *m_Camera[curCam], curCam);
+	Settings::g_SSAOTimer[curCam].Stop();
 
+	
 	// TODO: This part is nonsense, just move it to the check below
 	if (!skipDiffusePass)
 	{
@@ -1619,6 +1630,7 @@ void D3D12RaytracingMiniEngineSample::RenderScene(UINT curCam)
 		}
 	}
 
+	
 	if (!skipDiffusePass)
 	{
 		if (!Settings::SSAO_DebugDraw)
@@ -1689,7 +1701,10 @@ void D3D12RaytracingMiniEngineSample::RenderScene(UINT curCam)
 
 	if (g_RayTraceSupport/* && RayTracingMode != RTM_OFF*/)
 	{
+		Settings::g_RaytraceTimer[curCam].Reset();
+		Settings::g_RaytraceTimer[curCam].Start();
 		Raytrace(gfxContext, curCam);
+		Settings::g_RaytraceTimer[curCam].Stop();
 	}
 
 	gfxContext.Finish(true);
