@@ -205,7 +205,7 @@ void ColorBuffer::CreateArray(const std::wstring& Name, uint32_t Width, uint32_t
 {
 	D3D12_RESOURCE_FLAGS Flags = CombineResourceFlags();
 	D3D12_RESOURCE_DESC ResourceDesc = DescribeTex2D(Width, Height, ArrayCount, 1, Format, Flags);
-
+	
 	D3D12_CLEAR_VALUE ClearValue = {};
 	ClearValue.Format = Format;
 	memcpy(ClearValue.Color, m_ClearColor.GetPtr(), sizeof(ClearValue.Color));

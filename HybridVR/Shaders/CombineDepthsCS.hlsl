@@ -20,11 +20,11 @@ void main( uint3 DTid : SV_DispatchThreadID )
 	float leftDepth = LeftDepth[DTid.xy];
 	float rightDepth = RightDepth[DTid.xy];
 
-	if (Stencil[int3(DTid.xy, 0)].g != 0xff &&
-		Stencil[int3(DTid.xy, 1)].g != 0xff)
+	CombinedDepth[DTid.xy] = Min(leftDepth, rightDepth);
+	
+	if ((Stencil[int3(DTid.xy, 0)].g == 0x00 || Stencil[int3(DTid.xy, 0)].g == 0x01) ||
+		(Stencil[int3(DTid.xy, 1)].g == 0x00 || Stencil[int3(DTid.xy, 1)].g == 0x01))
 	{
 		CombinedDepth[DTid.xy] = 1.0f;
-		return;
 	}
-	CombinedDepth[DTid.xy] = Min(leftDepth, rightDepth);
 }
