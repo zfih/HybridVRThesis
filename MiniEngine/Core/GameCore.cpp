@@ -79,7 +79,6 @@ namespace GameCore
 
     bool UpdateApplication( IGameApp& game )
     {
-        // TODO: Why did this get moved up here?
         if (!Settings::UseImGui)
         {
             GraphicsContext& UiContext = GraphicsContext::Begin(L"Render UI");

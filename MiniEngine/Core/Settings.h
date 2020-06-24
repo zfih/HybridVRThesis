@@ -13,6 +13,7 @@ namespace Settings
 	extern CpuTimer g_ZPrepassTimer[2];
 	extern CpuTimer g_SSAOTimer[2];
 	extern CpuTimer g_RaytraceTimer[2];
+	extern CpuTimer g_MainRenderTimer[2];
 	// Profiling
 	
 	// ImGui

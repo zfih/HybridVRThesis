@@ -273,7 +273,7 @@ private:
 
 int wmain(int argc, wchar_t** argv)
 {
-	g_CreateScene(Scene::kBistro);
+	g_CreateScene(Scene::kSponza);
 	
 #if _DEBUG
 	CComPtr<ID3D12Debug> debugInterface;
@@ -345,6 +345,7 @@ namespace Settings
 	CpuTimer g_ZPrepassTimer[2]{ {true, "ZPrepassLeft"}, {true, "ZPrepassRight"} };
 	CpuTimer g_SSAOTimer[2]{ {true, "SSAOLeft"}, {true, "SSAORight"} };
 	CpuTimer g_RaytraceTimer[2]{ {true, "RaytraceLeft"}, {true, "RaytraceRight"} };
+	CpuTimer g_MainRenderTimer[2]{ {true, "MainRenderLeft"}, {true, "MainRenderRight"} };
 }
 
 std::unique_ptr<DescriptorHeapStack> g_pRaytracingDescriptorHeap;
@@ -374,7 +375,7 @@ void InitializeSceneInfo(
 		data.m_positionAttributeOffsetBytes = offset(Model::attrib_position);
 		data.m_normalAttributeOffsetBytes = offset(Model::attrib_normal);
 		data.m_tangentAttributeOffsetBytes = offset(Model::attrib_tangent);
-		data.m_bitangentAttributeOffsetBytes = offset(Model::attrib_tangent);
+		data.m_bitangentAttributeOffsetBytes = offset(Model::attrib_bitangent);
 		data.m_uvAttributeOffsetBytes = offset(Model::attrib_texcoord0);
 
 		data.m_materialInstanceId = mesh.materialIndex;
@@ -1613,28 +1614,18 @@ void D3D12RaytracingMiniEngineSample::RenderScene(UINT curCam)
 	SSAO::Render(gfxContext, *m_Camera[curCam], curCam);
 	Settings::g_SSAOTimer[curCam].Stop();
 
-	
-	// TODO: This part is nonsense, just move it to the check below
 	if (!skipDiffusePass)
 	{
+		ScopedTimer _prof(L"Main Render", gfxContext);
+
 		Lighting::FillLightGrid(gfxContext, *m_Camera[curCam]);
-
+		
 		if (!Settings::SSAO_DebugDraw)
 		{
-			ScopedTimer _prof(L"Main Render", gfxContext);
-			{
-				gfxContext.TransitionResource(g_SceneColorBuffer, D3D12_RESOURCE_STATE_RENDER_TARGET, true);
-				gfxContext.TransitionResource(g_SceneNormalBuffer, D3D12_RESOURCE_STATE_RENDER_TARGET, true);
-				gfxContext.ClearColor(g_SceneColorBuffer, curCam);
-			}
-		}
-	}
-
-	
-	if (!skipDiffusePass)
-	{
-		if (!Settings::SSAO_DebugDraw)
-		{
+			gfxContext.TransitionResource(g_SceneColorBuffer, D3D12_RESOURCE_STATE_RENDER_TARGET, true);
+			gfxContext.TransitionResource(g_SceneNormalBuffer, D3D12_RESOURCE_STATE_RENDER_TARGET, true);
+			gfxContext.ClearColor(g_SceneColorBuffer, curCam);
+			
 			if (Settings::AsyncCompute)
 			{
 				gfxContext.Flush();
@@ -1706,8 +1697,11 @@ void D3D12RaytracingMiniEngineSample::RenderScene(UINT curCam)
 		Raytrace(gfxContext, curCam);
 		Settings::g_RaytraceTimer[curCam].Stop();
 	}
-
+	
+	Settings::g_MainRenderTimer[curCam].Reset();
+	Settings::g_MainRenderTimer[curCam].Start();
 	gfxContext.Finish(true);
+	Settings::g_MainRenderTimer[curCam].Stop();
 }
 
 //
