@@ -256,10 +256,13 @@ const ManagedTexture* TextureManager::LoadFromFile( const std::wstring& fileName
 {
     std::wstring CatPath = fileName;
 
+
     const ManagedTexture* Tex = LoadDDSFromFile( CatPath + L".dds", sRGB );
     if (!Tex->IsValid())
+    {
         Tex = LoadTGAFromFile( CatPath + L".tga", sRGB );
-
+    }
+	
     return Tex;
 }
 

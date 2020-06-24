@@ -61,6 +61,7 @@
     <FxCompile Include="Shaders\FillLightGridCS_32.hlsl">
       <Filter>Shaders</Filter>
     </FxCompile>
+<<<<<<< HEAD
     <FxCompile Include="hitShaderLib.hlsl">
       <Filter>Shaders</Filter>
     </FxCompile>
@@ -85,24 +86,18 @@
     <FxCompile Include="*Lib.hlsl">
       <Filter>Shaders</Filter>
     </FxCompile>
+=======
+>>>>>>> master
     <FxCompile Include="Shaders\ModelViewerPS.hlsl">
       <Filter>Shaders</Filter>
     </FxCompile>
     <FxCompile Include="Shaders\ModelViewerVS.hlsl">
       <Filter>Shaders</Filter>
     </FxCompile>
-    <FxCompile Include="*Lib.hlsl">
-      <Filter>Shaders</Filter>
-    </FxCompile>
-    <FxCompile Include="*Lib.hlsl">
-      <Filter>Shaders</Filter>
-    </FxCompile>
-    <FxCompile Include="*Lib.hlsl">
-      <Filter>Shaders</Filter>
-    </FxCompile>
     <FxCompile Include="Shaders\WaveTileCountPS.hlsl">
       <Filter>Shaders</Filter>
     </FxCompile>
+<<<<<<< HEAD
     <FxCompile Include="*Lib.hlsl" />
     <FxCompile Include="*Lib.hlsl" />
     <FxCompile Include="*Lib.hlsl" />
@@ -307,6 +302,8 @@
     <FxCompile Include="..\MiniEngine\ModelViewer\Shaders\DownsampleCS.hlsl">
       <Filter>Shaders</Filter>
     </FxCompile>
+=======
+>>>>>>> master
     <FxCompile Include="DiffuseHitShaderLib.hlsl" />
     <FxCompile Include="AlphaTransparencyAnyHit.hlsl">
       <Filter>Shaders</Filter>
@@ -348,6 +345,7 @@
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="Raytracing.h" />
     <ClInclude Include="DescriptorHeapStack.h" />
+    <ClInclude Include="GlobalState.h" />
   </ItemGroup>
   <ItemGroup>
     <Image Include="Textures\Models\background.DDS">
