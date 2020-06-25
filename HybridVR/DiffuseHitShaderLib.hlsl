@@ -344,7 +344,20 @@ void Hit(inout RayPayload payload, in BuiltInTriangleIntersectionAttributes attr
     if (IsReflection)
     {
         float reflectivity = normals[DispatchRaysIndex().xy].w;
-		outputColor = g_screenOutput[int3(DispatchRaysIndex().xy, g_dynamic.curCam)].rgb + reflectivity * outputColor;
+		/*if(g_dynamic.curCam == 1)
+		{
+            outputColor = float4(1, 0, 0, 0);
+		}
+        else if(g_dynamic.curCam ==0)
+        {
+            outputColor = float4(0, 1, 0, 0);
+        }
+        else
+        {
+            outputColor = float4(0, 0, 1, 0);
+
+        }*/
+        outputColor = g_screenOutput[int3(DispatchRaysIndex().xy, g_dynamic.curCam)].rgb + reflectivity * outputColor;
     }
 
 
