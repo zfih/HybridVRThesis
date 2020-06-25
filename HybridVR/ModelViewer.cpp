@@ -68,6 +68,8 @@
 #include <iso646.h>
 
 
+
+#include "../MiniEngine/Core/CameraType.h"
 #include "GlobalState.h"
 
 using namespace GameCore;
@@ -94,6 +96,19 @@ __declspec(align(16)) struct HitShaderConstants
 	Matrix4 modelToShadow;
 	UINT32 IsReflection;
 	UINT32 UseShadowRays;
+};
+
+__declspec(align(16)) struct PSConstants
+{
+	Vector3 sunDirection;
+	Vector3 sunLight;
+	Vector3 ambientLight;
+	float ShadowTexelSize[4];
+
+	float InvTileDim[4];
+	uint32_t TileCount[4];
+	uint32_t FirstLightIndex[4];
+	uint32_t FrameIndexMod2;
 };
 
 ByteAddressBuffer g_hitConstantBuffer;
@@ -207,8 +222,10 @@ public:
 	virtual void Cleanup(void) override;
 
 	virtual void Update(float deltaT) override;
+	
 	virtual void RenderShadowMap() override;
 	virtual void RenderScene(UINT cam) override;
+	
 	virtual void RenderUI(class GraphicsContext&) override;
 	virtual void Raytrace(class GraphicsContext&, UINT cam);
 
@@ -216,6 +233,36 @@ public:
 
 private:
 
+	void RenderColor(
+		GraphicsContext& Ctx,
+		Camera& Camera,
+		Cam::CameraType CameraType,
+		DepthBuffer& DepthBuffer, PSConstants& Constants);
+	void RenderEye(
+		Cam::CameraType eye,
+		bool SkipDiffusePass,
+		bool SkipShadowMap,
+		PSConstants& psConstants);
+	void SetupGraphicsState(GraphicsContext& Ctx) const;
+	void RenderPrepass(
+		GraphicsContext& Ctx,
+		Cam::CameraType CameraTyp,
+		Camera& Camera,
+		PSConstants& Constants
+	);
+	void MainRender(
+		GraphicsContext& Ctx,
+		Cam::CameraType CameraType,
+		Camera& Camera,
+		PSConstants& Constants,
+		bool SkipDiffusePass,
+		bool SkipShadowMap
+	);
+	void RenderCenter(
+		bool SkipDiffusePass,
+		bool SkipShadowMap,
+		PSConstants& Constants);
+	
 	void CreateRayTraceAccelerationStructures(UINT numMeshes);
 
 	void RenderLightShadows(GraphicsContext& gfxContext, UINT curCam);
@@ -1279,6 +1326,40 @@ void D3D12RaytracingMiniEngineSample::SetCameraToPredefinedPosition(int cameraPo
 		* Matrix3::MakeXRotation(m_CameraController->GetCurrentPitch());
 	m_Camera.SetTransform(AffineTransform(neworientation, m_CameraPosArray[m_CameraPosArrayCurrentPosition].position));
 	m_Camera.Update();
+}
+
+void D3D12RaytracingMiniEngineSample::RenderColor(GraphicsContext& Ctx, Camera& Camera, Cam::CameraType CameraType,
+	DepthBuffer& DepthBuffer, PSConstants& Constants)
+{
+	
+}
+
+void D3D12RaytracingMiniEngineSample::RenderEye(Cam::CameraType eye, bool SkipDiffusePass, bool SkipShadowMap,
+	PSConstants& psConstants)
+{
+	
+}
+
+void D3D12RaytracingMiniEngineSample::SetupGraphicsState(GraphicsContext& Ctx) const
+{
+	
+}
+
+void D3D12RaytracingMiniEngineSample::RenderPrepass(GraphicsContext& Ctx, Cam::CameraType CameraTyp, Camera& Camera,
+	PSConstants& Constants)
+{
+	
+}
+
+void D3D12RaytracingMiniEngineSample::MainRender(GraphicsContext& Ctx, Cam::CameraType CameraType, Camera& Camera,
+	PSConstants& Constants, bool SkipDiffusePass, bool SkipShadowMap)
+{
+	
+}
+
+void D3D12RaytracingMiniEngineSample::RenderCenter(bool SkipDiffusePass, bool SkipShadowMap, PSConstants& Constants)
+{
+	
 }
 
 void D3D12RaytracingMiniEngineSample::CreateRayTraceAccelerationStructures(UINT numMeshes)
