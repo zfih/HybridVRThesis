@@ -48,9 +48,6 @@ namespace Graphics
 namespace Settings
 {
     CpuTimer g_NoSyncTimer(true, "NoSync");
-    CpuTimer g_LeftEyeRenderTimer(true, "LeftEyeRender");
-    CpuTimer g_RightEyeRenderTimer(true, "RightEyeRender");
-    CpuTimer g_ShadowRenderTimer(true, "ShadowRender");
 }
 
 namespace GameCore
@@ -123,21 +120,7 @@ namespace GameCore
             Graphics::HiddenMeshDepthPrepass();
         }
     	
-        Settings::g_ShadowRenderTimer.Reset();
-        Settings::g_ShadowRenderTimer.Start();
-        game.RenderShadowMap();
-        Settings::g_ShadowRenderTimer.Stop();
-    	
-        Settings::g_LeftEyeRenderTimer.Reset();
-        Settings::g_LeftEyeRenderTimer.Start();
-        game.RenderScene(0);
-        Settings::g_LeftEyeRenderTimer.Stop();
-
-    	
-        Settings::g_RightEyeRenderTimer.Reset();
-        Settings::g_RightEyeRenderTimer.Start();
-        game.RenderScene(1);
-        Settings::g_RightEyeRenderTimer.Stop();
+        game.RenderScene();
 
         PostEffects::Render(0);
         PostEffects::Render(1);
