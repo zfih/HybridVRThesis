@@ -76,7 +76,7 @@ using namespace GameCore;
 using namespace Math;
 using namespace Graphics;
 
-#define ASSET_DIRECTORY "../MiniEngine/ModelViewer/"
+#define ASSET_DIRECTORY "../Assets/"
 
 
 extern ByteAddressBuffer g_bvh_bottomLevelAccelerationStructure;
@@ -173,16 +173,16 @@ void g_CreateScene(Scene Scene)
 	{
 	case Scene::kBistro: {
 		g_Scene.Matrix = Matrix4::MakeRotationX(-XM_PIDIV2);
-		g_Scene.ModelPath = ASSET_DIRECTORY "Models/bistro.h3d";
-		g_Scene.TextureFolderPath = ASSET_DIRECTORY L"Textures/bistro/";
+		g_Scene.ModelPath = ASSET_DIRECTORY "Models/Bistro/bistro.h3d";
+		g_Scene.TextureFolderPath = ASSET_DIRECTORY L"Models/Bistro/";
 		g_Scene.Reflective = { "floor", "glass", "metal" };
 		g_Scene.CutOuts = {  };
 	} break;
 	case Scene::kSponza:
 	{
 		g_Scene.Matrix = Matrix4(XMMatrixIdentity());
-		g_Scene.ModelPath = ASSET_DIRECTORY "Models/sponza.h3d";
-		g_Scene.TextureFolderPath = ASSET_DIRECTORY L"Textures/sponza/";
+		g_Scene.ModelPath = ASSET_DIRECTORY "Models/Sponza/sponza.h3d";
+		g_Scene.TextureFolderPath = ASSET_DIRECTORY L"Models/Sponza/Textures/";
 		g_Scene.Reflective = { "floor" };
 		g_Scene.CutOuts = { "thorn", "plant", "chain" };
 	} break;
@@ -316,7 +316,7 @@ private:
 
 int wmain(int argc, wchar_t** argv)
 {
-	g_CreateScene(Scene::kSponza);
+	g_CreateScene(Scene::kBistro);
 	
 #if _DEBUG
 	CComPtr<ID3D12Debug> debugInterface;
