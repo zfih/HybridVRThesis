@@ -22,7 +22,7 @@ void main( uint3 DTid : SV_DispatchThreadID )
 
 	CombinedDepth[DTid.xy] = Min(leftDepth, rightDepth);
 	
-	if ((Stencil[int3(DTid.xy, 0)].g == 0x00 || Stencil[int3(DTid.xy, 0)].g == 0x01) ||
+	if ((Stencil[int3(DTid.xy, 0)].g == 0x00 || Stencil[int3(DTid.xy, 0)].g == 0x01) &&
 		(Stencil[int3(DTid.xy, 1)].g == 0x00 || Stencil[int3(DTid.xy, 1)].g == 0x01))
 	{
 		CombinedDepth[DTid.xy] = 1.0f;

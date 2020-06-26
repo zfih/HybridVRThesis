@@ -66,7 +66,7 @@ void DepthBuffer::Create(const std::wstring& Name, uint32_t Width, uint32_t Heig
 void DepthBuffer::CreateArray(const std::wstring& Name, uint32_t Width, uint32_t Height, uint32_t ArrayCount,
                               DXGI_FORMAT Format, D3D12_GPU_VIRTUAL_ADDRESS VidMemPtr)
 {
-	D3D12_RESOURCE_DESC ResourceDesc = DescribeTex2D(Width, Height, ArrayCount, 1, Format,
+	D3D12_RESOURCE_DESC ResourceDesc = DescribeTex2D(Width, Height, ArrayCount, 4, Format,
 	                                                 D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL);
 
 	D3D12_CLEAR_VALUE ClearValue = {};
@@ -98,7 +98,7 @@ void DepthBuffer::CreateDerivedViews(ID3D12Device* Device, DXGI_FORMAT Format, u
 		DSVDesc.Texture2DArray.ArraySize = ArraySize;
 
 		SRVDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2DARRAY;
-		SRVDesc.Texture2DArray.MipLevels = 1;
+		SRVDesc.Texture2DArray.MipLevels = 4;
 		SRVDesc.Texture1DArray.MostDetailedMip = 0;
 		SRVDesc.Texture2DArray.FirstArraySlice = 0;
 		SRVDesc.Texture2DArray.ArraySize = ArraySize;
