@@ -1270,7 +1270,7 @@ void D3D12RaytracingMiniEngineSample::RenderObjects(GraphicsContext& gfxContext,
 	VSConstants constants;
 
 	Matrix4 model = g_Scene.Matrix;
-	constants.modelToProjection = model * ViewProjMat;
+	constants.modelToProjection = ViewProjMat * model;
 	constants.curCam = curCam;
 
 	constants.modelToShadow = m_SunShadow.GetShadowMatrix();

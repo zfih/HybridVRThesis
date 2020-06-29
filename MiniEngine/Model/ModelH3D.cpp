@@ -164,11 +164,30 @@ void Model::ReleaseTextures()
 	*/
 }
 
+static Texture* g_DefaultTexture;
+
+Texture* g_CreateDefaultTexture()
+{
+	// Create a ZERO texture
+	const int textureWidth = 16;
+	const int textureHeight = 16;
+	const int textureSizeInBytes = textureWidth * textureHeight * 4;
+	char zeroBufferData[textureSizeInBytes];
+	ZeroMemory(zeroBufferData, textureSizeInBytes);
+
+	Texture *result = new Texture;
+	result->Create(
+		textureWidth, textureHeight, 
+		DXGI_FORMAT_B8G8R8A8_UNORM, zeroBufferData);
+	return result;
+}
 
 void Model::LoadTextures(void)
 {
 	ReleaseTextures();
 
+	g_DefaultTexture = g_CreateDefaultTexture();
+	
 	m_SRVs = new D3D12_CPU_DESCRIPTOR_HANDLE[m_Header.materialCount * 6];
 
 	ZeroMemory(m_SRVs, sizeof(D3D12_CPU_DESCRIPTOR_HANDLE) * m_Header.materialCount * 6);
@@ -198,11 +217,9 @@ void Model::LoadTextures(void)
 			return MatTextures[TexType]->GetSRV();
 		}
 
-		std::cout << "Could not import asset: " << Primary << std::endl;
+		std::cout << "Could not import asset: \"" << Primary << "\". Using default\n";
 		
-		D3D12_CPU_DESCRIPTOR_HANDLE result = {};
-
-		return result;
+		return g_DefaultTexture->GetSRV();
 	};
 
 
