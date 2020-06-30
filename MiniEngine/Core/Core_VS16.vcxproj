@@ -312,6 +312,7 @@
     <FxCompile Include="Shaders\FXAAPass2V2CS.hlsl" />
     <FxCompile Include="Shaders\FXAAPass2VDebug2CS.hlsl" />
     <FxCompile Include="Shaders\FXAAPass2VDebugCS.hlsl" />
+    <FxCompile Include="Shaders\GenerateDepthMip.hlsl" />
     <FxCompile Include="Shaders\GenerateHistogramCS.hlsl" />
     <FxCompile Include="Shaders\FXAAPass2HCS.hlsl" />
     <FxCompile Include="Shaders\FXAAPass2VCS.hlsl" />

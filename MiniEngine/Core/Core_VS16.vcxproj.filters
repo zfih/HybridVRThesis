@@ -203,8 +203,8 @@
       <Filter>Source Files\Graphics</Filter>
     </ClInclude>
     <ClInclude Include="CameraType.h">
-	  <Filter>Source Files</Filter>
-	</ClInclude>
+      <Filter>Source Files</Filter>
+    </ClInclude>
     <ClInclude Include="ImGui\imconfig.h">
       <Filter>Source Files\Graphics\imgui</Filter>
     </ClInclude>
@@ -873,6 +873,9 @@
     </FxCompile>
     <FxCompile Include="HiddenMeshPS.hlsl">
       <Filter>Shaders\Misc</Filter>
+    </FxCompile>
+    <FxCompile Include="Shaders\GenerateDepthMip.hlsl">
+      <Filter>Shaders\GenerateMips</Filter>
     </FxCompile>
   </ItemGroup>
   <ItemGroup>

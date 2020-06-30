@@ -72,6 +72,7 @@
 #include "CompiledShaders/GenerateMipsGammaOddCS.h"
 #include "CompiledShaders/GenerateMipsGammaOddXCS.h"
 #include "CompiledShaders/GenerateMipsGammaOddYCS.h"
+#include "CompiledShaders/GenerateDepthMips.h"
 #include "Settings.h"
 
 #define SWAP_CHAIN_BUFFER_COUNT 3
@@ -211,6 +212,7 @@ namespace Graphics
 
     RootSignature g_GenerateMipsRS;
     ComputePSO g_GenerateMipsLinearPSO[4];
+    ComputePSO g_GenerateDepthMips;
     ComputePSO g_GenerateMipsGammaPSO[4];
 
     enum { kBilinear, kBicubic, kSharpening, kFilterCount };
@@ -680,6 +682,7 @@ void Graphics::Initialize(void)
     ObjName.SetComputeShader(ShaderByteCode, sizeof(ShaderByteCode) ); \
     ObjName.Finalize();
 
+    CreatePSO(g_GenerateDepthMips, g_pGenerateDepthMip);
     CreatePSO(g_GenerateMipsLinearPSO[0], g_pGenerateMipsLinearCS);
     CreatePSO(g_GenerateMipsLinearPSO[1], g_pGenerateMipsLinearOddXCS);
     CreatePSO(g_GenerateMipsLinearPSO[2], g_pGenerateMipsLinearOddYCS);

@@ -32,9 +32,7 @@ void ColorBuffer::CreateDerivedViews(ID3D12Device* Device, DXGI_FORMAT Format, u
 		m_SubresourceUsageStates[i] = m_UsageState;
 	m_SubresourceCount = ArraySize;
 
-
 	m_NumMipMaps = NumMips - 1;
-
 
 	D3D12_RENDER_TARGET_VIEW_DESC RTVDesc = {};
 	D3D12_UNORDERED_ACCESS_VIEW_DESC UAVDesc = {};

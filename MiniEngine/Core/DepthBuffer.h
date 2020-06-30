@@ -73,12 +73,16 @@ public:
     float GetClearDepth() const { return m_ClearDepth; }
     uint8_t GetClearStencil() const { return m_ClearStencil; }
 
+    void GenerateMipMaps(CommandContext& BaseContext);
+	
 private:
 
     void CreateDerivedViews( ID3D12Device* Device, DXGI_FORMAT Format, uint32_t ArraySize = 1);
 
     float m_ClearDepth;
     uint8_t m_ClearStencil;
+    uint32_t m_NumMipMaps; // number of texture sublevels
+
     D3D12_CPU_DESCRIPTOR_HANDLE m_hDSV[4];
     D3D12_CPU_DESCRIPTOR_HANDLE m_hDepthSRV;
     D3D12_CPU_DESCRIPTOR_HANDLE m_hStencilSRV;

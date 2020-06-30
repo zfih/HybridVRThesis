@@ -2,6 +2,17 @@
 #define NON_POWER_OF_TWO 0
 #endif
 
+#define RootSig \
+    "RootFlags(0), " \
+    "RootConstants(b0, num32BitConstants = 4), " \
+    "DescriptorTable(SRV(t0, numDescriptors = 1))," \
+    "DescriptorTable(UAV(u0, numDescriptors = 4))," \
+    "StaticSampler(s0," \
+        "addressU = TEXTURE_ADDRESS_CLAMP," \
+        "addressV = TEXTURE_ADDRESS_CLAMP," \
+        "addressW = TEXTURE_ADDRESS_CLAMP," \
+        "filter = FILTER_MIN_MAG_MIP_LINEAR)"
+
 RWTexture2D<float> OutMip1 : register(u0);
 RWTexture2D<float> OutMip2 : register(u1);
 RWTexture2D<float> OutMip3 : register(u2);
@@ -33,7 +44,9 @@ float LoadColor(uint Index)
 [numthreads(8, 8, 1)]
 void main(uint GI : SV_GroupIndex, uint3 DTid : SV_DispatchThreadID)
 {
-    StoreColor(GI, SrcMip);
+    float4 Src1 = SrcMip[DTid.xy];
+
+    StoreColor(GI, Src1);
     GroupMemoryBarrierWithGroupSync();
 
     // With low three bits for X and high three bits for Y, this bit mask
@@ -45,7 +58,7 @@ void main(uint GI : SV_GroupIndex, uint3 DTid : SV_DispatchThreadID)
         float Src4 = LoadColor(GI + 0x09);
         Src1 = max(Src2, max(Src3, Src4));
 
-        OutMip1[DTid.xy / 2] = PackColor(Src1);
+        OutMip1[DTid.xy / 2] = Src1;
         StoreColor(GI, Src1);
     }
 
@@ -62,7 +75,7 @@ void main(uint GI : SV_GroupIndex, uint3 DTid : SV_DispatchThreadID)
         float Src4 = LoadColor(GI + 0x12);
         Src1 = max(Src2, max(Src3, Src4));
 
-        OutMip2[DTid.xy / 4] = PackColor(Src1);
+        OutMip2[DTid.xy / 4] = Src1;
         StoreColor(GI, Src1);
     }
 
@@ -80,6 +93,6 @@ void main(uint GI : SV_GroupIndex, uint3 DTid : SV_DispatchThreadID)
         float Src4 = LoadColor(GI + 0x24);
         Src1 = max(Src2, max(Src3, Src4));
 
-        OutMip3[DTid.xy / 8] = PackColor(Src1);
+        OutMip3[DTid.xy / 8] = Src1;
     }
 }
