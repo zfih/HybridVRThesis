@@ -38,7 +38,6 @@
 #include "GameInput.h"
 #include "./ForwardPlusLighting.h"
 #include <atlbase.h>
-#include <atlbase.h>
 #include "DXSampleHelper.h"
 #include "Settings.h"
 
@@ -316,7 +315,7 @@ private:
 
 int wmain(int argc, wchar_t** argv)
 {
-	g_CreateScene(Scene::kBistro);
+	g_CreateScene(Scene::kSponza);
 	
 #if _DEBUG
 	CComPtr<ID3D12Debug> debugInterface;
