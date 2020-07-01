@@ -13,6 +13,8 @@
 
 #include "pch.h"
 #include "DepthBuffer.h"
+
+#include "CommandContext.h"
 #include "GraphicsCore.h"
 #include "EsramAllocator.h"
 #include "DescriptorHeap.h"
@@ -26,7 +28,7 @@ void DepthBuffer::Create(const std::wstring& Name, uint32_t Width, uint32_t Heig
 	                                                 D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL);
 	D3D12_CLEAR_VALUE ClearValue = {};
 	ClearValue.Format = Format;
-	ClearValue.DepthStencil.Stencil = 0xFF;
+	ClearValue.DepthStencil.Stencil = 0xff;
 
 	m_ClearStencil = ClearValue.DepthStencil.Stencil;
 
@@ -43,7 +45,7 @@ void DepthBuffer::Create(const std::wstring& Name, uint32_t Width, uint32_t Heig
 
 	D3D12_CLEAR_VALUE ClearValue = {};
 	ClearValue.Format = Format;
-	ClearValue.DepthStencil.Stencil = 0xFF;
+	ClearValue.DepthStencil.Stencil = 0xff;
 
 	m_ClearStencil = ClearValue.DepthStencil.Stencil;
 
@@ -72,7 +74,7 @@ void DepthBuffer::CreateArray(const std::wstring& Name, uint32_t Width, uint32_t
 	D3D12_CLEAR_VALUE ClearValue = {};
 	ClearValue.Format = Format;
 	ClearValue.DepthStencil.Depth = 0;
-	ClearValue.DepthStencil.Stencil = 0xFF;
+	ClearValue.DepthStencil.Stencil = 0xff;
 
 	m_ClearStencil = ClearValue.DepthStencil.Stencil;
 
@@ -158,6 +160,8 @@ void DepthBuffer::CreateDerivedViews(ID3D12Device* Device, DXGI_FORMAT Format, u
 	Device->CreateShaderResourceView(Resource, &SRVDesc, m_hDepthSRV);
 
 	m_DSVSubHandles.reserve(ArraySize);
+	m_DSVReadOnlySubHandles.reserve(ArraySize);
+	m_SRVSubHandles.reserve(ArraySize);
 	for (int i = 0; i < ArraySize; i++)
 	{
 		D3D12_DEPTH_STENCIL_VIEW_DESC dsvDesc{};
@@ -172,28 +176,21 @@ void DepthBuffer::CreateDerivedViews(ID3D12Device* Device, DXGI_FORMAT Format, u
 		handle = Graphics::AllocateDescriptor(D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
 		Device->CreateDepthStencilView(Resource, &dsvDesc, handle);
 		m_DSVSubHandles.push_back(handle);
-	}
 
-	m_DSVReadOnlySubHandles.reserve(ArraySize);
-	for (int i = 0; i < ArraySize; i++)
-	{
-		D3D12_DEPTH_STENCIL_VIEW_DESC dsvDesc{};
-		dsvDesc.Format = Format;
-		dsvDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2DARRAY;
-		dsvDesc.Texture2DArray.MipSlice = 0;
-		dsvDesc.Texture2DArray.FirstArraySlice = i;
-		dsvDesc.Texture2DArray.ArraySize = 1;
-		dsvDesc.Flags = D3D12_DSV_FLAG_READ_ONLY_DEPTH;
+		
+		D3D12_DEPTH_STENCIL_VIEW_DESC dsvReadOnlyDesc{};
+		dsvReadOnlyDesc.Format = Format;
+		dsvReadOnlyDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2DARRAY;
+		dsvReadOnlyDesc.Texture2DArray.MipSlice = 0;
+		dsvReadOnlyDesc.Texture2DArray.FirstArraySlice = i;
+		dsvReadOnlyDesc.Texture2DArray.ArraySize = 1;
+		dsvReadOnlyDesc.Flags = D3D12_DSV_FLAG_READ_ONLY_DEPTH;
 
-		D3D12_CPU_DESCRIPTOR_HANDLE handle{};
-		handle = Graphics::AllocateDescriptor(D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
-		Device->CreateDepthStencilView(Resource, &dsvDesc, handle);
-		m_DSVReadOnlySubHandles.push_back(handle);
-	}
+		D3D12_CPU_DESCRIPTOR_HANDLE handleReadOnly{};
+		handleReadOnly = Graphics::AllocateDescriptor(D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
+		Device->CreateDepthStencilView(Resource, &dsvReadOnlyDesc, handleReadOnly);
+		m_DSVReadOnlySubHandles.push_back(handleReadOnly);
 
-	m_SRVSubHandles.reserve(ArraySize);
-	for (int i = 0; i < ArraySize; i++)
-	{
 		D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};
 		srvDesc.Format = GetDepthFormat(Format);
 		srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2DARRAY;
@@ -202,10 +199,10 @@ void DepthBuffer::CreateDerivedViews(ID3D12Device* Device, DXGI_FORMAT Format, u
 		srvDesc.Texture2DArray.MipLevels = 1;
 		srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
 
-		D3D12_CPU_DESCRIPTOR_HANDLE handle{};
-		handle = Graphics::AllocateDescriptor(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
-		Device->CreateShaderResourceView(Resource, &srvDesc, handle);
-		m_SRVSubHandles.push_back(handle);
+		D3D12_CPU_DESCRIPTOR_HANDLE srvHandle{};
+		srvHandle = Graphics::AllocateDescriptor(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+		Device->CreateShaderResourceView(Resource, &srvDesc, srvHandle);
+		m_SRVSubHandles.push_back(srvHandle);
 	}
 
 	if (stencilReadFormat != DXGI_FORMAT_UNKNOWN)
@@ -226,4 +223,64 @@ void DepthBuffer::CreateDerivedViews(ID3D12Device* Device, DXGI_FORMAT Format, u
 
 		Device->CreateShaderResourceView(Resource, &SRVDesc, m_hStencilSRV);
 	}
+}
+
+void DepthBuffer::GenerateMipMaps(CommandContext& BaseContext)
+{
+	if (m_NumMipMaps == 0)
+		return;
+
+	ComputeContext& Context = BaseContext.GetComputeContext();
+
+	Context.SetRootSignature(Graphics::g_GenerateMipsRS);
+
+	Context.TransitionResource(*this, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+	Context.SetDynamicDescriptor(1, 0, m_SRVSubHandles[0]);
+
+	for (uint32_t TopMip = 0; TopMip < m_NumMipMaps;)
+	{
+		uint32_t SrcWidth = m_Width >> TopMip;
+		uint32_t SrcHeight = m_Height >> TopMip;
+		uint32_t DstWidth = SrcWidth >> 1;
+		uint32_t DstHeight = SrcHeight >> 1;
+
+		// Determine if the first downsample is more than 2:1.  This happens whenever
+		// the source width or height is odd.
+		uint32_t NonPowerOfTwo = (SrcWidth & 1) | (SrcHeight & 1) << 1;
+		if (m_Format == DXGI_FORMAT_R8G8B8A8_UNORM_SRGB)
+			Context.SetPipelineState(Graphics::g_GenerateMipsGammaPSO[NonPowerOfTwo]);
+		else
+			Context.SetPipelineState(Graphics::g_GenerateMipsLinearPSO[NonPowerOfTwo]);
+
+		// We can downsample up to four times, but if the ratio between levels is not
+		// exactly 2:1, we have to shift our blend weights, which gets complicated or
+		// expensive.  Maybe we can update the code later to compute sample weights for
+		// each successive downsample.  We use _BitScanForward to count number of zeros
+		// in the low bits.  Zeros indicate we can divide by two without truncating.
+		uint32_t AdditionalMips;
+		_BitScanForward((unsigned long*)&AdditionalMips,
+			(DstWidth == 1 ? DstHeight : DstWidth) | (DstHeight == 1 ? DstWidth : DstHeight));
+		uint32_t NumMips = 1 + (AdditionalMips > 3 ? 3 : AdditionalMips);
+		if (TopMip + NumMips > m_NumMipMaps)
+			NumMips = m_NumMipMaps - TopMip;
+
+		// These are clamped to 1 after computing additional mips because clamped
+		// dimensions should not limit us from downsampling multiple times.  (E.g.
+		// 16x1 -> 8x1 -> 4x1 -> 2x1 -> 1x1.)
+		if (DstWidth == 0)
+			DstWidth = 1;
+		if (DstHeight == 0)
+			DstHeight = 1;
+
+		Context.SetConstants(0, TopMip, NumMips, 1.0f / DstWidth, 1.0f / DstHeight);
+		//Context.SetDynamicDescriptors(2, 0, NumMips,  + TopMip + 1);
+		Context.Dispatch2D(DstWidth, DstHeight);
+
+		Context.InsertUAVBarrier(*this);
+
+		TopMip += NumMips;
+	}
+
+	Context.TransitionResource(*this, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE |
+		D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 }

@@ -32,9 +32,7 @@ void ColorBuffer::CreateDerivedViews(ID3D12Device* Device, DXGI_FORMAT Format, u
 		m_SubresourceUsageStates[i] = m_UsageState;
 	m_SubresourceCount = ArraySize;
 
-
 	m_NumMipMaps = NumMips - 1;
-
 
 	D3D12_RENDER_TARGET_VIEW_DESC RTVDesc = {};
 	D3D12_UNORDERED_ACCESS_VIEW_DESC UAVDesc = {};
@@ -205,7 +203,7 @@ void ColorBuffer::CreateArray(const std::wstring& Name, uint32_t Width, uint32_t
 {
 	D3D12_RESOURCE_FLAGS Flags = CombineResourceFlags();
 	D3D12_RESOURCE_DESC ResourceDesc = DescribeTex2D(Width, Height, ArrayCount, 1, Format, Flags);
-
+	
 	D3D12_CLEAR_VALUE ClearValue = {};
 	ClearValue.Format = Format;
 	memcpy(ClearValue.Color, m_ClearColor.GetPtr(), sizeof(ClearValue.Color));

@@ -72,6 +72,7 @@
 #include "CompiledShaders/GenerateMipsGammaOddCS.h"
 #include "CompiledShaders/GenerateMipsGammaOddXCS.h"
 #include "CompiledShaders/GenerateMipsGammaOddYCS.h"
+#include "CompiledShaders/GenerateDepthMip.h"
 #include "Settings.h"
 
 #define SWAP_CHAIN_BUFFER_COUNT 3
@@ -112,7 +113,7 @@ namespace Settings
     const char* HDRModeLabels[] = { "HDR", "SDR", "Side-by-Side" };
     EnumVar HDRDebugMode("Graphics/Display/HDR Debug Mode", 0, 3, HDRModeLabels);
 
-    BoolVar VRDepthStencil("VR Depth Stencil", false);
+    BoolVar VRDepthStencil("VR Depth Stencil", true);
 
     enum { kBilinear, kBicubic, kSharpening, kFilterCount };
     const char* FilterLabels[] = { "Bilinear", "Bicubic", "Sharpening" };
@@ -211,6 +212,7 @@ namespace Graphics
 
     RootSignature g_GenerateMipsRS;
     ComputePSO g_GenerateMipsLinearPSO[4];
+    ComputePSO g_GenerateDepthMips;
     ComputePSO g_GenerateMipsGammaPSO[4];
 
     enum { kBilinear, kBicubic, kSharpening, kFilterCount };
@@ -680,6 +682,7 @@ void Graphics::Initialize(void)
     ObjName.SetComputeShader(ShaderByteCode, sizeof(ShaderByteCode) ); \
     ObjName.Finalize();
 
+    //CreatePSO(g_GenerateDepthMips, g_pGenerateDepthMip);
     CreatePSO(g_GenerateMipsLinearPSO[0], g_pGenerateMipsLinearCS);
     CreatePSO(g_GenerateMipsLinearPSO[1], g_pGenerateMipsLinearOddXCS);
     CreatePSO(g_GenerateMipsLinearPSO[2], g_pGenerateMipsLinearOddYCS);
@@ -961,7 +964,6 @@ void Graphics::HiddenMeshDepthPrepass()
     context.SetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
 	// Transition and clear depth
-    // TODO(freemedude 15:43 04-05): Maybe needs to be per subresource
     context.TransitionResource(g_SceneDepthBuffer, D3D12_RESOURCE_STATE_DEPTH_WRITE);
     context.TransitionResource(g_DisplayPlane[g_CurrentBuffer], D3D12_RESOURCE_STATE_RENDER_TARGET, true);
     context.ClearDepthAndStencil(g_SceneDepthBuffer);

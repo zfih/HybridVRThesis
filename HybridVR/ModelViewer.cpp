@@ -307,6 +307,7 @@ private:
 
 	RootSignature m_RootSig;
 	GraphicsPSO m_DepthPSO;
+	GraphicsPSO m_CenterDepthPSO;
 	GraphicsPSO m_CutoutDepthPSO;
 	GraphicsPSO m_ModelPSO;
 	GraphicsPSO m_CutoutModelPSO;
@@ -1075,8 +1076,7 @@ void D3D12RaytracingMiniEngineSample::Startup(void)
 	m_DepthPSO.SetRasterizerState(RasterizerDefault);
 	m_DepthPSO.SetBlendState(BlendNoColorWrite);
 
-	// TODO(freemedude 09:10 05-05): Possibly wrong DS State
-	m_DepthPSO.SetDepthStencilState(DepthReadWriteStencilReadState);
+	m_DepthPSO.SetDepthStencilState(DepthReadWriteStencilWriteState);
 	m_DepthPSO.SetInputLayout(_countof(vertElem), vertElem);
 	m_DepthPSO.SetPrimitiveTopologyType(D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE);
 	m_DepthPSO.SetRenderTargetFormats(0, nullptr, DepthFormat);
@@ -1085,8 +1085,12 @@ void D3D12RaytracingMiniEngineSample::Startup(void)
 	// Make a copy of the desc before we mess with it
 	m_CutoutDepthPSO = m_DepthPSO;
 	m_ShadowPSO = m_DepthPSO;
+	
+	m_CenterDepthPSO = m_DepthPSO;
+	m_CenterDepthPSO.SetDepthStencilState(DepthReadWriteStencilReadState);
 
 	m_DepthPSO.Finalize();
+	m_CenterDepthPSO.Finalize();
 
 	// Depth-only shading but with alpha testing
 
@@ -1738,8 +1742,8 @@ void D3D12RaytracingMiniEngineSample::RenderCenter(
 		ctx.TransitionResource(g_SceneCenterColourDepthBuffer,
 		                       D3D12_RESOURCE_STATE_UNORDERED_ACCESS, true);
 
-		ComputeContext& cmpContext =
-			ComputeContext::Begin(L"Combine Depth m_Buffers", true);
+		ComputeContext& cmpContext = ctx.GetComputeContext();
+			//ComputeContext::Begin(L"Combine Depth m_Buffers", true);
 	
 
 		cmpContext.SetRootSignature(m_ComputeRootSig);
@@ -1758,7 +1762,7 @@ void D3D12RaytracingMiniEngineSample::RenderCenter(
 			g_SceneDepthBuffer.GetWidth(),
 			g_SceneDepthBuffer.GetHeight());
 
-		cmpContext.Finish();
+		cmpContext.Flush();
 	}
 
 	MainRender(ctx, Cam::kCenter, camera,
@@ -1867,10 +1871,17 @@ void D3D12RaytracingMiniEngineSample::RenderPrepass(GraphicsContext& Ctx, Cam::C
 	Settings::g_ZPrepassTimer[CameraType].Reset();
 	Settings::g_ZPrepassTimer[CameraType].Start();
 	
-	{
-		Ctx.SetStencilRef(0x0);
-		
+	{		
 		ScopedTimer _prof(L"Z PrePass", Ctx);
+
+		if (CameraType == Cam::kCenter)
+		{
+			Ctx.SetStencilRef(0x0);
+		}
+		else
+		{
+			Ctx.SetStencilRef(0x1);
+		}
 
 		Ctx.SetDynamicConstantBufferView(1, sizeof(Constants), &Constants);
 
@@ -1885,7 +1896,15 @@ void D3D12RaytracingMiniEngineSample::RenderPrepass(GraphicsContext& Ctx, Cam::C
 		}
 		//Ctx.ClearDepth(g_SceneDepthBuffer, CameraType);
 
-		Ctx.SetPipelineState(m_DepthPSO);
+
+		if(CameraType == Cam::kCenter)
+		{
+			Ctx.SetPipelineState(m_CenterDepthPSO);
+		}
+		else
+		{
+			Ctx.SetPipelineState(m_DepthPSO);
+		}
 
 		Ctx.SetViewportAndScissor(m_MainViewport, m_MainScissor);
 
@@ -1925,11 +1944,12 @@ void D3D12RaytracingMiniEngineSample::MainRender(GraphicsContext& Ctx, Cam::Came
 			if (Settings::AsyncCompute)
 			{
 				Ctx.Flush();
-				SetupGraphicsState(Ctx);
 
 				// Make the 3D queue wait for the Compute queue to finish SSAO
 				g_CommandManager.GetGraphicsQueue().StallForProducer(g_CommandManager.GetComputeQueue());
 			}
+			
+			SetupGraphicsState(Ctx);
 
 			RenderColor(Ctx, Camera, CameraType, g_SceneDepthBuffer, Constants);
 		}
