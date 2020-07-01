@@ -112,9 +112,7 @@ namespace Settings
     const char* HDRModeLabels[] = { "HDR", "SDR", "Side-by-Side" };
     EnumVar HDRDebugMode("Graphics/Display/HDR Debug Mode", 0, 3, HDRModeLabels);
 
-    const char* OnOffLabels[] = { "On", "Off" };
-    EnumVar VRDepthStencil(
-        "VR Depth Stencil", 0, _countof(OnOffLabels), OnOffLabels);
+    BoolVar VRDepthStencil("VR Depth Stencil", false);
 
     enum { kBilinear, kBicubic, kSharpening, kFilterCount };
     const char* FilterLabels[] = { "Bilinear", "Bicubic", "Sharpening" };
@@ -885,7 +883,7 @@ void Graphics::HiddenMeshDepthPrepass()
 
 	if(BufferLeft.GetElementCount() < 2) // cannot create buffer with size 0, so default is size 1.
 	{
-		Settings::VRDepthStencil.Increment();
+        Settings::VRDepthStencil = false;
         return;
 	}
 	
@@ -968,7 +966,8 @@ void Graphics::Present(void)
 
     SetNativeResolution(g_NativeWidth, g_NativeHeight);
 
-	// TODO: MOVE TO APPROPRITE PLACE IN PIPE - HERE FOR TESTING
+    Settings::g_NoSyncTimer.Stop();
+	
     VR::Sync();
 }
 

@@ -56,7 +56,7 @@ public:
 	const D3D12_CPU_DESCRIPTOR_HANDLE& GetSubSRV(int i) const { return m_SRVSubHandles[i]; }
 	const D3D12_CPU_DESCRIPTOR_HANDLE& GetSubRTV(int i) const { return m_RTVSubHandles[i]; }
 	const D3D12_CPU_DESCRIPTOR_HANDLE& GetSubUAV(int i) const { return m_UAVSubHandles[i]; }
-
+	
     // Get pre-created CPU-visible descriptor handles
     const D3D12_CPU_DESCRIPTOR_HANDLE& GetSRV(void) const { return m_SRVHandle; }
     const D3D12_CPU_DESCRIPTOR_HANDLE& GetRTV(void) const { return m_RTVHandle; }
@@ -112,7 +112,7 @@ protected:
     uint32_t m_FragmentCount;
     uint32_t m_SampleCount;
 
-    std::vector<D3D12_CPU_DESCRIPTOR_HANDLE> m_RTVSubHandles;
-    std::vector<D3D12_CPU_DESCRIPTOR_HANDLE> m_UAVSubHandles;
-    std::vector<D3D12_CPU_DESCRIPTOR_HANDLE> m_SRVSubHandles;
+	std::vector<D3D12_CPU_DESCRIPTOR_HANDLE> m_RTVSubHandles;
+	std::vector<D3D12_CPU_DESCRIPTOR_HANDLE> m_UAVSubHandles;
+	std::vector<D3D12_CPU_DESCRIPTOR_HANDLE> m_SRVSubHandles;
 };

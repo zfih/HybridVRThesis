@@ -336,6 +336,7 @@
     <ClInclude Include="DescriptorHeapStack.h" />
     <ClInclude Include="DXSampleHelper.h" />
     <ClInclude Include="ForwardPlusLighting.h" />
+    <ClInclude Include="GlobalState.h" />
     <ClInclude Include="ModelViewerRayTracing.h" />
     <ClInclude Include="Raytracing.h" />
     <ClInclude Include="RayTracingHlslCompat.h" />
@@ -362,14 +363,12 @@
       </Message>
     </PostBuildEvent>
     <PostBuildEvent>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">
-      </Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">xcopy /y /d "$(SolutionDir)Libraries\OpenVR\bin\*.dll" "$(OutDir)"</Command>
       <Message Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">
       </Message>
     </PostBuildEvent>
     <PostBuildEvent>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-      </Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">xcopy /y /d "$(SolutionDir)Libraries\OpenVR\bin\*.dll" "$(OutDir)"</Command>
       <Message Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
       </Message>
     </PostBuildEvent>

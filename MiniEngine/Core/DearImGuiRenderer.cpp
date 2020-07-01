@@ -1,5 +1,8 @@
 #include "pch.h"
 #include "DearImGuiRenderer.h"
+
+#include "Camera.h"
+#include "CameraController.h"
 #include "GameCore.h"
 #include "GraphicsCore.h"
 #include "CommandContext.h"
@@ -15,6 +18,7 @@ namespace GameCore
 namespace Settings
 {
     BoolVar UseImGui = { "Use ImGui", true };
+    CpuTimer g_ImGUITimer(true, "ImGuiBuild");
 }
 
 namespace Graphics
@@ -58,7 +62,7 @@ void ImGui::Initialize()
     );
 }
 
-void ImGui::BuildGUI()
+void ImGui::BuildGUI(Math::Camera* cam, GameCore::CameraController* controller)
 {
     ImGui_ImplDX12_NewFrame();
 	ImGui_ImplWin32_NewFrame();
@@ -71,9 +75,40 @@ void ImGui::BuildGUI()
 	
     ImGui::Begin("Engine Tuning");
 
-    ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
+    ImGui::Text("Application average %3.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
+    ImGui::Text("Application average %3.3f ms/frame render (no sync)", Settings::g_NoSyncTimer.GetAverageTimeMilliseconds());
+    ImGui::Text("ImGui build and render average %3.3f ms/frame", Settings::g_ImGUITimer.GetAverageTimeMilliseconds());
+    ImGui::Text("Longest frame %3.3f ms/frame : Shortest frame %3.3f ms/frame",
+        Settings::g_NoSyncTimer.GetLongestTickToMilliseconds(), Settings::g_NoSyncTimer.GetShortestTickToMilliseconds());
 	
     const float indent = 10.0f;
+
+
+    {
+		Math::Vector3 position = cam->GetPosition();
+	    float positionFloats[3] = {
+	        position.GetX(),
+	        position.GetY(),
+	        position.GetZ()
+	    };
+	    ImGui::InputFloat3("Position", positionFloats);
+        Math::Vector3 newPosition(positionFloats[0], positionFloats[1], positionFloats[2]);
+        cam->SetPosition(newPosition);
+    }
+
+    {
+
+        float heading = controller->GetCurrentHeading();
+        float pitch = controller->GetCurrentPitch();
+        ImGui::InputFloat("Heading", &heading);
+        ImGui::SameLine();
+        ImGui::InputFloat("Pitch", &pitch);
+    	
+        controller->SetCurrentHeading(heading);
+        controller->SetCurrentPitch(pitch);
+
+    }
+	
 
 	if (ImGui::CollapsingHeader("Application", ImGuiTreeNodeFlags_CollapsingHeader | ImGuiTreeNodeFlags_Framed))
     { // Application

@@ -144,7 +144,7 @@ void DepthOfField::Shutdown( void )
     s_IndirectParameters.Destroy();
 }
 
-void DepthOfField::Render( CommandContext& BaseContext, float /*NearClipDist*/, float FarClipDist )
+void DepthOfField::Render( CommandContext& BaseContext, float /*NearClipDist*/, float FarClipDist, UINT curCam )
 {
     ScopedTimer _prof(L"Depth of Field", BaseContext);
 
@@ -248,7 +248,7 @@ void DepthOfField::Render( CommandContext& BaseContext, float /*NearClipDist*/, 
         Context.TransitionResource(g_DoFPrefilter, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
         Context.SetDynamicDescriptor(1, 0, LinearDepth.GetSRV());
         Context.SetDynamicDescriptor(1, 1, g_DoFTileClass[1].GetSRV());
-        Context.SetDynamicDescriptor(1, 2, g_SceneColorBuffer.GetSRV());
+        Context.SetDynamicDescriptor(1, 2, g_SceneColorBuffer.GetSubSRV(curCam));
         Context.SetDynamicDescriptor(1, 3, g_DoFWorkQueue.GetSRV());
         Context.SetDynamicDescriptor(2, 0, g_DoFPresortBuffer.GetUAV());
         Context.SetDynamicDescriptor(2, 1, g_DoFPrefilter.GetUAV());
@@ -329,7 +329,7 @@ void DepthOfField::Render( CommandContext& BaseContext, float /*NearClipDist*/, 
         {
             Context.SetPipelineState(s_DoFDebugRedCS);
             Context.SetDynamicDescriptor(1, 5, g_DoFWorkQueue.GetSRV());
-            Context.SetDynamicDescriptor(2, 0, g_SceneColorBuffer.GetUAV());
+            Context.SetDynamicDescriptor(2, 0, g_SceneColorBuffer.GetSubUAV(curCam));
             Context.DispatchIndirect(s_IndirectParameters, 0);
 
             Context.SetPipelineState(s_DoFDebugGreenCS);
@@ -348,7 +348,7 @@ void DepthOfField::Render( CommandContext& BaseContext, float /*NearClipDist*/, 
             Context.SetDynamicDescriptor(1, 2, g_DoFTileClass[1].GetSRV());
             Context.SetDynamicDescriptor(1, 3, LinearDepth.GetSRV());
             Context.SetDynamicDescriptor(1, 4, g_DoFWorkQueue.GetSRV());
-            Context.SetDynamicDescriptor(2, 0, g_SceneColorBuffer.GetUAV());
+            Context.SetDynamicDescriptor(2, 0, g_SceneColorBuffer.GetSubUAV(curCam));
             Context.DispatchIndirect(s_IndirectParameters, 0);
 
             Context.SetPipelineState(s_DoFCombineFastCS);
