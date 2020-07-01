@@ -100,7 +100,7 @@ void DepthBuffer::CreateDerivedViews(ID3D12Device* Device, DXGI_FORMAT Format, u
 		DSVDesc.Texture2DArray.ArraySize = ArraySize;
 
 		SRVDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2DARRAY;
-		SRVDesc.Texture2DArray.MipLevels = 4;
+		SRVDesc.Texture2DArray.MipLevels = 1;
 		SRVDesc.Texture1DArray.MostDetailedMip = 0;
 		SRVDesc.Texture2DArray.FirstArraySlice = 0;
 		SRVDesc.Texture2DArray.ArraySize = ArraySize;
