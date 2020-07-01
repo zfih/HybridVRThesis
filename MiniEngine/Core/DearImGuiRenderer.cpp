@@ -64,8 +64,6 @@ void ImGui::Initialize()
 
 void ImGui::BuildGUI(Math::Camera* cam, GameCore::CameraController* controller)
 {
-    Settings::g_ImGUITimer.Reset();
-    Settings::g_ImGUITimer.Start();
     ImGui_ImplDX12_NewFrame();
 	ImGui_ImplWin32_NewFrame();
 
@@ -686,8 +684,6 @@ void ImGui::RenderGUI()
     ImGui::Render();
     ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), g_imguiContext.GetCommandList());
     g_imguiContext.Finish();
-
-    Settings::g_ImGUITimer.Stop();
 }
 
 void ImGui::Shutdown()

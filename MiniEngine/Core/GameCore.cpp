@@ -91,8 +91,13 @@ namespace GameCore
         }
         else
         {
+            Settings::g_ImGUITimer.Reset();
+            Settings::g_ImGUITimer.Start();
+        	
             ImGui::BuildGUI(LODGlobal::g_camera, LODGlobal::g_cameraController);
         	ImGui::RenderGUI();
+
+            Settings::g_ImGUITimer.Stop();
         }
     	
         Settings::g_NoSyncTimer.Reset();
@@ -114,7 +119,6 @@ namespace GameCore
         {
             Graphics::HiddenMeshDepthPrepass();
         }
-        game.RenderShadowMap();
         
         game.RenderScene();
 

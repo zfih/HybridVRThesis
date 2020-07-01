@@ -15,6 +15,7 @@
 
 #pragma once
 
+#include "GraphicsCore.h"
 #include <fstream>
 #include <iostream>
 #include <chrono>
@@ -102,23 +103,19 @@ public:
     }
 	
     void Reset()
-    {	
-        m_pastTicks[m_currentTick] = m_ElapsedTicks;
+    {
+        m_pastTicks[m_currentTick].first = Graphics::GetFrameCount();
+        m_pastTicks[m_currentTick].second = m_ElapsedTicks;
         m_currentTick = (m_currentTick + 1) % MAX_TICKS;
 
-		if(m_logging)
+		if(m_logging && m_currentTick == 0)
 	    {
-		    if(m_currentTick == 0)
+		    for (int i = 0; i < MAX_TICKS; ++i)
 		    {
-		    	for (int i = 0; i < MAX_TICKS; ++i)
-		    	{
-		    		m_outputFile << m_frameCount + i << "," << SystemTime::TicksToMillisecs(m_pastTicks[i]) << "\n";
-		    	}
-		    	m_frameCount += MAX_TICKS;
+		    	m_outputFile << m_pastTicks[i].first << "," << SystemTime::TicksToMillisecs(m_pastTicks[i].second) << "\n";
 		    }
 	    }
 
-    	
         if(m_ElapsedTicks > m_longestTick)
         {
             m_longestTick = m_ElapsedTicks;
@@ -146,9 +143,9 @@ public:
     {
         int64_t avg = 0;
     	
-	    for (long long tick : m_pastTicks)
+	    for (std::pair<uint64_t, int64_t> tick : m_pastTicks)
 	    {
-            avg += tick;
+            avg += tick.second;
 	    }
 
         avg /= MAX_TICKS;
@@ -182,9 +179,9 @@ private:
         memset(m_pastTicks, 0, MAX_TICKS * sizeof(int64_t));
 
 #if _DEBUG
-        const auto filename = "logs/debug_" + name + "_log_" + currentDateTime() + ".txt";
+        const auto filename = "logs/debug_log_" + currentDateTime() + "_" + name + ".txt";
 #else
-        const auto filename = "logs/" + name + "_log_" + currentDateTime() + ".txt";
+        const auto filename = "logs/log_" + currentDateTime() + "_" + name + ".txt";
 #endif
         char buf[1024];
 
@@ -205,7 +202,7 @@ private:
     }
 	
 	// Stolen from https://stackoverflow.com/questions/997946/how-to-get-current-time-and-date-in-c/10467633#10467633
-    // Get current date/time, format is YYYY-MM-DD_HHmmss
+    // Get current date/time, format is YYYYMMDD_HHmmss
     static const std::string currentDateTime() {
         time_t     now = time(nullptr);
         struct tm  tstruct;
@@ -213,7 +210,7 @@ private:
         tstruct = *localtime(&now);
         // Visit http://en.cppreference.com/w/cpp/chrono/c/strftime
         // for more information about date/time format
-        strftime(buf, sizeof(buf), "%Y-%m-%d_%H%M%S", &tstruct);
+        strftime(buf, sizeof(buf), "%Y%m%d_%H%M%S", &tstruct);
 
         return buf;
     }
@@ -227,9 +224,7 @@ private:
 
     int64_t m_shortestTick = INT64_MAX;
     int64_t m_longestTick = INT64_MIN;
-
-    uint64_t m_frameCount = 0;
 	
     UINT m_currentTick = 0;
-    int64_t m_pastTicks[MAX_TICKS];
+    std::pair<uint64_t, int64_t> m_pastTicks[MAX_TICKS];
 };

@@ -39,7 +39,6 @@ namespace GameCore
         virtual void Update( float deltaT ) = 0;
 
         // Official rendering pass
-        virtual void RenderShadowMap() = 0;
         virtual void RenderScene() = 0;
 
         // Optional UI (overlay) rendering pass.  This is LDR.  The buffer is already cleared.
