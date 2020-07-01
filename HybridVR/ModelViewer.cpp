@@ -419,11 +419,14 @@ namespace Settings
 
 	EnumVar RayTracingMode("Application/Raytracing/RayTraceMode", RTM_DIFFUSE_WITH_SHADOWMAPS, _countof(rayTracingModes), rayTracingModes);
 
-	CpuTimer g_ZPrepassTimer[2]{ {true, "ZPrepassLeft"}, {true, "ZPrepassRight"} };
-	CpuTimer g_SSAOTimer[2]{ {true, "SSAOLeft"}, {true, "SSAORight"} };
-	CpuTimer g_RaytraceTimer[2]{ {true, "RaytraceLeft"}, {true, "RaytraceRight"} };
-	CpuTimer g_EyeRenderTimer[2]{ { true, "LeftEyeRender" }, { true, "RightEyeRender" } };
-	CpuTimer g_ShadowRenderTimer(true, "ShadowRender");
+	CpuTimer g_ZPrepassTimer[Cam::kCount]{ 
+		{true, "ZPrepassLeft"}, 
+		{true, "ZPrepassRight"}, 
+		{true, "ZPrepassCenter"} };
+	CpuTimer g_SSAOTimer[Cam::kCount]{ {true, "SSAOLeft"}, {true, "SSAORight"}, {true, "SSAOCenter"} };
+	CpuTimer g_RaytraceTimer[Cam::kCount]{ {true, "RaytraceLeft"}, {true, "RaytraceRight"}, {true, "RaytraceCenter"} };
+	CpuTimer g_EyeRenderTimer[Cam::kCount]{ { true, "RenderEyeLeft" }, { true, "RenderEyeRight" }, { true, "RenderEyeCenter" } };
+	CpuTimer g_ShadowRenderTimer{ true, "ShadowRender" };
 }
 
 std::unique_ptr<DescriptorHeapStack> g_pRaytracingDescriptorHeap;
