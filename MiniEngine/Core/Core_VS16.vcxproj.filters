@@ -232,6 +232,7 @@
     <ClInclude Include="Settings.h">
       <Filter>Source Files</Filter>
     </ClInclude>
+    <ClInclude Include="CameraType.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="SystemTime.cpp">

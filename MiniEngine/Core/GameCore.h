@@ -18,6 +18,7 @@
 #include "ImGui/imgui.h"
 #include "ImGui/imgui_impl_win32.h"
 #include "ImGui/imgui_impl_dx12.h"
+#include "SystemTime.h"
 
 namespace GameCore
 {
@@ -38,9 +39,7 @@ namespace GameCore
         virtual void Update( float deltaT ) = 0;
 
         // Official rendering pass
-        virtual void RenderShadowMap() = 0;
-        virtual void RenderScene( UINT cam) = 0;
-        virtual void FrameIntegration() = 0;
+        virtual void RenderScene() = 0;
 
         // Optional UI (overlay) rendering pass.  This is LDR.  The buffer is already cleared.
         virtual void RenderUI( class GraphicsContext& ) {};

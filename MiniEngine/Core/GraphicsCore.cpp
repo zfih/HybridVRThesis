@@ -1002,7 +1002,8 @@ void Graphics::Present(void)
 
     SetNativeResolution(g_NativeWidth, g_NativeHeight);
 
-	// TODO: MOVE TO APPROPRITE PLACE IN PIPE - HERE FOR TESTING
+    Settings::g_NoSyncTimer.Stop();
+	
     VR::Sync();
 }
 
