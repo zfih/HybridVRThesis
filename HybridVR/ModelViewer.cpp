@@ -263,7 +263,7 @@ private:
 	void RenderEye(
 		Cam::CameraType eye,
 		bool SkipDiffusePass,
-		bool SkipShadowMap,
+		bool RenderSSAO,
 		PSConstants& psConstants);
 	void SetupGraphicsState(GraphicsContext& Ctx) const;
 	void RenderPrepass(
@@ -278,7 +278,7 @@ private:
 		Camera& Camera,
 		PSConstants& Constants,
 		bool SkipDiffusePass,
-		bool SkipShadowMap
+		bool RenderSSAO
 	);
 	
 	void CreateRayTraceAccelerationStructures(UINT numMeshes);
@@ -1593,7 +1593,7 @@ void D3D12RaytracingMiniEngineSample::RenderColor(GraphicsContext& Ctx, Camera& 
 			g_SceneNormalBuffer.GetSubRTV(CameraType),
 		};
 
-		Ctx.SetRenderTargets(2, rtvs,
+		Ctx.SetRenderTargets(ARRAYSIZE(rtvs), rtvs,
 			g_SceneDepthBuffer.GetSubDSV(CameraType));
 
 		Ctx.SetViewportAndScissor(
@@ -1604,33 +1604,8 @@ void D3D12RaytracingMiniEngineSample::RenderColor(GraphicsContext& Ctx, Camera& 
 
 	if (!Settings::ShowWaveTileCounts)
 	{
-		if (!Settings::SSAO_DebugDraw)
-		{
-			GraphicsContext& gfxContext = 
-				GraphicsContext::Begin(L"Shadow Map Render");
-
-			SetupGraphicsState(gfxContext);
-			{
-				ScopedTimer _prof(L"Render Shadow Map", gfxContext);
-
-				m_SunShadow.UpdateMatrix(-m_SunDirection, 
-					Vector3(0, -500.0f, 0),
-					Vector3(Settings::ShadowDimX, Settings::ShadowDimY, Settings::ShadowDimZ),
-					(uint32_t)g_ShadowBuffer.GetWidth(), 
-					(uint32_t)g_ShadowBuffer.GetHeight(), 16);
-
-				g_ShadowBuffer.BeginRendering(gfxContext);
-				gfxContext.SetPipelineState(m_ShadowPSO);
-				RenderObjects(
-					gfxContext, CameraType, m_SunShadow.GetViewProjMatrix(), kOpaque);
-				gfxContext.SetPipelineState(m_CutoutShadowPSO);
-				RenderObjects(
-					gfxContext, CameraType, m_SunShadow.GetViewProjMatrix(), kCutout);
-				g_ShadowBuffer.EndRendering(gfxContext);
-			}
-
-			gfxContext.Finish();
-		}
+		Ctx.SetPipelineState(m_CutoutModelPSO[0]);
+		RenderObjects(Ctx, CameraType, m_Camera[CameraType]->GetViewProjMatrix(), kCutout);
 	}
 }
 
@@ -1785,7 +1760,7 @@ void D3D12RaytracingMiniEngineSample::GenerateGrid(UINT width, UINT height)
 		quads.data());
 }
 
-void D3D12RaytracingMiniEngineSample::RenderEye(Cam::CameraType eye, bool SkipDiffusePass, bool SkipShadowMap,
+void D3D12RaytracingMiniEngineSample::RenderEye(Cam::CameraType eye, bool SkipDiffusePass, bool RenderSSAO,
 	PSConstants& psConstants)
 {
 	Settings::g_EyeRenderTimer[eye].Reset();
@@ -1798,7 +1773,7 @@ void D3D12RaytracingMiniEngineSample::RenderEye(Cam::CameraType eye, bool SkipDi
 	RenderPrepass(ctx, eye, camera, psConstants);
 
 	MainRender(ctx, eye, camera,
-		psConstants, SkipDiffusePass, SkipShadowMap);
+		psConstants, SkipDiffusePass, RenderSSAO);
 
 	ctx.Finish(true);
 	Settings::g_EyeRenderTimer[eye].Stop();
@@ -1864,12 +1839,15 @@ void D3D12RaytracingMiniEngineSample::RenderPrepass(GraphicsContext& Ctx, Cam::C
 }
 
 void D3D12RaytracingMiniEngineSample::MainRender(GraphicsContext& Ctx, Cam::CameraType CameraType, Camera& Camera,
-	PSConstants& Constants, bool SkipDiffusePass, bool SkipShadowMap)
+	PSConstants& Constants, bool SkipDiffusePass, bool RenderSSAO)
 {
-	Settings::g_SSAOTimer[CameraType].Reset();
-	Settings::g_SSAOTimer[CameraType].Start();
-	SSAO::Render(Ctx, *m_Camera[CameraType], CameraType);
-	Settings::g_SSAOTimer[CameraType].Stop();
+	if(RenderSSAO)
+	{
+		Settings::g_SSAOTimer[CameraType].Reset();
+		Settings::g_SSAOTimer[CameraType].Start();
+		SSAO::Render(Ctx, *m_Camera[CameraType], CameraType);
+		Settings::g_SSAOTimer[CameraType].Stop();
+	}
 
 	if (!SkipDiffusePass)
 	{
@@ -1882,16 +1860,7 @@ void D3D12RaytracingMiniEngineSample::MainRender(GraphicsContext& Ctx, Cam::Came
 			Ctx.TransitionResource(g_SceneColorBuffer, D3D12_RESOURCE_STATE_RENDER_TARGET, true);
 			Ctx.TransitionResource(g_SceneNormalBuffer, D3D12_RESOURCE_STATE_RENDER_TARGET, true);
 			Ctx.ClearColor(g_SceneColorBuffer, CameraType);
-
-			if (Settings::AsyncCompute)
-			{
-				Ctx.Flush();
-				SetupGraphicsState(Ctx);
-
-				// Make the 3D queue wait for the Compute queue to finish SSAO
-				g_CommandManager.GetGraphicsQueue().StallForProducer(g_CommandManager.GetComputeQueue());
-			}
-
+			
 			RenderColor(Ctx, Camera, CameraType, g_SceneDepthBuffer, Constants);
 		}
 
@@ -2029,20 +1998,15 @@ void D3D12RaytracingMiniEngineSample::RenderScene()
 		Settings::g_ShadowRenderTimer.Stop();
 	}
 
-	RenderEye(Cam::kLeft, skipDiffusePass, skipShadowMap, psConstants);
-		
 	if (Settings::ReprojEnable)
 	{
+		RenderEye(Cam::kLeft, skipDiffusePass, false, psConstants);
+		
 		ReprojectScene();
 
 		GraphicsContext& gfxContext = GraphicsContext::Begin(L"Scene Render");
 
-		gfxContext.SetRootSignature(m_RootSig);
-		gfxContext.SetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-		gfxContext.SetIndexBuffer(m_Model.m_IndexBuffer.IndexBufferView());
-		gfxContext.SetVertexBuffer(0, m_Model.m_VertexBuffer.VertexBufferView());
-
-		/*SSAO::Render(gfxContext, *m_Camera[cam], cam);*/
+		SetupGraphicsState(gfxContext);
 
 		g_initialize_dynamicCb(gfxContext, m_Camera, Cam::kRight,
 			g_SceneColorBuffer, g_dynamicConstantBuffer);
@@ -2050,10 +2014,14 @@ void D3D12RaytracingMiniEngineSample::RenderScene()
 		gfxContext.Finish();
 
 		skipDiffusePass = true;
+		RenderEye(Cam::kRight, skipDiffusePass, false, psConstants);
+		
+		RenderSSAO();
 	}
 	else 
 	{
-		RenderEye(Cam::kRight, skipDiffusePass, skipShadowMap, psConstants);
+		RenderEye(Cam::kLeft, skipDiffusePass, true, psConstants);
+		RenderEye(Cam::kRight, skipDiffusePass, true, psConstants);
 	}
 }
 

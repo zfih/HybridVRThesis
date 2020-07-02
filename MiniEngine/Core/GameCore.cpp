@@ -121,7 +121,6 @@ namespace GameCore
         }
     	
         game.RenderScene();
-        game.RenderSSAO();
 
         PostEffects::Render(0);
         PostEffects::Render(1);

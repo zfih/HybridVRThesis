@@ -62,7 +62,6 @@ cbuffer PSConstants : register(b0)
     uint4 TileCount;
     uint4 FirstLightIndex;
     uint FrameIndexMod2;
-    uint aoFirst;
 }
 
 cbuffer MaterialInfo : register(b1)
@@ -368,18 +367,6 @@ MRT main(VSOutput vsOutput)
 
     colorSum += ApplyDirectionalLight(diffuseAlbedo, specularAlbedo, specularMask, gloss, normal, viewDir, SunDirection, SunColor, vsOutput.shadowCoord);
     colorSum += ApplyAmbientLight(diffuseAlbedo, 1, AmbientColor);
-
-    /*if (aoFirst) {
-        float ao = texSSAO[pixelPos];
-        colorSum += ApplyAmbientLight(diffuseAlbedo, ao, AmbientColor);
-        colorSum += ApplyDirectionalLight(diffuseAlbedo, specularAlbedo, specularMask, gloss, normal, viewDir, SunDirection, SunColor, vsOutput.shadowCoord);
-    }
-    else
-    {
-        colorSum += ApplyDirectionalLight(diffuseAlbedo, specularAlbedo, specularMask, gloss, normal, viewDir, SunDirection, SunColor, vsOutput.shadowCoord);
-        float ao = texSSAO[pixelPos];
-        colorSum += ApplyAmbientLight(diffuseAlbedo, ao, AmbientColor);
-    }*/
 
 	mrt.Color = float4(ApplySRGBCurve(colorSum), 1);
 
