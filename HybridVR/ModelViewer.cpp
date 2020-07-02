@@ -60,6 +60,10 @@
 #include "CompiledShaders/MissShadowsLib.h"
 #include "CompiledShaders/AlphaTransparencyAnyHit.h"
 
+// Hybrid CS
+#include "Shaders/HybridSSRCSCompat.h"
+#include "CompiledShaders/HybridSsrCS.h"
+
 #include "RaytracingHlslCompat.h"
 #include "ModelViewerRayTracing.h"
 
@@ -226,6 +230,7 @@ public:
 	virtual void RenderScene() override;
 	
 	virtual void RenderUI(class GraphicsContext&) override;
+	void ScreenSpaceReflections();
 	virtual void Raytrace(class GraphicsContext&, UINT cam);
 
 	void SetCameraToPredefinedPosition(int cameraPosition);
@@ -270,6 +275,7 @@ private:
 	                     DepthBuffer& depth);
 	void RaytraceReflections(GraphicsContext& context, ColorBuffer& colorTarget,
 	                         DepthBuffer& depth, ColorBuffer& normals);
+	void InitalizeHybridSsrResources();
 
 	void SaveCamPos();
 	void LoadCamPos();
@@ -316,7 +322,7 @@ private:
 
 int wmain(int argc, wchar_t** argv)
 {
-	g_CreateScene(Scene::kBistro);
+	g_CreateScene(Scene::kSponza);
 	
 #if _DEBUG
 	CComPtr<ID3D12Debug> debugInterface;
@@ -351,26 +357,18 @@ int wmain(int argc, wchar_t** argv)
 
 namespace Settings
 {
+	// Ray tracing modes
 	const char* rayTracingModes[] = {
-	"Off",
-	"Bary Rays",
-	"Refl Bary",
-	"Shadow Rays",
-	"Diffuse & ShadowMaps",
-	"Diffuse & ShadowRays",
-	"Reflection Rays"
+		"Off",
+		"Bary Rays",
+		"Refl Bary",
+		"Shadow Rays",
+		"Diffuse & ShadowMaps",
+		"Diffuse & ShadowRays",
+		"Reflection Rays",
+		"SSR Raster"
 	};
 
-	enum RaytracingMode
-	{
-		RTM_OFF,
-		RTM_TRAVERSAL,
-		RTM_SSR,
-		RTM_SHADOWS,
-		RTM_DIFFUSE_WITH_SHADOWMAPS,
-		RTM_DIFFUSE_WITH_SHADOWRAYS,
-		RTM_REFLECTIONS,
-	};
 
 	ExpVar SunLightIntensity("Application/Lighting/Sun Light Intensity", 4.0f, 0.0f, 16.0f, 0.1f);
 	ExpVar AmbientIntensity("Application/Lighting/Ambient Intensity", 0.1f, -16.0f, 16.0f, 0.1f);
@@ -1194,6 +1192,8 @@ void D3D12RaytracingMiniEngineSample::Update(float deltaT)
 			Settings::RayTracingMode = Settings::RTM_DIFFUSE_WITH_SHADOWRAYS;
 		else if (GameInput::IsFirstPressed(GameInput::kKey_7))
 			Settings::RayTracingMode = Settings::RTM_REFLECTIONS;
+		else if (GameInput::IsFirstPressed(GameInput::kKey_8))
+			Settings::RayTracingMode = Settings::RTM_SSR_Raster;
 	}
 
 	static bool freezeCamera = false;
@@ -1703,6 +1703,7 @@ void D3D12RaytracingMiniEngineSample::RenderShadowMap()
 
 void D3D12RaytracingMiniEngineSample::RenderScene()
 {
+	ScreenSpaceReflections();
 	const bool skipDiffusePass =
 		Settings::RayTracingMode == Settings::RTM_DIFFUSE_WITH_SHADOWMAPS ||
 		Settings::RayTracingMode == Settings::RTM_DIFFUSE_WITH_SHADOWRAYS ||
@@ -2015,6 +2016,75 @@ void D3D12RaytracingMiniEngineSample::RaytraceReflections(
 	pRaytracingCommandList->DispatchRays(&dispatchRaysDesc);
 }
 
+namespace HybridSsr
+{
+	enum RootParam
+	{
+		RootParam_kConstants,
+		RootParam_kTextures,
+		RootParam_kCount
+	};
+
+	enum TextureTypes
+	{
+		TextureTypes_kMainBuffer,
+		TextureTypes_kDepthBuffer,
+		TextureTypes_kNormalBuffer,
+		TextureTypes_kAlbedoBuffer,
+		TextureTypes_kDiffuse,
+		TextureTypes_kCount
+	};
+
+	Texture g_Textures[TextureTypes_kCount];
+
+	HybridSsrConstantBuffer g_ConstantBufferData;
+	StructuredBuffer g_ConstantBuffer;
+
+	ComputePSO g_PSO;
+	RootSignature g_RS;
+
+	void g_InitializeResources()
+	{
+		// Root signature
+		g_RS.Reset(RootParam_kCount, 0);
+		g_RS[RootParam_kConstants].InitAsConstantBuffer(RootParam_kConstants);
+		g_RS[RootParam_kTextures].InitAsDescriptorRange(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 0, TextureTypes_kCount);
+		g_RS.Finalize(L"");
+
+		// Constant buffer
+		g_ConstantBuffer.Create(L"HybridSsr Constant Buffer", 1, sizeof(HybridSsrConstantBuffer));
+
+		g_PSO.SetRootSignature(g_RS);
+		g_PSO.SetComputeShader(g_pHybridSsrCS, sizeof(g_pHybridSsrCS));
+	}
+
+	HybridSsrConstantBuffer g_CreateConstantBufferData()
+	{
+		HybridSsrConstantBuffer result{};
+
+
+		return result;
+	}
+
+
+}
+
+void D3D12RaytracingMiniEngineSample::ScreenSpaceReflections()
+{
+	
+	ComputeContext& Ctx = ComputeContext::Begin(L"Hybrid Screen Space Reflection");
+
+	HybridSsrConstantBuffer cb = HybridSsr::g_CreateConstantBufferData();
+
+	Ctx.WriteBuffer(HybridSsr::g_ConstantBuffer, 0, &cb, sizeof(cb));
+	// Bind pipeline
+	Ctx.SetPipelineState(HybridSsr::g_PSO);
+	Ctx.SetConstantBuffer(HybridSsr::RootParam_kConstants, HybridSsr::g_ConstantBuffer.GetGpuVirtualAddress());
+	
+	// Use compute shader.
+	Ctx.Dispatch(0, 0, 0);
+}
+
 void D3D12RaytracingMiniEngineSample::RenderUI(class GraphicsContext& gfxContext)
 {
 	const UINT framesToAverage = 20;
@@ -2071,6 +2141,9 @@ void D3D12RaytracingMiniEngineSample::Raytrace(class GraphicsContext& gfxContext
 
 	case Settings::RTM_REFLECTIONS:
 		RaytraceReflections(gfxContext, g_SceneColorBuffer, g_SceneDepthBuffer, g_SceneNormalBuffer);
+		break;
+	case Settings::RTM_SSR_Raster:
+		// TODO: Ray trace missing pixels
 		break;
 	}
 

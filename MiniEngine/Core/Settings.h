@@ -4,6 +4,20 @@
 
 namespace Settings
 {
+
+	enum RaytracingMode
+	{
+		RTM_OFF,
+		RTM_TRAVERSAL,
+		RTM_SSR,
+		RTM_SHADOWS,
+		RTM_DIFFUSE_WITH_SHADOWMAPS,
+		RTM_DIFFUSE_WITH_SHADOWRAYS,
+		RTM_REFLECTIONS,
+		RTM_SSR_Raster,
+		RTM_Count
+	};
+
 	// Profiling
 	extern CpuTimer g_NoSyncTimer;
 	extern CpuTimer g_ImGUITimer;

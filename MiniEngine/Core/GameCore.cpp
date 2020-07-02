@@ -121,7 +121,7 @@ namespace GameCore
         }
     	
         game.RenderScene();
-
+    	
         PostEffects::Render(0);
         PostEffects::Render(1);
 

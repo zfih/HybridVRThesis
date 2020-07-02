@@ -16,6 +16,7 @@
 #pragma warning(disable:4201) // nonstandard extension used : nameless struct/union
 #pragma warning(disable:4238) // nonstandard extension used : class rvalue used as lvalue
 #pragma warning(disable:4324) // structure was padded due to __declspec(align())
+#pragma warning(disable : 26812) // Enum class over enum
 
 #ifndef WIN32_LEAN_AND_MEAN
     #define WIN32_LEAN_AND_MEAN

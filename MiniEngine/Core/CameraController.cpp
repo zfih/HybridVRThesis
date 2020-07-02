@@ -134,8 +134,8 @@ void VRCameraController::Update(float dt)
 {
     CameraController::Update(dt);
     m_VRCam.SetTransform(m_affine);
-    m_VRCam.AddVROffset(m_LastStrafe * 0.01, 
-                        m_LastAscent * 0.01, 
-                       -m_LastForward * 0.01);
+    m_VRCam.AddVROffset(m_LastStrafe * 0.01f, 
+                        m_LastAscent * 0.01f, 
+                       -m_LastForward * 0.01f);
     m_VRCam.Update();
 }

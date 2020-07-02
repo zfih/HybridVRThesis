@@ -79,6 +79,7 @@
     </FxCompile>
     <FxCompile Include="DiffuseHitShaderLib.hlsl" />
     <FxCompile Include="AlphaTransparencyAnyHit.hlsl" />
+    <FxCompile Include="Shaders\HybridSsrCS.hlsl" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="ForwardPlusLighting.cpp" />
@@ -96,6 +97,7 @@
     <ClInclude Include="Raytracing.h" />
     <ClInclude Include="DescriptorHeapStack.h" />
     <ClInclude Include="GlobalState.h" />
+    <ClInclude Include="Shaders\HybridSsrCSCompat.h" />
   </ItemGroup>
   <ItemGroup>
     <Image Include="Textures\Models\background.DDS">

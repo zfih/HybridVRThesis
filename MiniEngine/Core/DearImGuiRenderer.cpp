@@ -184,7 +184,7 @@ void ImGui::BuildGUI(Math::Camera* cam, GameCore::CameraController* controller)
             int mode = Settings::RayTracingMode;
 
             ImGui::PushItemWidth(-1);
-            ImGui::ListBox("Raytracing mode selections", &mode, Settings::rayTracingModes, 7, 7);
+            ImGui::ListBox("Raytracing mode selections", &mode, Settings::rayTracingModes, Settings::RTM_Count, Settings::RTM_Count);
             ImGui::PopItemWidth();
         	
             Settings::RayTracingMode = mode;
