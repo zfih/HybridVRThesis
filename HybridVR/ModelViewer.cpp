@@ -172,6 +172,13 @@ struct SceneData
 
 SceneData g_Scene {};
 
+void g_initialize_dynamicCb(
+	CommandContext& Context,
+	VRCamera& Camera,
+	UINT CurCam,
+	const ColorBuffer& ColorTarget,
+	ByteAddressBuffer& Buffer);
+
 void g_CreateScene(Scene Scene)
 {
 	g_Scene.Scene = Scene;
@@ -2037,6 +2044,8 @@ void D3D12RaytracingMiniEngineSample::RenderScene()
 
 		/*SSAO::Render(gfxContext, *m_Camera[cam], cam);*/
 
+		g_initialize_dynamicCb(gfxContext, m_Camera, Cam::kRight,
+			g_SceneColorBuffer, g_dynamicConstantBuffer);
 		RaytraceDiffuse(gfxContext, g_SceneColorBuffer);
 		gfxContext.Finish();
 
