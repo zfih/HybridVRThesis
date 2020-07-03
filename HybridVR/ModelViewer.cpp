@@ -243,8 +243,7 @@ public:
 	virtual void RenderScene() override;
 	
 	virtual void RenderUI(class GraphicsContext&) override;
-	virtual void Raytrace(class GraphicsContext&, UINT cam,
-	                      DepthBuffer* curDepthBuf);
+	virtual void Raytrace(class GraphicsContext&, UINT cam);
 
 	void SetCameraToPredefinedPosition(int cameraPosition);
 
@@ -1940,6 +1939,7 @@ void D3D12RaytracingMiniEngineSample::MainRender(GraphicsContext& Ctx, Cam::Came
 			Ctx.TransitionResource(g_SceneColorBuffer, D3D12_RESOURCE_STATE_RENDER_TARGET, true);
 			Ctx.TransitionResource(g_SceneNormalBuffer, D3D12_RESOURCE_STATE_RENDER_TARGET, true);
 			Ctx.ClearColor(g_SceneColorBuffer, CameraType);
+			Ctx.ClearColor(g_SceneNormalBuffer, CameraType);
 
 			if (Settings::AsyncCompute)
 			{
@@ -1975,7 +1975,7 @@ void D3D12RaytracingMiniEngineSample::MainRender(GraphicsContext& Ctx, Cam::Came
 	{
 		Settings::g_RaytraceTimer[CameraType].Reset();
 		Settings::g_RaytraceTimer[CameraType].Start();
-		Raytrace(Ctx, CameraType, &g_SceneDepthBuffer);
+		Raytrace(Ctx, CameraType);
 		Settings::g_RaytraceTimer[CameraType].Stop();
 	}
 }
@@ -2328,7 +2328,7 @@ void D3D12RaytracingMiniEngineSample::RenderUI(class GraphicsContext& gfxContext
 }
 
 void D3D12RaytracingMiniEngineSample::Raytrace(
-	GraphicsContext& gfxContext, UINT cam, DepthBuffer* curDepthBuf)
+	GraphicsContext& gfxContext, UINT cam)
 {
 	ScopedTimer _prof(L"Raytrace", gfxContext);
 
@@ -2357,7 +2357,7 @@ void D3D12RaytracingMiniEngineSample::Raytrace(
 		break;
 
 	case Settings::RTM_REFLECTIONS:
-		RaytraceReflections(gfxContext, g_SceneColorBuffer, *curDepthBuf, g_SceneNormalBuffer);
+		RaytraceReflections(gfxContext, g_SceneColorBuffer, g_SceneDepthBuffer, g_SceneNormalBuffer);
 		break;
 	}
 

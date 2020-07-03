@@ -151,11 +151,6 @@
     </FxCompile>
     <FxCompile Include="Shaders\ScreenTextureVS.hlsl" />
     <FxCompile Include="Shaders\ScreenTexturePS.hlsl" />
-=======
-    <FxCompile Include="Shaders\WaveTileCountPS.hlsl">
-      <Filter>Shaders</Filter>
-    </FxCompile>
->>>>>>> master
     <FxCompile Include="DiffuseHitShaderLib.hlsl" />
     <FxCompile Include="AlphaTransparencyAnyHit.hlsl" />
     <FxCompile Include="Shaders\CombineColourVS.hlsl">
