@@ -134,9 +134,48 @@ D3D12_GPU_DESCRIPTOR_HANDLE *g_GpuSceneMaterialSrvs;
 D3D12_CPU_DESCRIPTOR_HANDLE g_SceneMeshInfo;
 D3D12_CPU_DESCRIPTOR_HANDLE g_SceneIndices;
 
-D3D12_GPU_DESCRIPTOR_HANDLE g_OutputUAV;
-D3D12_GPU_DESCRIPTOR_HANDLE g_DepthAndNormalsTable;
-D3D12_GPU_DESCRIPTOR_HANDLE g_SceneSrvs;
+D3D12_GPU_DESCRIPTOR_HANDLE g_OutputUAVFullRes;
+D3D12_GPU_DESCRIPTOR_HANDLE g_OutputUAVLowRes;
+D3D12_GPU_DESCRIPTOR_HANDLE g_DepthAndNormalsTableFullRes;
+D3D12_GPU_DESCRIPTOR_HANDLE g_DepthAndNormalsTableLowRes;
+D3D12_GPU_DESCRIPTOR_HANDLE g_SceneSrvsFullRes;
+D3D12_GPU_DESCRIPTOR_HANDLE g_SceneSrvsLowRes;
+
+namespace ResolutionMode
+{
+	enum ResolutionMode
+	{
+		kFullRes = 0,
+		kLowRes,
+		kAuto
+	};
+}
+
+#define GetterFunc(Type, Name) \
+Type& Name(ResolutionMode::ResolutionMode ResolutionMode) \
+{ \
+    switch (ResolutionMode) \
+    { \
+    case 0: \
+        return g_##Name##FullRes; \
+    case 1: \
+        return g_##Name##LowRes; \
+    case 2: \
+        if (Graphics::GetFrameCount() % 2 == 1) \
+        { \
+            return g_##Name##LowRes; \
+        } \
+        else \
+        { \
+            return g_##Name##FullRes; \
+        } \
+    } \
+}
+
+GetterFunc(D3D12_GPU_DESCRIPTOR_HANDLE, OutputUAV)
+GetterFunc(D3D12_GPU_DESCRIPTOR_HANDLE, DepthAndNormalsTable)
+GetterFunc(D3D12_GPU_DESCRIPTOR_HANDLE, SceneSrvs)
+#undef GetterFunc
 
 std::vector<CComPtr<ID3D12Resource>> g_bvh_bottomLevelAccelerationStructures;
 CComPtr<ID3D12Resource> g_bvh_topLevelAccelerationStructure;
@@ -467,22 +506,37 @@ void InitializeViews(const Model& model)
 	UINT uavDescriptorIndex;
 	g_GpuSceneMaterialSrvs = new D3D12_GPU_DESCRIPTOR_HANDLE[model.m_Header.materialCount];
 	g_pRaytracingDescriptorHeap->AllocateDescriptor(uavHandle, uavDescriptorIndex);
-	Graphics::g_Device->CopyDescriptorsSimple(1, uavHandle, SceneColorBuffer()->GetUAV(),
+	Graphics::g_Device->CopyDescriptorsSimple(1, uavHandle, SceneColorBuffer(0)->GetUAV(),
 	                                          D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
-	g_OutputUAV = g_pRaytracingDescriptorHeap->GetGpuHandle(uavDescriptorIndex);
+	g_OutputUAVFullRes = g_pRaytracingDescriptorHeap->GetGpuHandle(uavDescriptorIndex);
 
+	g_pRaytracingDescriptorHeap->AllocateDescriptor(uavHandle, uavDescriptorIndex);
+	Graphics::g_Device->CopyDescriptorsSimple(1, uavHandle, SceneColorBuffer(1)->GetUAV(),
+	                                          D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+	g_OutputUAVLowRes = g_pRaytracingDescriptorHeap->GetGpuHandle(uavDescriptorIndex);
+
+	UINT unused;
 	{
 		D3D12_CPU_DESCRIPTOR_HANDLE srvHandle;
 		UINT srvDescriptorIndex;
 		g_pRaytracingDescriptorHeap->AllocateDescriptor(srvHandle, srvDescriptorIndex);
-		Graphics::g_Device->CopyDescriptorsSimple(1, srvHandle, SceneDepthBuffer()->GetDepthSRV(),
+		Graphics::g_Device->CopyDescriptorsSimple(1, srvHandle, SceneDepthBuffer(0)->GetDepthSRV(),
 		                                          D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
-		g_DepthAndNormalsTable = g_pRaytracingDescriptorHeap->GetGpuHandle(srvDescriptorIndex);
+		g_DepthAndNormalsTableFullRes = g_pRaytracingDescriptorHeap->GetGpuHandle(srvDescriptorIndex);
 
-		UINT unused;
 		g_pRaytracingDescriptorHeap->AllocateDescriptor(srvHandle, unused);
-		Graphics::g_Device->CopyDescriptorsSimple(1, srvHandle, SceneNormalBuffer().GetSRV(),
+		Graphics::g_Device->CopyDescriptorsSimple(1, srvHandle, g_SceneNormalBufferFullRes.GetSRV(),
 		                                          D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+
+		g_pRaytracingDescriptorHeap->AllocateDescriptor(srvHandle, srvDescriptorIndex);
+		Graphics::g_Device->CopyDescriptorsSimple(1, srvHandle, SceneDepthBuffer(1)->GetDepthSRV(), 
+			D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+		g_DepthAndNormalsTableLowRes = g_pRaytracingDescriptorHeap->GetGpuHandle(srvDescriptorIndex);
+
+		g_pRaytracingDescriptorHeap->AllocateDescriptor(srvHandle, unused);
+		Graphics::g_Device->CopyDescriptorsSimple(1, srvHandle, 
+			g_SceneNormalBufferLowRes.GetSRV(),
+			D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 	}
 
 	{
@@ -491,9 +545,8 @@ void InitializeViews(const Model& model)
 		g_pRaytracingDescriptorHeap->AllocateDescriptor(srvHandle, srvDescriptorIndex);
 		Graphics::g_Device->CopyDescriptorsSimple(1, srvHandle, g_SceneMeshInfo,
 		                                          D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
-		g_SceneSrvs = g_pRaytracingDescriptorHeap->GetGpuHandle(srvDescriptorIndex);
+		g_SceneSrvsFullRes = g_pRaytracingDescriptorHeap->GetGpuHandle(srvDescriptorIndex);
 
-		UINT unused;
 		g_pRaytracingDescriptorHeap->AllocateDescriptor(srvHandle, unused);
 		Graphics::g_Device->CopyDescriptorsSimple(1, srvHandle, g_SceneIndices, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 
@@ -505,8 +558,27 @@ void InitializeViews(const Model& model)
 		                                          D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 
 		g_pRaytracingDescriptorHeap->AllocateDescriptor(srvHandle, unused);
-		Graphics::g_Device->CopyDescriptorsSimple(1, srvHandle, SSAOFullScreen()->GetSRV(),
+		Graphics::g_Device->CopyDescriptorsSimple(1, srvHandle, SSAOFullScreen(0)->GetSRV(),
 		                                          D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+
+		g_pRaytracingDescriptorHeap->AllocateDescriptor(srvHandle, srvDescriptorIndex);
+		Graphics::g_Device->CopyDescriptorsSimple(1, srvHandle, g_SceneMeshInfo,
+			D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+		g_SceneSrvsLowRes = g_pRaytracingDescriptorHeap->GetGpuHandle(srvDescriptorIndex);
+
+		g_pRaytracingDescriptorHeap->AllocateDescriptor(srvHandle, unused);
+		Graphics::g_Device->CopyDescriptorsSimple(1, srvHandle, g_SceneIndices, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+
+		g_pRaytracingDescriptorHeap->
+			AllocateBufferSrv(*const_cast<ID3D12Resource*>(model.m_VertexBuffer.GetResource()));
+
+		g_pRaytracingDescriptorHeap->AllocateDescriptor(srvHandle, unused);
+		Graphics::g_Device->CopyDescriptorsSimple(1, srvHandle, g_ShadowBuffer.GetSRV(),
+			D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+
+		g_pRaytracingDescriptorHeap->AllocateDescriptor(srvHandle, unused);
+		Graphics::g_Device->CopyDescriptorsSimple(1, srvHandle, SSAOFullScreen(1)->GetSRV(),
+			D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 
 		for (UINT i = 0; i < model.m_Header.materialCount; i++)
 		{
@@ -1913,10 +1985,12 @@ void Raytracebarycentrics(
 
 	// 0,1,2,3,4,7 
 	pCmdList->SetComputeRootSignature(g_GlobalRaytracingRootSignature);
-	pCmdList->SetComputeRootDescriptorTable(0, g_SceneSrvs);
+	pCmdList->SetComputeRootDescriptorTable(
+		0, SceneSrvs(ResolutionMode::kAuto));
 	pCmdList->SetComputeRootConstantBufferView(1, g_hitConstantBuffer.GetGpuVirtualAddress());
 	pCmdList->SetComputeRootConstantBufferView(2, g_dynamicConstantBuffer.GetGpuVirtualAddress());
-	pCmdList->SetComputeRootDescriptorTable(4, g_OutputUAV);
+	pCmdList->SetComputeRootDescriptorTable(
+		4, OutputUAV(ResolutionMode::kAuto));
 	pCmdList->SetComputeRootShaderResourceView(
 		7, g_bvh_topLevelAccelerationStructure->GetGPUVirtualAddress());
 
@@ -1958,8 +2032,10 @@ void RaytracebarycentricsSSR(
 	pCmdList->SetComputeRootSignature(g_GlobalRaytracingRootSignature);
 	pCmdList->SetComputeRootConstantBufferView(1, g_hitConstantBuffer.GetGpuVirtualAddress());
 	pCmdList->SetComputeRootConstantBufferView(2, g_dynamicConstantBuffer.GetGpuVirtualAddress());
-	pCmdList->SetComputeRootDescriptorTable(3, g_DepthAndNormalsTable);
-	pCmdList->SetComputeRootDescriptorTable(4, g_OutputUAV);
+	pCmdList->SetComputeRootDescriptorTable(
+		3, DepthAndNormalsTable(ResolutionMode::kAuto));
+	pCmdList->SetComputeRootDescriptorTable(
+		4, OutputUAV(ResolutionMode::kAuto));
 	pCmdList->SetComputeRootShaderResourceView(
 		7, g_bvh_topLevelAccelerationStructure->GetGPUVirtualAddress());
 
@@ -2008,8 +2084,10 @@ void D3D12RaytracingMiniEngineSample::RaytraceShadows(
 	pCmdList->SetComputeRootSignature(g_GlobalRaytracingRootSignature);
 	pCmdList->SetComputeRootConstantBufferView(1, g_hitConstantBuffer.GetGpuVirtualAddress());
 	pCmdList->SetComputeRootConstantBufferView(2, g_dynamicConstantBuffer->GetGPUVirtualAddress());
-	pCmdList->SetComputeRootDescriptorTable(3, g_DepthAndNormalsTable);
-	pCmdList->SetComputeRootDescriptorTable(4, g_OutputUAV);
+	pCmdList->SetComputeRootDescriptorTable(
+		3, DepthAndNormalsTable(ResolutionMode::kAuto));
+	pCmdList->SetComputeRootDescriptorTable(
+		4, OutputUAV(ResolutionMode::kAuto));
 	pCmdList->SetComputeRootShaderResourceView(
 		7, g_bvh_topLevelAccelerationStructure->GetGPUVirtualAddress());
 
@@ -2052,10 +2130,12 @@ void D3D12RaytracingMiniEngineSample::RaytraceDiffuse(
 	pRaytracingCommandList->SetDescriptorHeaps(ARRAYSIZE(pDescriptorHeaps), pDescriptorHeaps);
 
 	pCommandList->SetComputeRootSignature(g_GlobalRaytracingRootSignature);
-	pCommandList->SetComputeRootDescriptorTable(0, g_SceneSrvs);
+	pCommandList->SetComputeRootDescriptorTable(
+		0, SceneSrvs(ResolutionMode::kAuto));
 	pCommandList->SetComputeRootConstantBufferView(1, g_hitConstantBuffer.GetGpuVirtualAddress());
 	pCommandList->SetComputeRootConstantBufferView(2, g_dynamicConstantBuffer.GetGpuVirtualAddress());
-	pCommandList->SetComputeRootDescriptorTable(4, g_OutputUAV);
+	pCommandList->SetComputeRootDescriptorTable(
+		4, OutputUAV(ResolutionMode::kAuto));
 	pRaytracingCommandList->SetComputeRootShaderResourceView(
 		7, g_bvh_topLevelAccelerationStructure->GetGPUVirtualAddress());
 
@@ -2102,11 +2182,14 @@ void D3D12RaytracingMiniEngineSample::RaytraceReflections(
 	pRaytracingCommandList->SetDescriptorHeaps(ARRAYSIZE(pDescriptorHeaps), pDescriptorHeaps);
 
 	pCommandList->SetComputeRootSignature(g_GlobalRaytracingRootSignature);
-	pCommandList->SetComputeRootDescriptorTable(0, g_SceneSrvs);
+	pCommandList->SetComputeRootDescriptorTable(
+		0, SceneSrvs(ResolutionMode::kAuto));
 	pCommandList->SetComputeRootConstantBufferView(1, g_hitConstantBuffer.GetGpuVirtualAddress());
 	pCommandList->SetComputeRootConstantBufferView(2, g_dynamicConstantBuffer.GetGpuVirtualAddress());
-	pCommandList->SetComputeRootDescriptorTable(3, g_DepthAndNormalsTable);
-	pCommandList->SetComputeRootDescriptorTable(4, g_OutputUAV);
+	pCommandList->SetComputeRootDescriptorTable(
+		3, DepthAndNormalsTable(ResolutionMode::kAuto));
+	pCommandList->SetComputeRootDescriptorTable(
+		4, OutputUAV(ResolutionMode::kAuto));
 	pRaytracingCommandList->SetComputeRootShaderResourceView(
 		7, g_bvh_topLevelAccelerationStructure->GetGPUVirtualAddress());
 
