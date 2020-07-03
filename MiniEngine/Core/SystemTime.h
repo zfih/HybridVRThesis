@@ -15,6 +15,12 @@
 
 #pragma once
 
+#include "GraphicsCore.h"
+#include <fstream>
+#include <iostream>
+#include <chrono>
+#include <ctime>
+
 class SystemTime
 {
 public:
@@ -52,11 +58,33 @@ private:
 class CpuTimer
 {
 public:
+#define MAX_TICKS 120
 
-    CpuTimer()
+#ifdef _DEBUG
+	
+// Force logging to file off for day to day run sessions.
+// Overrides logging for all timers with false.
+// Logging options should not be forced on non Debug builds.
+#define FORCE_NO_LOG
+	
+#endif
+	
+    CpuTimer(bool logging = false, std::string name = "UNKNOWN")
     {
-        m_StartTick = 0ll;
-        m_ElapsedTicks = 0ll;
+#ifdef FORCE_NO_LOG
+        m_logging = false;
+#else
+        m_logging = logging;
+#endif
+        Initialize(name);
+    }
+	
+    ~CpuTimer()
+    {
+		if(m_outputFile.is_open())
+		{
+            m_outputFile.close();
+		}
     }
 
     void Start()
@@ -73,9 +101,30 @@ public:
             m_StartTick = 0ll;
         }
     }
-
+	
     void Reset()
     {
+        m_pastTicks[m_currentTick].first = Graphics::GetFrameCount();
+        m_pastTicks[m_currentTick].second = m_ElapsedTicks;
+        m_currentTick = (m_currentTick + 1) % MAX_TICKS;
+
+		if(m_logging && m_currentTick == 0)
+	    {
+		    for (int i = 0; i < MAX_TICKS; ++i)
+		    {
+		    	m_outputFile << m_pastTicks[i].first << "," << SystemTime::TicksToMillisecs(m_pastTicks[i].second) << "\n";
+		    }
+	    }
+
+        if(m_ElapsedTicks > m_longestTick)
+        {
+            m_longestTick = m_ElapsedTicks;
+        }
+        else if(m_ElapsedTicks < m_shortestTick)
+        {
+            m_shortestTick = m_ElapsedTicks;
+        }
+    	
         m_ElapsedTicks = 0ll;
         m_StartTick = 0ll;
     }
@@ -85,8 +134,97 @@ public:
         return SystemTime::TicksToSeconds(m_ElapsedTicks);
     }
 
+	double GetTimeMilliseconds() const
+    {
+        return SystemTime::TicksToMillisecs(m_ElapsedTicks);
+    }
+
+	double GetAverageTimeMilliseconds() const
+    {
+        int64_t avg = 0;
+    	
+	    for (std::pair<uint64_t, int64_t> tick : m_pastTicks)
+	    {
+            avg += tick.second;
+	    }
+
+        avg /= MAX_TICKS;
+
+        return SystemTime::TicksToMillisecs(avg);
+    }
+
+	double GetLongestTickToMilliseconds() const
+    {
+        return SystemTime::TicksToMillisecs(m_longestTick);
+    }
+
+    double GetShortestTickToMilliseconds() const
+    {
+        return SystemTime::TicksToMillisecs(m_shortestTick);
+    }
+
+	void WriteTicksToFile()
+    {
+        std::ofstream m_outputFile;
+	    
+    }
+	
 private:
 
+    void Initialize(std::string name)
+    {
+        m_StartTick = 0ll;
+        m_ElapsedTicks = 0ll;
+
+        memset(m_pastTicks, 0, MAX_TICKS * sizeof(int64_t));
+
+#if _DEBUG
+        const auto filename = "logs/debug_log_" + currentDateTime() + "_" + name + ".txt";
+#else
+        const auto filename = "logs/log_" + currentDateTime() + "_" + name + ".txt";
+#endif
+        char buf[1024];
+
+        if(m_logging)
+    	{
+		    GetCurrentDirectoryA(1024, buf);
+
+        	printf_s("Wrote file to: %s\n", filename.c_str());
+        	printf_s("Dir: %s\n", buf);
+
+        	m_outputFile = std::ofstream(filename);
+
+        	if (m_outputFile.fail()) {
+        		strerror_s(buf, 1024, errno);
+        		std::cerr << "Open failed: " << buf << '\n';
+        	}
+	    }
+    }
+	
+	// Stolen from https://stackoverflow.com/questions/997946/how-to-get-current-time-and-date-in-c/10467633#10467633
+    // Get current date/time, format is YYYYMMDD_HHmmss
+    static const std::string currentDateTime() {
+        time_t     now = time(nullptr);
+        struct tm  tstruct;
+        char       buf[80];
+        tstruct = *localtime(&now);
+        // Visit http://en.cppreference.com/w/cpp/chrono/c/strftime
+        // for more information about date/time format
+        strftime(buf, sizeof(buf), "%Y%m%d_%H%M%S", &tstruct);
+
+        return buf;
+    }
+	
+    std::ofstream m_outputFile;
+
+    bool m_logging = false;
+	
     int64_t m_StartTick;
     int64_t m_ElapsedTicks;
+
+    int64_t m_shortestTick = INT64_MAX;
+    int64_t m_longestTick = INT64_MIN;
+	
+    UINT m_currentTick = 0;
+    std::pair<uint64_t, int64_t> m_pastTicks[MAX_TICKS];
 };

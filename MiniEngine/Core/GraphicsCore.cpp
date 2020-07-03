@@ -112,9 +112,7 @@ namespace Settings
     const char* HDRModeLabels[] = { "HDR", "SDR", "Side-by-Side" };
     EnumVar HDRDebugMode("Graphics/Display/HDR Debug Mode", 0, 3, HDRModeLabels);
 
-    const char* OnOffLabels[] = { "On", "Off" };
-    EnumVar VRDepthStencil(
-        "VR Depth Stencil", 0, _countof(OnOffLabels), OnOffLabels);
+    BoolVar VRDepthStencil("VR Depth Stencil", false);
 
     enum { kBilinear, kBicubic, kSharpening, kFilterCount };
     const char* FilterLabels[] = { "Bilinear", "Bicubic", "Sharpening" };
@@ -127,6 +125,11 @@ namespace Settings
     enum DebugZoomLevel { kDebugZoomOff, kDebugZoom2x, kDebugZoom4x, kDebugZoom8x, kDebugZoom16x, kDebugZoomCount };
     const char* DebugZoomLabels[] = { "Off", "2x Zoom", "4x Zoom", "8x Zoom", "16x Zoom" };
     EnumVar DebugZoom("Graphics/Display/Magnify Pixels", kDebugZoomOff, kDebugZoomCount, DebugZoomLabels);
+
+    const char* TMPDebugLabels[] = { "On", "Off - Full Res", "Off - Low Res", "On - Full Res", "On - Low Res", "Residules" };
+    EnumVar TMPMode = EnumVar("Graphics/TMP Mode", 0, _countof(TMPDebugLabels), TMPDebugLabels);
+
+    BoolVar ForceResize("Other/Force Resize", false);;
 }
 
 namespace Graphics
@@ -149,14 +152,6 @@ namespace Graphics
     bool g_bTypedUAVLoadSupport_R11G11B10_FLOAT = false;
     bool g_bTypedUAVLoadSupport_R16G16B16A16_FLOAT = false;
     bool g_bEnableHDROutput = false;
-
-	// TODO: Add to settings
-    const char* TMPDebugLabels[] = { "On", "Off - Full Res", "Off - Low Res", "On - Full Res", "On - Low Res", "Residules" };
-    EnumVar g_TMPMode = EnumVar("Graphics/TMP Mode", 0, _countof(TMPDebugLabels), TMPDebugLabels);
-
-    const char* OnOffLabels[] = { "On", "Off" };
-    EnumVar g_VRDepthStencil(
-        "VR Depth Stencil", 0, _countof(OnOffLabels), OnOffLabels);
 
     uint32_t g_NativeWidth = 0;
     uint32_t g_NativeHeight = 0;
@@ -225,15 +220,23 @@ namespace Graphics
 
 void Graphics::Resize(uint32_t width, uint32_t height)
 {
+    Resize(width, height, false);
+}
+
+void Graphics::Resize(uint32_t width, uint32_t height, bool force)
+{
     ASSERT(s_SwapChain1 != nullptr);
 
     // Check for invalid window dimensions
     if (width == 0 || height == 0)
         return;
 
-    // Check for an unneeded resize
-    if (width == g_DisplayWidth && height == g_DisplayHeight)
-        return;
+    if (!force) // Don't check if forced in order to force resize on buffer size change.
+    {
+	    // Check for an unneeded resize
+	    if (width == g_DisplayWidth && height == g_DisplayHeight)
+		    return;
+    }
 
     g_CommandManager.IdleGPU();
 
@@ -260,6 +263,11 @@ void Graphics::Resize(uint32_t width, uint32_t height)
 
     g_CommandManager.IdleGPU();
 
+    if(force)
+    {
+        ResizeDisplayDependentBuffersTMP(g_NativeWidth, g_NativeHeight);
+    }
+	
     ResizeDisplayDependentBuffers(g_NativeWidth, g_NativeHeight);
 }
 
@@ -804,11 +812,11 @@ void Graphics::PreparePresentLDR(void)
     Context.SetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
     // Copy (and convert) the LDR buffer to the back buffer
-    if (g_TMPMode == 2)
+    if (Settings::TMPMode == 2)
     {
         Context.SetDynamicDescriptor(0, 0, g_SceneColorBufferLowRes.GetSRV());
     }
-    else if (g_TMPMode == 5)
+    else if (Settings::TMPMode == 5)
     {
         Context.SetDynamicDescriptor(0, 0, g_SceneColorBufferResidules.GetSRV());
     }
@@ -823,8 +831,8 @@ void Graphics::PreparePresentLDR(void)
 	UINT32 vertCount = 12;
 
     //if (g_NativeWidth == g_DisplayWidth && g_NativeHeight == g_DisplayHeight)
-    if (!(g_TMPMode == TMPDebug::kOnFullRes && (Graphics::GetFrameCount() % 2))
-        && !(g_TMPMode == TMPDebug::kOnLowRes && !(Graphics::GetFrameCount() % 2)))
+    if (!(Settings::TMPMode == Settings::TMPDebug::kOnFullRes && (Graphics::GetFrameCount() % 2))
+        && !(Settings::TMPMode == Settings::TMPDebug::kOnLowRes && !(Graphics::GetFrameCount() % 2)))
     {
         Context.SetPipelineState(PresentSDRPS);
         Context.TransitionResource(UpsampleDest, D3D12_RESOURCE_STATE_RENDER_TARGET);
@@ -911,7 +919,7 @@ void Graphics::HiddenMeshDepthPrepass()
 
 	if(BufferLeft.GetElementCount() < 2) // cannot create buffer with size 0, so default is size 1.
 	{
-		Settings::VRDepthStencil.Increment();
+        Settings::VRDepthStencil = false;
         return;
 	}
 	
@@ -994,7 +1002,8 @@ void Graphics::Present(void)
 
     SetNativeResolution(g_NativeWidth, g_NativeHeight);
 
-	// TODO: MOVE TO APPROPRITE PLACE IN PIPE - HERE FOR TESTING
+    Settings::g_NoSyncTimer.Stop();
+	
     VR::Sync();
 }
 
