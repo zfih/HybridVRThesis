@@ -37,7 +37,6 @@ namespace Math
         INLINE explicit Vector3( EXUnitVector ) { m_vec = CreateXUnitVector(); }
         INLINE explicit Vector3( EYUnitVector ) { m_vec = CreateYUnitVector(); }
         INLINE explicit Vector3( EZUnitVector ) { m_vec = CreateZUnitVector(); }
-
         INLINE operator XMVECTOR() const { return m_vec; }
 
         INLINE Scalar GetX() const { return Scalar(XMVectorSplatX(m_vec)); }

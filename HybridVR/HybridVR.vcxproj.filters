@@ -85,6 +85,7 @@
     <ClCompile Include="ForwardPlusLighting.cpp" />
     <ClCompile Include="ModelViewer.cpp" />
     <ClCompile Include="stdafx.cpp" />
+    <ClCompile Include="HybridSsr.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="ForwardPlusLighting.h" />
@@ -98,6 +99,7 @@
     <ClInclude Include="DescriptorHeapStack.h" />
     <ClInclude Include="GlobalState.h" />
     <ClInclude Include="Shaders\HybridSsrCSCompat.h" />
+    <ClInclude Include="HybridSsr.h" />
   </ItemGroup>
   <ItemGroup>
     <Image Include="Textures\Models\background.DDS">

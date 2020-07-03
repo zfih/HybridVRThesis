@@ -90,6 +90,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="ForwardPlusLighting.cpp" />
+    <ClCompile Include="HybridSsr.cpp" />
     <ClCompile Include="ModelViewer.cpp" />
     <ClCompile Include="stdafx.cpp" />
   </ItemGroup>
@@ -304,6 +305,7 @@
     <ClInclude Include="DXSampleHelper.h" />
     <ClInclude Include="ForwardPlusLighting.h" />
     <ClInclude Include="GlobalState.h" />
+    <ClInclude Include="HybridSsr.h" />
     <ClInclude Include="ModelViewerRayTracing.h" />
     <ClInclude Include="Raytracing.h" />
     <ClInclude Include="RayTracingHlslCompat.h" />
