@@ -230,7 +230,6 @@ public:
 	virtual void RenderScene() override;
 
 	virtual void RenderUI(class GraphicsContext &) override;
-	void ScreenSpaceReflections();
 	virtual void Raytrace(class GraphicsContext &, UINT cam);
 
 	void SetCameraToPredefinedPosition(int cameraPosition);
@@ -1525,8 +1524,11 @@ void D3D12RaytracingMiniEngineSample::RenderEye(Cam::CameraType eye, bool SkipDi
 	MainRender(ctx, eye, camera,
 	           psConstants, SkipDiffusePass, SkipShadowMap);
 
+	HybridSsr::ComputeHybridSsr(camera);
+	
 	ctx.Finish(true);
 	Settings::g_EyeRenderTimer[eye].Stop();
+
 }
 
 void D3D12RaytracingMiniEngineSample::SetupGraphicsState(GraphicsContext &Ctx) const
@@ -1705,7 +1707,7 @@ void D3D12RaytracingMiniEngineSample::RenderShadowMap()
 
 void D3D12RaytracingMiniEngineSample::RenderScene()
 {
-	ScreenSpaceReflections();
+	
 	const bool skipDiffusePass =
 		Settings::RayTracingMode == Settings::RTM_DIFFUSE_WITH_SHADOWMAPS ||
 		Settings::RayTracingMode == Settings::RTM_DIFFUSE_WITH_SHADOWRAYS ||
@@ -2018,18 +2020,6 @@ void D3D12RaytracingMiniEngineSample::RaytraceReflections(
 	pRaytracingCommandList->DispatchRays(&dispatchRaysDesc);
 }
 
-void D3D12RaytracingMiniEngineSample::ScreenSpaceReflections()
-{
-	ComputeContext &Ctx = ComputeContext::Begin(L"Hybrid Screen Space Reflection");
-
-	// Bind pipeline
-	Ctx.SetPipelineState(HybridSsr::g_PSO);
-	Ctx.SetRootSignature(HybridSsr::g_RS);
-	Ctx.SetConstantBuffer(HybridSsr::RootParam_kConstants, HybridSsr::g_ConstantBuffer.GetGpuVirtualAddress());
-
-	// Use compute shader.
-	Ctx.Dispatch(0, 0, 0);
-}
 
 void D3D12RaytracingMiniEngineSample::RenderUI(class GraphicsContext &gfxContext)
 {

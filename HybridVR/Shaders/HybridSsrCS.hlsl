@@ -44,52 +44,6 @@
 #define HLSL
 #include "HybridSsrCSCompat.h"
 
-bool RayIntersectsBox(float3 origin, float3 rayDirInv, float3 BboxMin, float3 BboxMax)
-{
-	const float3 t0 = (BboxMin - origin) * rayDirInv;
-	const float3 t1 = (BboxMax - origin) * rayDirInv;
-
-	const float3 tmax = max(t0, t1);
-	const float3 tmin = min(t0, t1);
-
-	const float a1 = min(tmax.x, min(tmax.y, tmax.z));
-	const float a0 = max(max(tmin.x, tmin.y), max(tmin.z, 0.0f));
-
-	return a1 >= a0;
-}
-
-//Adapted from https://github.com/kayru/RayTracedShadows/blob/master/Source/Shaders/RayTracedShadows.comp
-bool RayTriangleIntersect(
-	const float3 orig,
-	const float3 dir,
-	float3 v0,
-	float3 e0,
-	float3 e1,
-	inout float t,
-	inout float2 bCoord)
-{
-	const float3 s1 = cross(dir.xyz, e1);
-	const float invd = 1.0 / (dot(s1, e0));
-	const float3 d = orig.xyz - v0;
-	bCoord.x = dot(d, s1) * invd;
-	const float3 s2 = cross(d, e0);
-	bCoord.y = dot(dir.xyz, s2) * invd;
-	t = dot(e1, s2) * invd;
-
-	if(
-#if BACKFACE_CULLING
-		dot(s1, e0) < -kEpsilon ||
-#endif
-		bCoord.x < 0.0 || bCoord.x > 1.0 || bCoord.y < 0.0 || (bCoord.x + bCoord.y) > 1.0 || t < 0.0 || t > 1e9)
-	{
-		return false;
-	}
-	else
-	{
-		return true;
-	}
-}
-
 
 cbuffer cbSSLR : register(b0)
 {
@@ -110,11 +64,8 @@ Texture2D<float4> mainBuffer: register(t0);
 Texture2D<float> depthBuffer : register(t1);
 Texture2D<float4> normalBuffer: register(t2);
 Texture2D<float4> albedoBuffer: register(t3);
-Buffer<float4> BVHTree : register(t4);
-Buffer<float4> BVHNormals : register(t5);
-Buffer<float2> BVHUVs : register(t6);
-StructuredBuffer<Material> Materials : register(t7);
-Texture2D<float4> Diffuse[] : register(t8);
+StructuredBuffer<Material> Materials : register(t4);
+Texture2D<float4> Diffuse[] : register(t5);
 
 RWTexture2D<float4> outputRT : register(u0);
 
@@ -301,85 +252,6 @@ float3 Fresnel(float3 F0, float3 L, float3 H)
 	return F0 + (1.0 - F0) * (dotLH5);
 }
 
-struct HitData
-{
-	int TriangleIndex;
-	float2 BarycentricCoords;
-	int MaterialID;
-	float Distance;
-};
-
-bool TraceRay(float3 worldPos, float3 rayDir, bool firstHitOnly, out HitData hitData)
-{
-	float t = 0;
-	float2 bCoord = 0;
-	float minDistance = 1000000;
-
-	int dataOffset = 0;
-	bool done = false;
-
-	bool collision = false;
-
-	int offsetToNextNode = 1;
-
-	float3 rayDirInv = rcp(rayDir);
-
-	int noofCollisions = 0;
-
-	[loop]
-	while(offsetToNextNode != 0)
-	{
-		float4 element0 = BVHTree[dataOffset++].xyzw;
-
-		offsetToNextNode = int(element0.w);
-
-		collision = false;
-
-		if(offsetToNextNode < 0)
-		{
-			float4 element1 = BVHTree[dataOffset++].xyzw;
-
-			//try collision against this node's bounding box	
-			float3 bboxMin = element0.xyz;
-			float3 bboxMax = element1.xyz;
-
-			//intermediate node check for intersection with bounding box
-			collision = RayIntersectsBox(worldPos.xyz, rayDirInv, bboxMin.xyz, bboxMax.xyz);
-
-			//if there is collision, go to the next node (left) or else skip over the whole branch
-			if(!collision)
-				dataOffset -= offsetToNextNode;
-		}
-		else if(offsetToNextNode > 0)
-		{
-			float4 vertex0 = element0;
-			float4 vertex1MinusVertex0 = BVHTree[dataOffset++].xyzw;
-			float4 vertex2MinusVertex0 = BVHTree[dataOffset++].xyzw;
-
-			//check for intersection with triangle
-			collision = RayTriangleIntersect(worldPos.xyz, rayDir, vertex0.xyz, vertex1MinusVertex0.xyz,
-			                                 vertex2MinusVertex0.xyz, t, bCoord);
-
-			if(collision && t < minDistance)
-			{
-				hitData.TriangleIndex = (int)vertex1MinusVertex0.w;
-				hitData.MaterialID = (int)vertex2MinusVertex0.w;
-				hitData.BarycentricCoords = bCoord;
-				hitData.Distance = t;
-
-				minDistance = t;
-
-				noofCollisions++;
-
-				if(firstHitOnly || noofCollisions > 10)
-					return true;
-			}
-		}
-	};
-
-	return noofCollisions > 0;
-}
-
 #define THREADX 8
 #define THREADY 8
 #define THREADGROUPSIZE (THREADX*THREADY)
@@ -414,12 +286,12 @@ void CSMain(uint3 Gid : SV_GroupID, uint3 DTid : SV_DispatchThreadID, uint3 GTid
 	float4 result = 0;
 	bool intersection = false;
 
-#if ENABLE_SSR
+	// This is for SSR
 	{
 		//convert normal to view space to find the correct reflection vector
-		float3 normalVS = mul((float3x3)View, normal.xyz);
+		float3 normalVS = mul((float3x3)cb.View, normal.xyz);
 
-		float4 viewPos = mul(InvProjection, clipPos);
+		float4 viewPos = mul(cb.InvProjection, clipPos);
 		viewPos.xyz /= viewPos.w;
 
 		float3 rayOrigin = viewPos.xyz + normalVS * 0.01;
@@ -436,13 +308,13 @@ void CSMain(uint3 Gid : SV_GroupID, uint3 DTid : SV_DispatchThreadID, uint3 GTid
 		float2 hitPixel = float2(0.0f, 0.0f);
 		float3 hitPoint = float3(0.0f, 0.0f, 0.0f);
 
-		float jitter = Stride > 1.0f ? float(int(screenPos.x + screenPos.y) & 1) * 0.5f : 0.0f;
+		float jitter = cb.Stride > 1.0f ? float(int(screenPos.x + screenPos.y) & 1) * 0.5f : 0.0f;
 
 		// perform ray tracing - true if hit found, false otherwise
 		intersection = traceScreenSpaceRay(rayOrigin, rayDirection, jitter, hitPixel, hitPoint);
 
 		// move hit pixel from pixel position to UVs;
-		if (hitPixel.x > RTSize.x || hitPixel.x < 0.0f || hitPixel.y > RTSize.y || hitPixel.y < 0.0f)
+		if (hitPixel.x > cb.RTSize.x || hitPixel.x < 0.0f || hitPixel.y > cb.RTSize.y || hitPixel.y < 0.0f)
 		{
 			intersection = false;
 		}
@@ -450,69 +322,6 @@ void CSMain(uint3 Gid : SV_GroupID, uint3 DTid : SV_DispatchThreadID, uint3 GTid
 		if (intersection)
 			result = mainBuffer[hitPixel];
 	}
-#endif
-
-#if ENABLE_RTR
-#if ENABLE_SSR
-	if (!intersection)
-#endif
-	{
-		float4 worldPos = mul(InvViewProjection, clipPos);
-		worldPos.xyz /= worldPos.w;
-
-		toPosition = normalize(worldPos.xyz - CameraPos.xyz);
-		rayDirection = reflect(toPosition, normal.xyz);
-
-		//offset to avoid self interesection
-		worldPos.xyz += 0.05 * normal.xyz;
-
-		HitData hitdata;
-
-		if (TraceRay(worldPos.xyz, rayDirection, false, hitdata))
-		{
-			//interpolate normal
-			float3 n0 = BVHNormals[hitdata.TriangleIndex * 3].xyz;
-			float3 n1 = BVHNormals[hitdata.TriangleIndex * 3 + 1].xyz;
-			float3 n2 = BVHNormals[hitdata.TriangleIndex * 3 + 2].xyz;
-
-			float3 n = n0 * (1 - hitdata.BarycentricCoords.x - hitdata.BarycentricCoords.y) + n1 * hitdata.BarycentricCoords.x + n2 * hitdata.BarycentricCoords.y;
-			n = normalize(n);
-
-			//interpolate uvs
-			float2 uv0 = BVHUVs[hitdata.TriangleIndex * 3].xy;
-			float2 uv1 = BVHUVs[hitdata.TriangleIndex * 3 + 1].xy;
-			float2 uv2 = BVHUVs[hitdata.TriangleIndex * 3 + 2].xy;
-
-			float2 uvCoord = uv0 * (1 - hitdata.BarycentricCoords.x - hitdata.BarycentricCoords.y) + uv1 * hitdata.BarycentricCoords.x + uv2 * hitdata.BarycentricCoords.y;
-
-			//get material data for hit point
-			Material material = Materials[NonUniformResourceIndex(hitdata.MaterialID)];
-
-			//sample texture of hit point
-			float3 albedo = Diffuse[NonUniformResourceIndex(material.AlbedoID)].SampleLevel(SamplerLinear, uvCoord, 0).rgb;
-			albedo.rgb = pow(albedo.rgb, 2.2);
-
-			//float3 colours[4] = { float3(1,0,0), float3(0,1,0), float3(0,0,1), float3(1,1,0) };
-			//outputRT[screenPos] = float4(colours[hitdata.MaterialID], 1);
-
-			float3 specularColour = lerp(0.04, albedo.rgb, material.Metalness);
-			albedo.rgb = lerp(albedo.rgb, 0, material.Metalness);
-
-			//calculate specular for hit point. This assumes view dir is hitpoint to world position (-rayDirection)
-			float3 specular = LightingGGX(n.xyz, -rayDirection, LightDirection.xyz, material.Roughness, specularColour);
-
-			worldPos.xyz += hitdata.Distance * rayDirection + 0.1 * n;
-
-			bool collision = TraceRay(worldPos.xyz, LightDirection.xyz, true, hitdata);
-
-			float NdotL = saturate(dot(n, LightDirection.xyz));
-
-			float lightIntensity = LightDirection.w * (1 - collision);
-
-			result = float4(albedo.rgb * (lightIntensity * NdotL + 0.3) + lightIntensity * specular, 1);
-		}
-	}
-#endif
 
 	//calculate fresnel for the world point/pixel we are shading
 	float3 L = rayDirection.xyz;
