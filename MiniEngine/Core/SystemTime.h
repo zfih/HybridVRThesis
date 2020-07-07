@@ -59,6 +59,7 @@ class CpuTimer
 {
 public:
 #define MAX_TICKS 120
+#define WRITE_FILE_TICKS 3000
 
 #ifdef _DEBUG
 	
@@ -104,16 +105,20 @@ public:
 	
     void Reset()
     {
-        m_pastTicks[m_currentTick].first = Graphics::GetFrameCount();
-        m_pastTicks[m_currentTick].second = m_ElapsedTicks;
-        m_currentTick = (m_currentTick + 1) % MAX_TICKS;
+        if (Graphics::GetFrameCount() == 0) {
+            return;
+        }
 
-		if(m_logging && m_currentTick == 0)
+        m_pastTicks.push_back({ Graphics::GetFrameCount(), m_ElapsedTicks });
+
+		if(m_logging && Graphics::GetFrameCount() % WRITE_FILE_TICKS == 0)
 	    {
-		    for (int i = 0; i < MAX_TICKS; ++i)
+		    for (int i = 0; i < WRITE_FILE_TICKS; ++i)
 		    {
-		    	m_outputFile << m_pastTicks[i].first << "," << SystemTime::TicksToMillisecs(m_pastTicks[i].second) << "\n";
+                UINT index = m_writesCount * WRITE_FILE_TICKS + i;
+		    	m_outputFile << m_pastTicks[index].first << "," << SystemTime::TicksToMillisecs(m_pastTicks[index].second) << "\n";
 		    }
+            m_writesCount++;
 	    }
 
         if(m_ElapsedTicks > m_longestTick)
@@ -143,9 +148,9 @@ public:
     {
         int64_t avg = 0;
     	
-	    for (std::pair<uint64_t, int64_t> tick : m_pastTicks)
-	    {
-            avg += tick.second;
+        for (int i = m_pastTicks.size() - MAX_TICKS; i < m_pastTicks.size(); i++)
+        {
+            avg += m_pastTicks[i].second;
 	    }
 
         avg /= MAX_TICKS;
@@ -176,7 +181,7 @@ private:
         m_StartTick = 0ll;
         m_ElapsedTicks = 0ll;
 
-        memset(m_pastTicks, 0, MAX_TICKS * sizeof(int64_t));
+        m_pastTicks.reserve(WRITE_FILE_TICKS);
 
 #if _DEBUG
         const auto filename = "logs/debug_log_" + currentDateTime() + "_" + name + ".txt";
@@ -225,6 +230,6 @@ private:
     int64_t m_shortestTick = INT64_MAX;
     int64_t m_longestTick = INT64_MIN;
 	
-    UINT m_currentTick = 0;
-    std::pair<uint64_t, int64_t> m_pastTicks[MAX_TICKS];
+    UINT m_writesCount = 0;
+    std::vector<std::pair<uint64_t, int64_t>> m_pastTicks;
 };
