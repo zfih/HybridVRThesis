@@ -84,6 +84,11 @@ public:
     {
 		if(m_outputFile.is_open())
 		{
+            for (int i = 0; i < m_pastTicks.size(); ++i)
+            {
+                m_outputFile << m_pastTicks[i].first << "," << SystemTime::TicksToMillisecs(m_pastTicks[i].second) << "\n";
+            }
+
             m_outputFile.close();
 		}
     }
@@ -105,21 +110,7 @@ public:
 	
     void Reset()
     {
-        if (Graphics::GetFrameCount() == 0) {
-            return;
-        }
-
         m_pastTicks.push_back({ Graphics::GetFrameCount(), m_ElapsedTicks });
-
-		if(m_logging && Graphics::GetFrameCount() % WRITE_FILE_TICKS == 0)
-	    {
-		    for (int i = 0; i < WRITE_FILE_TICKS; ++i)
-		    {
-                UINT index = m_writesCount * WRITE_FILE_TICKS + i;
-		    	m_outputFile << m_pastTicks[index].first << "," << SystemTime::TicksToMillisecs(m_pastTicks[index].second) << "\n";
-		    }
-            m_writesCount++;
-	    }
 
         if(m_ElapsedTicks > m_longestTick)
         {
