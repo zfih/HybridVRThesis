@@ -65,7 +65,7 @@ public:
 // Force logging to file off for day to day run sessions.
 // Overrides logging for all timers with false.
 // Logging options should not be forced on non Debug builds.
-#define FORCE_NO_LOG
+//#define FORCE_NO_LOG
 	
 #endif
 	
