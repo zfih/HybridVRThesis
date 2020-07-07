@@ -1195,6 +1195,7 @@ void D3D12RaytracingMiniEngineSample::Startup(void)
 	if (g_RayTraceSupport)
 	{
 		CreateRayTraceAccelerationStructures(numMeshes);
+		Settings::RayTracingMode = Settings::RTM_REFLECTIONS;
 		OutputDebugStringW(L"DXR support present on Device");
 	}
 	else
@@ -1214,7 +1215,7 @@ void D3D12RaytracingMiniEngineSample::Startup(void)
 	
 	// Lion's head
 	m_CameraPosArray[0].position = Vector3(-1100.0f, 170.0f, -30.0f);
-	m_CameraPosArray[0].heading = 1.5707f;
+	m_CameraPosArray[0].heading = -1.5707f;
 	m_CameraPosArray[0].pitch = 0.0f;
 
 	// View of columns
@@ -1243,7 +1244,7 @@ void D3D12RaytracingMiniEngineSample::Startup(void)
 	LODGlobal::g_camera = &m_Camera;
     m_CameraController.reset(new VRCameraController(m_Camera, Vector3(kYUnitVector)));
 	LODGlobal::g_cameraController = m_CameraController.get();
-	SetCameraToPredefinedPosition(0);
+	SetCameraToPredefinedPosition(2);
     
     Settings::MotionBlur_Enable = false;//true;
     Settings::TAA_Enable = false;//true;
@@ -1331,7 +1332,7 @@ void D3D12RaytracingMiniEngineSample::Update(float deltaT)
 	{
 		m_CameraController->Update(deltaT);
 	}
-
+	
 	float costheta = cosf(Settings::SunOrientation);
 	float sintheta = sinf(Settings::SunOrientation);
 	float cosphi = cosf(Settings::SunInclination * XM_PIDIV2);
