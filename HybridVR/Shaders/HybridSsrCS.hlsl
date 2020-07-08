@@ -50,40 +50,26 @@ cbuffer cbSSLR : register(b0)
 HybridSsrConstantBuffer cb;
 };
 
-struct Material
-{
-	int AlbedoID;
-	int NormalID;
-	float Roughness;
-	float Metalness;
-	float2 UVScale;
-	float2 NormalScale;
-};
-
-Texture2D<float4> mainBuffer: register(t0);
+Texture2D<float4> mainBuffer: register(t0); // Color
 Texture2D<float> depthBuffer : register(t1);
 Texture2D<float4> normalBuffer: register(t2);
-Texture2D<float4> albedoBuffer: register(t3);
-StructuredBuffer<Material> Materials : register(t4);
-//Texture2D<float4> Diffuse : register(t5);
+Texture2D<float4> albedoBuffer: register(t3); // ALSO COLOR?
 
-RWTexture2D<float4> outputRT : register(u0);
+RWTexture2D<float4> outputRT : register(u0); // Target
 
-SamplerState SamplerLinear : register(s0);
-
-//returns camera space depth
-float lineariseDepth2(float depth)
+// Returns camera space depth
+float LineariseDepth2(float depth, float nearPlane, float farPlane)
 {
 	// From http://www.humus.name/temp/Linearize%20depth.txt
 	// EZ = (n * f) / (f - z * (f - n))
 
-	return (cb.FarPlaneZ * cb.NearPlaneZ) / (cb.FarPlaneZ - depth * (cb.FarPlaneZ - cb.NearPlaneZ));
+	return (farPlane * nearPlane) / (farPlane - depth * (farPlane - nearPlane));
 }
 
-float lineariseDepth(float depth)
+float LineariseDepth(float depth, float nearPlane, float farPlane)
 {
-	float ProjectionA = cb.FarPlaneZ / (cb.FarPlaneZ - cb.NearPlaneZ);
-	float ProjectionB = (-cb.FarPlaneZ * cb.NearPlaneZ) / (cb.FarPlaneZ - cb.NearPlaneZ);
+	float ProjectionA = farPlane / (nearPlane - farPlane);
+	float ProjectionB = (-farPlane * nearPlane) / (farPlane - nearPlane);
 
 	// Sample the depth and convert to linear view space Z (assume it gets sampled as
 	// a floating point value of the range [0,1])
@@ -118,10 +104,10 @@ void swap(inout float a, inout float b)
 	b = t;
 }
 
-float linearDepthTexelFetch(int2 hitPixel)
+float linearDepthTexelFetch(int2 hitPixel, float nearPlane, float farPlane)
 {
 	// Load returns 0 for any value accessed out of bounds
-	return lineariseDepth(depthBuffer.Load(int3(hitPixel, 0)).r);
+	return LineariseDepth(depthBuffer.Load(int3(hitPixel, 0)).r, nearPlane, cb.FarPlaneZ);
 }
 
 // Returns true if the ray hit something
@@ -233,7 +219,7 @@ bool traceScreenSpaceRay(
 
 		hitPixel = permute ? PQk.yx : PQk.xy;
 
-		sceneZMax = lineariseDepth(depthBuffer[hitPixel].r);
+		sceneZMax = LineariseDepth(depthBuffer[hitPixel].r, cb.NearPlaneZ, cb.FarPlaneZ);
 
 		PQk += dPQk;
 	}
@@ -281,55 +267,46 @@ void CSMain(uint3 Gid : SV_GroupID, uint3 DTid : SV_DispatchThreadID, uint3 GTid
 	float4 clipPos = float4(2 * uv - 1, depth, 1);
 	clipPos.y = -clipPos.y;
 
-	float3 toPosition = 0;
-	float3 rayDirection = 0;
-	float4 result = 0;
-	bool intersection = false;
+	//convert normal to view space to find the correct reflection vector
+	float3 normalVS = mul((float3x3)cb.View, normal.xyz);
 
-	// This is for SSR
+	float4 viewPos = mul(cb.InvProjection, clipPos);
+	viewPos.xyz /= viewPos.w;
+
+	float3 rayOrigin = viewPos.xyz + normalVS * 0.01;
+	float3 toPosition = normalize(rayOrigin.xyz);
+
+	/*
+	* Since position is reconstructed in view space, just normalize it to get the
+	* vector from the eye to the position and then reflect that around the normal to
+	* get the ray direction to trace.
+	*/
+	float3 rayDirection = reflect(toPosition, normalVS);
+
+	// out parameters
+	float2 hitPixel = float2(0.0f, 0.0f);
+	float3 hitPoint = float3(0.0f, 0.0f, 0.0f);
+
+	float jitter = cb.Stride > 1.0f ? float(int(screenPos.x + screenPos.y) & 1) * 0.5f : 0.0f;
+
+	// perform ray tracing - true if hit found, false otherwise
+	bool intersection = traceScreenSpaceRay(rayOrigin, rayDirection, jitter, hitPixel, hitPoint);
+
+	// move hit pixel from pixel position to UVs;
+	if(hitPixel.x > cb.RTSize.x || hitPixel.x < 0.0f || hitPixel.y > cb.RTSize.y || hitPixel.y < 0.0f)
 	{
-		//convert normal to view space to find the correct reflection vector
-		float3 normalVS = mul((float3x3)cb.View, normal.xyz);
-
-		float4 viewPos = mul(cb.InvProjection, clipPos);
-		viewPos.xyz /= viewPos.w;
-
-		float3 rayOrigin = viewPos.xyz + normalVS * 0.01;
-		toPosition = normalize(rayOrigin.xyz);
-
-		/*
-		* Since position is reconstructed in view space, just normalize it to get the
-		* vector from the eye to the position and then reflect that around the normal to
-		* get the ray direction to trace.
-		*/
-		rayDirection = reflect(toPosition, normalVS);
-
-		// out parameters
-		float2 hitPixel = float2(0.0f, 0.0f);
-		float3 hitPoint = float3(0.0f, 0.0f, 0.0f);
-
-		float jitter = cb.Stride > 1.0f ? float(int(screenPos.x + screenPos.y) & 1) * 0.5f : 0.0f;
-
-		// perform ray tracing - true if hit found, false otherwise
-		intersection = traceScreenSpaceRay(rayOrigin, rayDirection, jitter, hitPixel, hitPoint);
-
-		// move hit pixel from pixel position to UVs;
-		if (hitPixel.x > cb.RTSize.x || hitPixel.x < 0.0f || hitPixel.y > cb.RTSize.y || hitPixel.y < 0.0f)
-		{
-			intersection = false;
-		}
-
-		if (intersection)
-			result = mainBuffer[hitPixel];
+		intersection = false;
 	}
+
+	float4 result = intersection ? mainBuffer[hitPixel] : 0;
 
 	//calculate fresnel for the world point/pixel we are shading
 	float3 L = rayDirection.xyz;
 	float3 H = normalize(-toPosition + L);
 
-	float3 specularColour = lerp(0.04, albedo.rgb, albedo.a);
+	float3 specularColor = lerp(0.04, albedo.rgb, albedo.a);
 
-	float3 F = Fresnel(specularColour, L, H);
+	float3 F = Fresnel(specularColor, L, H);
 
 	outputRT[screenPos] = float4(result.rgb * (F * cb.SSRScale) + mainRT.rgb, 1);
 }
