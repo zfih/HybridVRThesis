@@ -16,8 +16,14 @@
 [shader("raygeneration")]
 void RayGen()
 {
+    uint2 pixel = DispatchRaysIndex();
+    if (g_dynamic.curCam == 1 && g_screenOutput[int3(pixel, 1)].a != 0x0)
+    {
+        return;
+    }
+
     float3 origin, direction;
-    GenerateCameraRay(DispatchRaysIndex().xy, origin, direction);
+    GenerateCameraRay(pixel, origin, direction);
 
     RayDesc rayDesc = { origin,
         0.0f,

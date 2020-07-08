@@ -4,15 +4,9 @@
 #pragma once
 
 // Engine
-#include "GpuBuffer.h"
-#include "PipelineState.h"
-#include "RootSignature.h"
-#include "TextureManager.h"
-
-// Shaders
 #include "Camera.h"
-#include "CameraType.h"
-#include "Shaders/HybridSSRCSCompat.h"
+
+struct RaytracingDispatchRayInputs;
 
 namespace Math {
 class VRCamera;
@@ -42,5 +36,7 @@ void InitializeResources(
 	float NearPlaneZ,
 	float FarPlaneZ);
 
-void ComputeHybridSsr(Math::Camera& Camera);
+void ComputeHybridSsr(
+	Math::Camera& Camera,
+	const float ScreenWidth, const float ScreenHeight);
 }

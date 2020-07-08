@@ -78,7 +78,6 @@
       <Filter>Shaders</Filter>
     </FxCompile>
     <FxCompile Include="DiffuseHitShaderLib.hlsl" />
-    <FxCompile Include="AlphaTransparencyAnyHit.hlsl" />
     <FxCompile Include="Shaders\HybridSsrCS.hlsl" />
   </ItemGroup>
   <ItemGroup>

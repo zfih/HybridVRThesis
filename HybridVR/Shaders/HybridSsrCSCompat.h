@@ -4,7 +4,6 @@
 #include "../HlslCompat.h"
 #endif
 
-
 struct HybridSsrConstantBuffer
 {
 	// Dynamic

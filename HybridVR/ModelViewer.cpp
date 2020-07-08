@@ -14,7 +14,6 @@
 #include "stdafx.h"
 #include "d3d12.h"
 #include "d3d12video.h"
-#include <d3d12.h>
 #include "dxgi1_3.h"
 #include "GameCore.h"
 #include "GraphicsCore.h"
@@ -38,7 +37,6 @@
 #include "GameInput.h"
 #include "./ForwardPlusLighting.h"
 #include <atlbase.h>
-#include <atlbase.h>
 #include "DXSampleHelper.h"
 #include "Settings.h"
 
@@ -53,22 +51,19 @@
 #include "CompiledShaders/WaveTileCountPS.h"
 #include "CompiledShaders/RayGenerationShaderLib.h"
 #include "CompiledShaders/RayGenerationShaderSSRLib.h"
-#include "CompiledShaders/HitShaderLib.h"
-#include "CompiledShaders/MissShaderLib.h"
+#include "CompiledShaders/hitShaderLib.h"
+#include "CompiledShaders/missShaderLib.h"
 #include "CompiledShaders/DiffuseHitShaderLib.h"
 #include "CompiledShaders/RayGenerationShadowsLib.h"
-#include "CompiledShaders/MissShadowsLib.h"
-#include "CompiledShaders/AlphaTransparencyAnyHit.h"
+#include "CompiledShaders/missShadowsLib.h"
+#include "raytracingHlslCompat.h"
+#include "ModelViewerRayTracing.h"
 
 // Hybrid Ssr
 #include "HybridSsr.h"
 
-#include "RaytracingHlslCompat.h"
-#include "ModelViewerRayTracing.h"
-
 #include <iostream>
 #include <fstream>
-#include <iso646.h>
 
 
 #include "../MiniEngine/Core/CameraType.h"
@@ -277,6 +272,8 @@ private:
 	                         DepthBuffer &depth, ColorBuffer &normals);
 	void InitalizeHybridSsrResources();
 
+	void RaytraceHybridSSR(GraphicsContext& Ctx, Cam::CameraType Cam, ColorBuffer& Colors,
+		DepthBuffer& Depths, ColorBuffer& Normals);
 	void SaveCamPos();
 	void LoadCamPos();
 	const char *m_CamPosFilename = "SavedCamPos.txt";
@@ -515,7 +512,6 @@ D3D12_STATE_SUBOBJECT CreateDxilLibrary(LPCWSTR entrypoint, const void *pShaderB
 void SetPipelineStateStackSize(
 	LPCWSTR raygen,
 	LPCWSTR closestHit,
-	LPCWSTR anyHit,
 	LPCWSTR miss,
 	UINT maxRecursion,
 	ID3D12StateObject *pStateObject)
@@ -523,12 +519,11 @@ void SetPipelineStateStackSize(
 	ID3D12StateObjectProperties *stateObjectProperties = nullptr;
 	ThrowIfFailed(pStateObject->QueryInterface(IID_PPV_ARGS(&stateObjectProperties)));
 	UINT64 closestHitStackSize = stateObjectProperties->GetShaderStackSize(closestHit);
-	UINT64 anyHitStackSize = stateObjectProperties->GetShaderStackSize(anyHit);
 	UINT64 missStackSize = stateObjectProperties->GetShaderStackSize(miss);
 	UINT64 raygenStackSize = stateObjectProperties->GetShaderStackSize(raygen);
 
 	UINT64 shaderStackSize = std::max(
-		{missStackSize, closestHitStackSize, anyHitStackSize}
+		{missStackSize, closestHitStackSize}
 	);
 
 	UINT64 totalStackSize = raygenStackSize + shaderStackSize * maxRecursion;
@@ -599,20 +594,6 @@ void InitializeRaytracingStateObjects(const Model &model, UINT numMeshes)
 	subObjects.push_back(closestHitLibSubobject);
 	// -----------------//
 
-	// Any hit shader
-	// -----------------//
-	LPCWSTR anyHitExportName = L"AnyHit";
-	shadersToAssociate.push_back(anyHitExportName);
-
-	D3D12_EXPORT_DESC anyHitExportDesc;
-	D3D12_DXIL_LIBRARY_DESC anyHitDxilLibDesc = {};
-	D3D12_STATE_SUBOBJECT anyHitLibSubobject = CreateDxilLibrary(
-		anyHitExportName, g_pAlphaTransparencyAnyHit,
-		sizeof(g_pAlphaTransparencyAnyHit), anyHitDxilLibDesc,
-		anyHitExportDesc);
-	subObjects.push_back(anyHitLibSubobject);
-	// -----------------//
-
 	// Miss shader
 	// -----------------//
 	LPCWSTR missExportName = L"Miss";
@@ -634,7 +615,6 @@ void InitializeRaytracingStateObjects(const Model &model, UINT numMeshes)
 
 	D3D12_HIT_GROUP_DESC hitGroupDesc = {};
 	hitGroupDesc.ClosestHitShaderImport = closestHitExportName;
-	hitGroupDesc.AnyHitShaderImport = anyHitExportName;
 	hitGroupDesc.HitGroupExport = hitGroupExportName;
 
 	D3D12_STATE_SUBOBJECT hitGroupSubobject = {};
@@ -819,9 +799,7 @@ void InitializeRaytracingStateObjects(const Model &model, UINT numMeshes)
 	}
 	// -----------------//
 
-	WCHAR hitGroupExportNameAnyHitType[64];
-	swprintf_s(hitGroupExportNameAnyHitType, L"%s::anyhit", hitGroupExportName);
-
+	
 	WCHAR hitGroupExportNameClosestHitType[64];
 	swprintf_s(hitGroupExportNameClosestHitType, L"%s::closesthit", hitGroupExportName);
 
@@ -830,8 +808,8 @@ void InitializeRaytracingStateObjects(const Model &model, UINT numMeshes)
 	for(auto &raytracingPipelineState : g_RaytracingInputs)
 	{
 		SetPipelineStateStackSize(rayGenShaderExportName, hitGroupExportNameClosestHitType,
-		                          hitGroupExportNameAnyHitType, missExportName,
-		                          MaxRayRecursion, raytracingPipelineState.m_pPSO);
+			missExportName,
+		    MaxRayRecursion, raytracingPipelineState.m_pPSO);
 	}
 }
 
@@ -1195,7 +1173,7 @@ void D3D12RaytracingMiniEngineSample::Update(float deltaT)
 		else if(GameInput::IsFirstPressed(GameInput::kKey_7))
 			Settings::RayTracingMode = Settings::RTM_REFLECTIONS;
 		else if(GameInput::IsFirstPressed(GameInput::kKey_8))
-			Settings::RayTracingMode = Settings::RTM_SSR_Raster;
+			Settings::RayTracingMode = Settings::RTM_HYBRID_SSR;
 	}
 
 	static bool freezeCamera = false;
@@ -1524,8 +1502,6 @@ void D3D12RaytracingMiniEngineSample::RenderEye(Cam::CameraType eye, bool SkipDi
 	MainRender(ctx, eye, camera,
 	           psConstants, SkipDiffusePass, SkipShadowMap);
 
-	HybridSsr::ComputeHybridSsr(camera);
-	
 	ctx.Finish(true);
 	Settings::g_EyeRenderTimer[eye].Stop();
 
@@ -1929,7 +1905,6 @@ void D3D12RaytracingMiniEngineSample::RaytraceDiffuse(
 {
 	ScopedTimer _p0(L"RaytracingWithHitShader", context);
 
-
 	HitShaderConstants hitShaderConstants = {};
 	hitShaderConstants.sunDirection = m_SunDirection;
 	hitShaderConstants.sunLight = Vector3(1.0f, 1.0f, 1.0f) * Settings::SunLightIntensity;
@@ -1976,7 +1951,6 @@ void D3D12RaytracingMiniEngineSample::RaytraceReflections(
 	ColorBuffer &normals)
 {
 	ScopedTimer _p0(L"RaytracingWithHitShader", context);
-
 
 	HitShaderConstants hitShaderConstants = {};
 	hitShaderConstants.sunDirection = m_SunDirection;
@@ -2078,14 +2052,33 @@ void D3D12RaytracingMiniEngineSample::Raytrace(class GraphicsContext &gfxContext
 	case Settings::RTM_REFLECTIONS:
 		RaytraceReflections(gfxContext, g_SceneColorBuffer, g_SceneDepthBuffer, g_SceneNormalBuffer);
 		break;
-	case Settings::RTM_SSR_Raster:
-		// TODO: Ray trace missing pixels
+	case Settings::RTM_HYBRID_SSR:
+		RaytraceHybridSSR(gfxContext, (Cam::CameraType)CurCam, g_SceneColorBuffer, g_SceneDepthBuffer, g_SceneNormalBuffer);
 		break;
 	}
 
 	// Clear the gfxContext's descriptor heap since ray tracing changes this underneath the sheets
 	gfxContext.SetDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, nullptr);
 }
+
+Vector3 GetScreenSize()
+{
+	Vector3 size;
+	
+	size.SetX(g_SceneColorBuffer.GetWidth());
+	size.SetY(g_SceneColorBuffer.GetHeight());
+	size.SetZ(0);
+
+	return size;
+}
+
+void D3D12RaytracingMiniEngineSample::RaytraceHybridSSR(GraphicsContext& Ctx, Cam::CameraType Cam, ColorBuffer& Colors, DepthBuffer& Depths, ColorBuffer& Normals)
+{
+	Vector3 size = GetScreenSize();
+	HybridSsr::ComputeHybridSsr(m_Camera, size.GetX(), size.GetY());
+	RaytraceReflections(Ctx, Colors, Depths, Normals);
+}
+
 
 void D3D12RaytracingMiniEngineSample::SaveCamPos()
 {

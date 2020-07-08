@@ -65,7 +65,7 @@ Texture2D<float> depthBuffer : register(t1);
 Texture2D<float4> normalBuffer: register(t2);
 Texture2D<float4> albedoBuffer: register(t3);
 StructuredBuffer<Material> Materials : register(t4);
-Texture2D<float4> Diffuse[] : register(t5);
+//Texture2D<float4> Diffuse : register(t5);
 
 RWTexture2D<float4> outputRT : register(u0);
 
