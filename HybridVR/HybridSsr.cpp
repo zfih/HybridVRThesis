@@ -5,12 +5,16 @@
 
 // Engine
 #include "Camera.h"
+#include "PipelineState.h"
+#include "RootSignature.h"
+#include "GpuBuffer.h"
+#include "TextureManager.h"
 #include "CommandContext.h"
-#include "Raytracing.h"
 
 // Shaders
-//#include <CompiledShaders/HybridSsrCS.h>
-#include "Shaders/HybridSsrCSCompat.h"
+#include "Shaders/HybridSSRCSCompat.h"
+#include <CompiledShaders/HybridSsrCS.h>
+
 
 namespace HybridSsr
 {
@@ -83,7 +87,7 @@ void InitializeResources(
 	);
 
 	g_PSO.SetRootSignature(g_RS);
-	//g_PSO.SetComputeShader(g_pHybridSsrCS, sizeof(g_pHybridSsrCS));
+	g_PSO.SetComputeShader(g_pHybridSsrCS, sizeof(g_pHybridSsrCS));
 	g_PSO.Finalize();
 }
 

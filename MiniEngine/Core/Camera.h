@@ -13,6 +13,7 @@
 
 #pragma once
 
+#include "PipelineState.h"
 #include "VectorMath.h"
 #include "Math/Frustum.h"
 #include "VR.h"

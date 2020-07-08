@@ -3,13 +3,8 @@
 //
 #pragma once
 
-// Engine
-#include "Camera.h"
-
-struct RaytracingDispatchRayInputs;
-
 namespace Math {
-class VRCamera;
+	class Camera;
 }
 
 namespace HybridSsr
