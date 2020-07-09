@@ -2,6 +2,11 @@
 // Author: Daniel Gaard Hansen (danh@itu.dk)
 //
 #pragma once
+#include "CameraType.h"
+
+class GraphicsContext;
+class ColorBuffer;
+class DepthBuffer;
 
 namespace Math {
 	class Camera;
@@ -9,22 +14,23 @@ namespace Math {
 
 namespace HybridSsr
 {
-enum RootParam
+enum class RootParam
 {
-	RootParam_kConstants,
-	RootParam_kTextures,
-	RootParam_kRenderTarget,
-	RootParam_kCount,
+	kConstants,
+	kTextures,
+	kRenderTarget,
+	
+	kCount,
 };
 
-enum TextureTypes
+enum class TextureType
 {
-	TextureTypes_kMainBuffer,
-	TextureTypes_kDepthBuffer,
-	TextureTypes_kNormalBuffer,
-	TextureTypes_kAlbedoBuffer,
-	TextureTypes_kDiffuse,
-	TextureTypes_kCount
+	kMainBuffer,
+	kDepthBuffer,
+	kNormalBuffer,
+	kAlbedoBuffer,
+	
+	kCount
 };
 
 void InitializeResources(
@@ -32,6 +38,8 @@ void InitializeResources(
 	float FarPlaneZ);
 
 void ComputeHybridSsr(
+	GraphicsContext& Ctx,
 	Math::Camera& Camera,
-	const float ScreenWidth, const float ScreenHeight);
+	Cam::CameraType Type,
+	ColorBuffer& Color, DepthBuffer& Depth, ColorBuffer& Normal);
 }

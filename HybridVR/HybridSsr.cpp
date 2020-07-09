@@ -7,7 +7,8 @@
 #include "Camera.h"
 #include "PipelineState.h"
 #include "RootSignature.h"
-#include "GpuBuffer.h"
+#include "ColorBuffer.h"
+#include "DepthBuffer.h"
 #include "TextureManager.h"
 #include "CommandContext.h"
 
@@ -15,10 +16,8 @@
 #include "Shaders/HybridSSRCSCompat.h"
 #include <CompiledShaders/HybridSsrCS.h>
 
-
 namespace HybridSsr
 {
-static Texture g_Textures[TextureTypes_kCount];
 static HybridSsrConstantBuffer g_ConstantBufferData;
 static StructuredBuffer g_ConstantBuffer;
 static ComputePSO g_PSO;
@@ -30,14 +29,7 @@ void CopyMatrixToFloat4x4(float4x4 &Dst, Math::Matrix4 &Src);
 
 HybridSsrConstantBuffer CreateCBConstants(
 	float NearPlaneZ,
-	float FarPlaneZ,
-	float ZThickness,
-	float Stride,
-	float MaxSteps,
-	float MaxDistance,
-	float StrideZCutoff,
-	float ReflectionsMode,
-	float SSRScale);
+	float FarPlaneZ);
 
 void CreateCBDynamics(
 	HybridSsrConstantBuffer &Data,
@@ -56,36 +48,19 @@ void InitializeResources(
 	float FarPlaneZ)
 {
 	// Root signature
-	g_RS.Reset(RootParam_kCount, 0);
-	g_RS[RootParam_kConstants].InitAsConstantBuffer(RootParam_kConstants);
-	g_RS[RootParam_kTextures].InitAsDescriptorRange(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 0, TextureTypes_kCount);
-	g_RS[RootParam_kRenderTarget].InitAsBufferUAV(RootParam_kRenderTarget);
+	g_RS.Reset((int)RootParam::kCount, 0);
+	g_RS[(int)RootParam::kConstants].InitAsConstantBuffer(
+		(int)RootParam::kConstants);
+	g_RS[(int)RootParam::kTextures].InitAsDescriptorRange(
+		D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 0, (int)TextureType::kCount);
+	g_RS[(int)RootParam::kRenderTarget].InitAsDescriptorRange(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 0, 1);
 	g_RS.Finalize(L"HybridSsr Root Signature");
-
-	// Constant buffer
-	g_ConstantBuffer.Create(L"HybridSsr Constant Buffer", 1, sizeof(HybridSsrConstantBuffer));
-
-	// Defaults
-	float zThickness = 1.0;
-	float stride = 1.0;
-	float maxSteps = 1.0;
-	float maxDistance = 1.0;
-	float strideZCutoff = 1.0;
-	float reflectionsMode = 1.0;
-	float ssrScale = 1.0;
-
+	
 	g_ConstantBufferData = CreateCBConstants(
 		NearPlaneZ,
-		FarPlaneZ,
-		zThickness,
-		stride,
-		maxSteps,
-		maxDistance,
-		strideZCutoff,
-		reflectionsMode,
-		ssrScale
-	);
+		FarPlaneZ);
 
+	// Create PSO
 	g_PSO.SetRootSignature(g_RS);
 	g_PSO.SetComputeShader(g_pHybridSsrCS, sizeof(g_pHybridSsrCS));
 	g_PSO.Finalize();
@@ -93,38 +68,41 @@ void InitializeResources(
 
 HybridSsrConstantBuffer CreateCBConstants(
 	float NearPlaneZ,
-	float FarPlaneZ,
-	float ZThickness,
-	float Stride,
-	float MaxSteps,
-	float MaxDistance,
-	float StrideZCutoff,
-	float ReflectionsMode,
-	float SSRScale)
+	float FarPlaneZ)
 {
+	g_ConstantBuffer.Create(L"HybridSsr Constant Buffer", 1, sizeof(HybridSsrConstantBuffer));
+
 	HybridSsrConstantBuffer result{};
 
-	result.SSRScale = SSRScale;
-	result.ZThickness = ZThickness;
+	// Defaults
+	// TODO: Fix defaults
+	result.SSRScale = 1;
+	result.ZThickness = 1;
+	result.Stride = 1;
+	result.MaxDistance = 1;
+	result.MaxSteps = 1;
+	result.StrideZCutoff = 1;
+	result.ReflectionsMode = 1;
+
 	result.NearPlaneZ = NearPlaneZ;
 	result.FarPlaneZ = FarPlaneZ;
-	result.Stride = Stride;
-	result.MaxDistance = MaxDistance;
-	result.MaxSteps = MaxSteps;
-	result.StrideZCutoff = StrideZCutoff;
-	result.ReflectionsMode = ReflectionsMode;
 
 	return result;
 }
 
 void ComputeHybridSsr(
+	GraphicsContext &GraphicsCtx,
 	Math::Camera &Camera,
-	const float ScreenWidth, const float ScreenHeight)
+	Cam::CameraType CamType,
+	ColorBuffer &Color, DepthBuffer &Depth, ColorBuffer &Normal)
 {
 	// Setup context
-	ComputeContext &Ctx = ComputeContext::Begin(L"Hybrid SSR");
-	ScopedTimer profiler(L"HybridSSR", Ctx);
+	//ComputeContext &ctx = Context::Begin(L"Hybrid SSR");
+	ComputeContext& ctx = GraphicsCtx.GetComputeContext();
+	ScopedTimer timer(L"HybridSSR", ctx);
 
+	int width = Color.GetWidth();
+	int height = Color.GetHeight();
 	// Setup resources
 	Math::Matrix4 v = Camera.GetViewMatrix();
 	Math::Matrix4 invV = Math::Invert(v);
@@ -145,23 +123,48 @@ void ComputeHybridSsr(
 	                 vp,
 	                 invVp,
 	                 position,
-	                 static_cast<float>(ScreenWidth),
-	                 static_cast<float>(ScreenHeight));
+	                 static_cast<float>(width),
+	                 static_cast<float>(height));
 
-	Ctx.WriteBuffer(g_ConstantBuffer, 0,
+	ctx.WriteBuffer(g_ConstantBuffer, 0,
 	                &g_ConstantBufferData,
 	                sizeof(HybridSsrConstantBuffer));
 
+
+	// Transition resources
+	ctx.TransitionResource(Color, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+	ctx.TransitionResource(Depth, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+	ctx.TransitionResource(Normal, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+
 	// Setup pipeline
-	Ctx.SetRootSignature(g_RS);
-	Ctx.SetPipelineState(g_PSO);
-	Ctx.SetConstantBuffer(RootParam_kConstants,
-	                      g_ConstantBuffer.GetGpuVirtualAddress());
+	ctx.SetRootSignature(g_RS);
+	ctx.SetPipelineState(g_PSO);
+	ctx.SetConstantBuffer(
+		(int)RootParam::kConstants,
+		g_ConstantBuffer.GetGpuVirtualAddress());
+	ctx.SetDynamicDescriptor(
+		(int)RootParam::kTextures,
+		(int)TextureType::kAlbedoBuffer, Color.GetSubSRV(CamType));
+	ctx.SetDynamicDescriptor(
+		(int)RootParam::kTextures,
+		(int)TextureType::kDepthBuffer, Depth.GetSubSRV(CamType));
+	ctx.SetDynamicDescriptor(
+		(int)RootParam::kTextures,
+		(int)TextureType::kNormalBuffer, Normal.GetSubSRV(CamType));
+	ctx.SetDynamicDescriptor(
+		(int)RootParam::kTextures,
+		(int)TextureType::kMainBuffer, Color.GetSubSRV(CamType));
+	ctx.SetDynamicDescriptor(
+		(int)RootParam::kTextures,
+		(int)TextureType::kMainBuffer, Color.GetSubSRV(CamType));
+	ctx.SetDynamicDescriptor(
+		(int)RootParam::kRenderTarget, 0, Color.GetSubUAV(CamType));
 
-	// todo(Danh) 13:20 06/07: Find values for this
-	Ctx.Dispatch(1, 1, 0);
+	const int numThreadsX = width / 8 + 1;
+	const int numThreadsY = height / 8 + 1;
+	ctx.Dispatch(numThreadsX, numThreadsY, 1);
 
-	Ctx.Finish();
+	ctx.TransitionResource(Color, D3D12_RESOURCE_STATE_RENDER_TARGET);
 }
 
 void CreateCBDynamics(

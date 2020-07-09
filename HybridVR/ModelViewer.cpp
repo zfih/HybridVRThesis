@@ -748,7 +748,37 @@ void InitializeRaytracingStateObjects(const Model &model, UINT numMeshes)
 			rayGenShaderExportName,
 			missExportName);
 	}
+	struct ShaderInfo
+	{
+		LPCWSTR name;
+		UINT8* code;
+		SIZE_T codeSizeBytes;
+		D3D12_DXIL_LIBRARY_DESC libraryDesc;
+		D3D12_EXPORT_DESC exportDesc;
+	};
+	
+	auto createPSO = [&](RaytracingTypes type, ShaderInfo &rayGen, ShaderInfo &hit, ShaderInfo &miss, D3D12_STATE_OBJECT_DESC &stateObject)
+	{
 
+		auto createLib = [](ShaderInfo& shader)
+		{
+			return CreateDxilLibrary(
+				shader.name, shader.code,
+				shader.codeSizeBytes, shader.libraryDesc,
+				shader.exportDesc);
+		};
+		D3D12_STATE_SUBOBJECT rayGenSO = createLib(rayGen);
+		D3D12_STATE_SUBOBJECT hitSO = createLib(hit);
+		D3D12_STATE_SUBOBJECT missSO = createLib(miss);
+
+		CComPtr<ID3D12StateObject> pso;
+		HRESULT result = g_pRaytracingDevice->CreateStateObject(&stateObject, IID_PPV_ARGS(&pso));
+		GetShaderTable(model, pso, pHitShaderTable.data());
+		g_RaytracingInputs[type] = RaytracingDispatchRayInputs(
+			*g_pRaytracingDevice, pso,
+			pHitShaderTable.data(), shaderIdentifierSize, (UINT)pHitShaderTable.size(),
+			rayGen.name, miss.name);
+	};
 	// Diffuse PSO
 	{
 		rayGenDxilLibSubobject = CreateDxilLibrary(
@@ -766,7 +796,7 @@ void InitializeRaytracingStateObjects(const Model &model, UINT numMeshes)
 			missDxilLibDesc, missExportDesc);
 
 		CComPtr<ID3D12StateObject> pDiffusePSO;
-		g_pRaytracingDevice->CreateStateObject(&stateObject, IID_PPV_ARGS(&pDiffusePSO));
+		HRESULT result = g_pRaytracingDevice->CreateStateObject(&stateObject, IID_PPV_ARGS(&pDiffusePSO));
 		GetShaderTable(model, pDiffusePSO, pHitShaderTable.data());
 		g_RaytracingInputs[DiffuseHitShader] = RaytracingDispatchRayInputs(
 			*g_pRaytracingDevice, pDiffusePSO,
@@ -880,6 +910,7 @@ void InitializeStateObjects(const Model &model, UINT numMeshes)
 	g_pRaytracingDevice->CreateRootSignature(0, pGlobalRootSignatureBlob->GetBufferPointer(),
 	                                         pGlobalRootSignatureBlob->GetBufferSize(),
 	                                         IID_PPV_ARGS(&g_GlobalRaytracingRootSignature));
+	g_GlobalRaytracingRootSignature->SetName(L"Global Ray Tracing Root Signature");
 
 	D3D12_DESCRIPTOR_RANGE1 localTextureDescriptorRange = {};
 	localTextureDescriptorRange.BaseShaderRegister = 6;
@@ -901,7 +932,7 @@ void InitializeStateObjects(const Model &model, UINT numMeshes)
 	g_pRaytracingDevice->CreateRootSignature(0, pLocalRootSignatureBlob->GetBufferPointer(),
 	                                         pLocalRootSignatureBlob->GetBufferSize(),
 	                                         IID_PPV_ARGS(&g_LocalRaytracingRootSignature));
-
+	g_LocalRaytracingRootSignature->SetName(L"Local Ray Tracing Root Signature");
 	if(g_RayTraceSupport)
 	{
 		InitializeRaytracingStateObjects(model, numMeshes);
@@ -2061,22 +2092,13 @@ void D3D12RaytracingMiniEngineSample::Raytrace(class GraphicsContext &gfxContext
 	gfxContext.SetDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, nullptr);
 }
 
-Vector3 GetScreenSize()
-{
-	Vector3 size;
-	
-	size.SetX(g_SceneColorBuffer.GetWidth());
-	size.SetY(g_SceneColorBuffer.GetHeight());
-	size.SetZ(0);
-
-	return size;
-}
-
 void D3D12RaytracingMiniEngineSample::RaytraceHybridSSR(GraphicsContext& Ctx, Cam::CameraType Cam, ColorBuffer& Colors, DepthBuffer& Depths, ColorBuffer& Normals)
 {
-	Vector3 size = GetScreenSize();
-	HybridSsr::ComputeHybridSsr(m_Camera, size.GetX(), size.GetY());
-	RaytraceReflections(Ctx, Colors, Depths, Normals);
+	HybridSsr::ComputeHybridSsr(
+		Ctx, m_Camera,
+		Cam, 
+		g_SceneColorBuffer, g_SceneDepthBuffer, g_SceneNormalBuffer);
+	//RaytraceReflections(Ctx, Colors, Depths, Normals);
 }
 
 

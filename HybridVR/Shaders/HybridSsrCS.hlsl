@@ -50,12 +50,12 @@ cbuffer cbSSLR : register(b0)
 HybridSsrConstantBuffer cb;
 };
 
-Texture2D<float4> mainBuffer: register(t0); // Color
+Texture2D<float4> mainBuffer: register(t0);
 Texture2D<float> depthBuffer : register(t1);
 Texture2D<float4> normalBuffer: register(t2);
-Texture2D<float4> albedoBuffer: register(t3); // ALSO COLOR?
+Texture2D<float4> albedoBuffer: register(t3);
 
-RWTexture2D<float4> outputRT : register(u0); // Target
+RWTexture2D<float4> outputRT : register(u0);
 
 // Returns camera space depth
 float LineariseDepth2(float depth, float nearPlane, float farPlane)
@@ -250,17 +250,15 @@ void CSMain(uint3 Gid : SV_GroupID, uint3 DTid : SV_DispatchThreadID, uint3 GTid
 
 	float3 mainRT = mainBuffer[screenPos].xyz;
 
-
-	float depth = depthBuffer[screenPos].r;
-
-	if(depth == 1)
+	float depth = depthBuffer[screenPos];	
+	if(depth == 0)
 	{
-		outputRT[screenPos] = float4(mainRT, 1);
+		outputRT[screenPos] = float4(1,0,1, 1);
 		return;
 	}
 
 	float4 albedo = albedoBuffer[screenPos];
-	float4 normal = normalBuffer[screenPos].xyzw;
+	float4 normal = normalBuffer[screenPos];
 
 	//get world position from depth
 	float2 uv = (screenPos.xy + 0.5) * cb.RTSize.zw;
@@ -304,9 +302,11 @@ void CSMain(uint3 Gid : SV_GroupID, uint3 DTid : SV_DispatchThreadID, uint3 GTid
 	float3 L = rayDirection.xyz;
 	float3 H = normalize(-toPosition + L);
 
-	float3 specularColor = lerp(0.04, albedo.rgb, albedo.a);
+	float3 specularColor = lerp(0.04f, albedo.rgb, 1.0f);
 
 	float3 F = Fresnel(specularColor, L, H);
 
-	outputRT[screenPos] = float4(result.rgb * (F * cb.SSRScale) + mainRT.rgb, 1);
+	//outputRT[screenPos] = float4(result.rgb * (F * cb.SSRScale) + mainRT.rgb, 1);
+	//outputRT[screenPos] = float4(result.rgb * (F * cb.SSRScale) + mainRT.rgb, 1);;
+	outputRT[screenPos] = float4(specularColor, 1);
 }
