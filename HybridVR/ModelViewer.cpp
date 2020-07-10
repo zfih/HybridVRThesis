@@ -699,7 +699,7 @@ void InitializeRaytracingStateObjects(const Model &model, UINT numMeshes)
 
 	// Rendering pipelines
 	// ----------------------------------------------------------------//
-
+	
 	// Baricentric
 	{
 		CComPtr<ID3D12StateObject> pbarycentricPSO;

@@ -59,7 +59,7 @@ void InitializeResources(
 	g_ConstantBufferData = CreateCBConstants(
 		NearPlaneZ,
 		FarPlaneZ);
-
+	
 	// Create PSO
 	g_PSO.SetRootSignature(g_RS);
 	g_PSO.SetComputeShader(g_pHybridSsrCS, sizeof(g_pHybridSsrCS));
@@ -74,16 +74,15 @@ HybridSsrConstantBuffer CreateCBConstants(
 
 	HybridSsrConstantBuffer result{};
 
-	// Defaults
-	// TODO: Fix defaults
+	// Defaults -
+	// Copied from FeaxRenderer: FeaxRenderer.cpp around lines 2000.
 	result.SSRScale = 1;
-	result.ZThickness = 1;
+	result.ZThickness = 0.05;
 	result.Stride = 1;
-	result.MaxDistance = 1;
-	result.MaxSteps = 1;
-	result.StrideZCutoff = 1;
-	result.ReflectionsMode = 1;
-
+	result.MaxDistance = 200;
+	result.MaxSteps = 400;
+	result.StrideZCutoff = 0;
+	result.ReflectionsMode = 0;
 	result.NearPlaneZ = NearPlaneZ;
 	result.FarPlaneZ = FarPlaneZ;
 
@@ -97,12 +96,12 @@ void ComputeHybridSsr(
 	ColorBuffer &Color, DepthBuffer &Depth, ColorBuffer &Normal)
 {
 	// Setup context
-	//ComputeContext &ctx = Context::Begin(L"Hybrid SSR");
 	ComputeContext& ctx = GraphicsCtx.GetComputeContext();
 	ScopedTimer timer(L"HybridSSR", ctx);
 
 	int width = Color.GetWidth();
 	int height = Color.GetHeight();
+	
 	// Setup resources
 	Math::Matrix4 v = Camera.GetViewMatrix();
 	Math::Matrix4 invV = Math::Invert(v);

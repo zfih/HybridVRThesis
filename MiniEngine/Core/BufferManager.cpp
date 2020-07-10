@@ -23,6 +23,8 @@ namespace Graphics
 {
     DepthBuffer g_SceneDepthBuffer;
     ColorBuffer g_SceneColorBuffer;
+    ColorBuffer g_ReflectionBuffer;
+
     ColorBuffer g_PostEffectsBuffer;
     ColorBuffer g_VelocityBuffer;
     ColorBuffer g_OverlayBuffer;
