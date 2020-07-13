@@ -152,7 +152,7 @@ void Graphics::InitializeRenderingBuffers( uint32_t bufferWidth, uint32_t buffer
 
     esram.PushStack();
 
-        g_SceneColorBufferFullRes.CreateArray( L"Main Color Buffers", bufferWidth, bufferHeight, 2, DefaultHdrColorFormat, esram );
+        g_SceneColorBufferFullRes.CreateArray( L"Main Color Buffers", bufferWidth, bufferHeight, 2, 3, DefaultHdrColorFormat, esram );
         g_SceneColorBufferLowRes.CreateArray( L"Low Resolution Main Color Buffers", divisionHelperFunc(bufferWidth), divisionHelperFunc(bufferHeight), 2, DefaultHdrColorFormat, esram );
         g_SceneColorBufferLowPassed.CreateArray( L"Low Passed Main Color Buffers", bufferWidth, bufferHeight, 2, DefaultHdrColorFormat, esram );
         g_SceneColorBufferResidules.CreateArray( L"Residules of Main Color Buffers", bufferWidth, bufferHeight, 2, DefaultHdrColorFormat, esram );

@@ -1890,17 +1890,17 @@ void D3D12RaytracingMiniEngineSample::FrameIntegration()
 			cmpContext.SetPipelineState(m_LowPassPSO);
 
 			cmpContext.TransitionResource(g_SceneColorBufferFullRes, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, true);
-			cmpContext.TransitionResource(g_SceneColorBufferLowPassed, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, true);
+			//cmpContext.TransitionResource(g_SceneColorBufferLowResPassed, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, true);
 
 			cmpContext.SetDynamicDescriptor(0, 0, g_SceneColorBufferFullRes.GetSRV());
-			cmpContext.SetDynamicDescriptor(1, 0, g_SceneColorBufferLowPassed.GetUAV());
+			cmpContext.SetDynamicDescriptor(1, 0, g_SceneColorBufferFullRes.GetMip(0, 2));
 
 			cmpContext.Dispatch2D(g_SceneColorBufferLowPassed.GetWidth(), g_SceneColorBufferLowPassed.GetHeight());
 
 			// Reuses root signature m_LowPassSig
 			cmpContext.SetPipelineState(m_DownsamplePSO);
 
-			cmpContext.TransitionResource(g_SceneColorBufferLowPassed, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, true);
+			cmpContext.TransitionResource(g_SceneColorBufferLowPassed, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, true);	
 			cmpContext.TransitionResource(g_SceneColorBufferLowRes, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, true);
 
 			cmpContext.SetDynamicDescriptor(0, 0, g_SceneColorBufferLowPassed.GetSRV());

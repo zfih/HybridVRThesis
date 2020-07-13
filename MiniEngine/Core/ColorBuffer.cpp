@@ -22,7 +22,7 @@ using namespace Graphics;
 
 void ColorBuffer::CreateDerivedViews(ID3D12Device* Device, DXGI_FORMAT Format, uint32_t ArraySize, uint32_t NumMips)
 {
-    ASSERT(ArraySize == 1 || NumMips == 1, "We don't support auto-mips on texture arrays");
+    //ASSERT(ArraySize == 1 || NumMips == 1, "We don't support auto-mips on texture arrays");
 
     m_NumMipMaps = NumMips - 1;
 
@@ -88,23 +88,12 @@ void ColorBuffer::CreateDerivedViews(ID3D12Device* Device, DXGI_FORMAT Format, u
     if (m_FragmentCount > 1)
         return;
 
-    // Create the UAVs for each mip level (RWTexture2D)
-    for (uint32_t i = 0; i < NumMips; ++i)
-    {
-        if (m_UAVHandle[i].ptr == D3D12_GPU_VIRTUAL_ADDRESS_UNKNOWN)
-            m_UAVHandle[i] = Graphics::AllocateDescriptor(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
-
-        Device->CreateUnorderedAccessView(Resource, nullptr, &UAVDesc, m_UAVHandle[i]);
-
-        UAVDesc.Texture2D.MipSlice++;
-    }
-
 	if (ArraySize > 1)
 	{
 		m_RTVSubHandles.reserve(ArraySize);
 		for (int i = 0; i < ArraySize; i++)
 		{
-			D3D12_RENDER_TARGET_VIEW_DESC RTVDesc = {};
+			RTVDesc = {};
 			RTVDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2DARRAY;
 			RTVDesc.Texture2DArray.MipSlice = 0;
 			RTVDesc.Texture2DArray.FirstArraySlice = i; //D3D12CalcSubresource(0, i, 0, 0, ArraySize);
@@ -120,7 +109,7 @@ void ColorBuffer::CreateDerivedViews(ID3D12Device* Device, DXGI_FORMAT Format, u
         m_UAVSubHandles.reserve(ArraySize);
         for (int i = 0; i < ArraySize; i++)
         {
-            D3D12_UNORDERED_ACCESS_VIEW_DESC UAVDesc = {};
+            UAVDesc = {};
             UAVDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2DARRAY;
             UAVDesc.Texture2DArray.MipSlice = 0;
             UAVDesc.Texture2DArray.FirstArraySlice = i;
@@ -132,14 +121,28 @@ void ColorBuffer::CreateDerivedViews(ID3D12Device* Device, DXGI_FORMAT Format, u
             Device->CreateUnorderedAccessView(
                 Resource, nullptr, &UAVDesc, uavHandle);
             m_UAVSubHandles.push_back(uavHandle);
+
+            std::vector<D3D12_CPU_DESCRIPTOR_HANDLE> handles(m_NumMipMaps);
+
+            // Create the UAVs for each mip level (RWTexture2D)
+            for (uint32_t i = 0; i < NumMips; ++i)
+            {
+                handles[i] = Graphics::AllocateDescriptor(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+
+                Device->CreateUnorderedAccessView(Resource, nullptr, &UAVDesc, handles[i]);
+
+                UAVDesc.Texture2D.MipSlice++;
+            }
+
+            m_MipUAVHandles.push_back(handles);
         }
 
         m_SRVSubHandles.reserve(ArraySize);
         for (int i = 0; i < ArraySize; i++)
         {
-            D3D12_SHADER_RESOURCE_VIEW_DESC SRVDesc = {};
+            SRVDesc = {};
             SRVDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2DARRAY;
-            SRVDesc.Texture2DArray.MipLevels = 1;
+            SRVDesc.Texture2DArray.MipLevels = NumMips;
             SRVDesc.Texture2DArray.FirstArraySlice = i;
             SRVDesc.Texture2DArray.ArraySize = (UINT)(ArraySize - i);
             SRVDesc.Format = Format;
@@ -192,11 +195,17 @@ void ColorBuffer::Create(const std::wstring& Name, uint32_t Width, uint32_t Heig
     Create(Name, Width, Height, NumMips, Format);
 }
 
-void ColorBuffer::CreateArray( const std::wstring& Name, uint32_t Width, uint32_t Height, uint32_t ArrayCount,
-    DXGI_FORMAT Format, D3D12_GPU_VIRTUAL_ADDRESS VidMem )
+void ColorBuffer::CreateArray(const std::wstring& Name, uint32_t Width, uint32_t Height, uint32_t ArrayCount,
+	DXGI_FORMAT Format, D3D12_GPU_VIRTUAL_ADDRESS VidMemPtr)
+{
+    CreateArray(Name, Width, Height, ArrayCount, 1, Format, VidMemPtr);
+}
+
+void ColorBuffer::CreateArray(const std::wstring& Name, uint32_t Width, uint32_t Height, uint32_t ArrayCount, uint32_t NumMips,
+                              DXGI_FORMAT Format, D3D12_GPU_VIRTUAL_ADDRESS VidMem )
 {
     D3D12_RESOURCE_FLAGS Flags = CombineResourceFlags();
-    D3D12_RESOURCE_DESC ResourceDesc = DescribeTex2D(Width, Height, ArrayCount, 1, Format, Flags);
+    D3D12_RESOURCE_DESC ResourceDesc = DescribeTex2D(Width, Height, ArrayCount, NumMips, Format, Flags);
 
     D3D12_CLEAR_VALUE ClearValue = {};
     ClearValue.Format = Format;
@@ -206,13 +215,19 @@ void ColorBuffer::CreateArray( const std::wstring& Name, uint32_t Width, uint32_
     ClearValue.Color[3] = m_ClearColor.A();
 
     CreateTextureResource(Graphics::g_Device, Name, ResourceDesc, ClearValue, VidMem);
-    CreateDerivedViews(Graphics::g_Device, Format, ArrayCount, 1);
+    CreateDerivedViews(Graphics::g_Device, Format, ArrayCount, NumMips);
 }
 
 void ColorBuffer::CreateArray( const std::wstring& Name, uint32_t Width, uint32_t Height, uint32_t ArrayCount,
     DXGI_FORMAT Format, EsramAllocator& )
 {
     CreateArray(Name, Width, Height, ArrayCount, Format);
+}
+
+void ColorBuffer::CreateArray(const std::wstring& Name, uint32_t Width, uint32_t Height, uint32_t ArrayCount, uint32_t NumMips,
+    DXGI_FORMAT Format, EsramAllocator&)
+{
+    CreateArray(Name, Width, Height, ArrayCount, NumMips, Format);
 }
 
 void ColorBuffer::GenerateMipMaps(CommandContext& BaseContext)
@@ -263,7 +278,7 @@ void ColorBuffer::GenerateMipMaps(CommandContext& BaseContext)
             DstHeight = 1;
 
         Context.SetConstants(0, TopMip, NumMips, 1.0f / DstWidth, 1.0f / DstHeight);
-        Context.SetDynamicDescriptors(2, 0, NumMips, m_UAVHandle + TopMip + 1);
+        Context.SetDynamicDescriptors(2, 0, NumMips, m_MipUAVHandles[0].data() + TopMip + 1);
         Context.Dispatch2D(DstWidth, DstHeight);
 
         Context.InsertUAVBarrier(*this);

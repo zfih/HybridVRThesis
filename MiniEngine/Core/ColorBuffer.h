@@ -26,7 +26,7 @@ public:
     {
         m_SRVHandle.ptr = D3D12_GPU_VIRTUAL_ADDRESS_UNKNOWN;
         m_RTVHandle.ptr = D3D12_GPU_VIRTUAL_ADDRESS_UNKNOWN;
-        std::memset(m_UAVHandle, 0xFF, sizeof(m_UAVHandle));
+        //std::memset(m_UAVHandle, 0xFF, sizeof(m_UAVHandle));
     }
 
     // Create a color buffer from a swap chain buffer.  Unordered access is restricted.
@@ -48,11 +48,19 @@ public:
     // reusing ESRAM across a frame.)
     void CreateArray(const std::wstring& Name, uint32_t Width, uint32_t Height, uint32_t ArrayCount,
         DXGI_FORMAT Format, D3D12_GPU_VIRTUAL_ADDRESS VidMemPtr = D3D12_GPU_VIRTUAL_ADDRESS_UNKNOWN);
-    
+
+    void CreateArray(const std::wstring& Name, uint32_t Width, uint32_t Height, uint32_t ArrayCount, uint32_t NumMips,
+        DXGI_FORMAT Format, D3D12_GPU_VIRTUAL_ADDRESS VidMemPtr = D3D12_GPU_VIRTUAL_ADDRESS_UNKNOWN);
+	
     // Create a color buffer.  Memory will be allocated in ESRAM (on Xbox One).  On Windows,
     // this functions the same as Create() without a video address.
     void CreateArray(const std::wstring& Name, uint32_t Width, uint32_t Height, uint32_t ArrayCount,
         DXGI_FORMAT Format, EsramAllocator& Allocator);
+
+    void CreateArray(const std::wstring& Name, uint32_t Width, uint32_t Height, uint32_t ArrayCount, uint32_t NumMips,
+        DXGI_FORMAT Format, EsramAllocator& Allocator);
+
+	
 	const D3D12_CPU_DESCRIPTOR_HANDLE& GetSubRTV(int i) const { return m_RTVSubHandles[i]; }
 	const D3D12_CPU_DESCRIPTOR_HANDLE& GetSubUAV(int i) const { return m_UAVSubHandles[i]; }
 	const D3D12_CPU_DESCRIPTOR_HANDLE& GetSubSRV(int i) const { return m_SRVSubHandles[i]; }
@@ -60,7 +68,8 @@ public:
     // Get pre-created CPU-visible descriptor handles
     const D3D12_CPU_DESCRIPTOR_HANDLE& GetSRV(void) const { return m_SRVHandle; }
     const D3D12_CPU_DESCRIPTOR_HANDLE& GetRTV(void) const { return m_RTVHandle; }
-    const D3D12_CPU_DESCRIPTOR_HANDLE& GetUAV(void) const { return m_UAVHandle[0]; }
+    const D3D12_CPU_DESCRIPTOR_HANDLE& GetUAV(void) const { return m_MipUAVHandles[0][0]; }
+    const D3D12_CPU_DESCRIPTOR_HANDLE& GetMip(uint32_t arrayIndex, uint32_t mipLevel) const { return m_MipUAVHandles[arrayIndex][mipLevel]; }
 
 
     void SetClearColor( Color ClearColor ) { m_ClearColor = ClearColor; }
@@ -107,11 +116,12 @@ protected:
     Color m_ClearColor;
     D3D12_CPU_DESCRIPTOR_HANDLE m_SRVHandle;
     D3D12_CPU_DESCRIPTOR_HANDLE m_RTVHandle;
-    D3D12_CPU_DESCRIPTOR_HANDLE m_UAVHandle[12];
+    //D3D12_CPU_DESCRIPTOR_HANDLE m_UAVHandle[12];
     uint32_t m_NumMipMaps; // number of texture sublevels
     uint32_t m_FragmentCount;
     uint32_t m_SampleCount;
 
+    std::vector< std::vector<D3D12_CPU_DESCRIPTOR_HANDLE> > m_MipUAVHandles;
 	std::vector<D3D12_CPU_DESCRIPTOR_HANDLE> m_RTVSubHandles;
 	std::vector<D3D12_CPU_DESCRIPTOR_HANDLE> m_UAVSubHandles;
 	std::vector<D3D12_CPU_DESCRIPTOR_HANDLE> m_SRVSubHandles;
