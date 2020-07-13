@@ -21,8 +21,9 @@
 
 namespace Graphics
 {
-    extern DepthBuffer g_SceneDepthBuffer;    // D32_FLOAT_S8_UINT
-    extern ColorBuffer g_SceneColorBuffer;    // R11G11B10_FLOAT
+    extern DepthBuffer g_SceneDepthBuffer;    // D24_FLOAT_S8_UINT
+    extern ColorBuffer g_SceneColorBuffer;    // R8G8B8A8_UNORM
+    extern ColorBuffer g_AlbedoBuffer;    // R8G8B8A8_UNORM
     extern ColorBuffer g_ReflectionBuffer; // R8_UNORM
     extern ColorBuffer g_PostEffectsBuffer;    // R32_UINT (to support Read-Modify-Write with a UAV)
     extern ColorBuffer g_OverlayBuffer;        // R8G8B8A8_UNORM

@@ -23,7 +23,7 @@ namespace Graphics
 {
     DepthBuffer g_SceneDepthBuffer;
     ColorBuffer g_SceneColorBuffer;
-    ColorBuffer g_ReflectionBuffer;
+    ColorBuffer g_AlbinoBuffer;
 
     ColorBuffer g_PostEffectsBuffer;
     ColorBuffer g_VelocityBuffer;
@@ -111,6 +111,7 @@ void Graphics::InitializeRenderingBuffers( uint32_t bufferWidth, uint32_t buffer
     esram.PushStack();
 
         g_SceneColorBuffer.CreateArray( L"Main Color Buffers", bufferWidth, bufferHeight, 2, DefaultHdrColorFormat, esram );
+        g_AlbinoBuffer.CreateArray(L"Albino Buffer", bufferWidth, bufferHeight, 2, DXGI_FORMAT_R8G8B8A8_UNORM);
         g_VelocityBuffer.Create( L"Motion Vectors", bufferWidth, bufferHeight, 2, DXGI_FORMAT_R32_UINT );
         g_PostEffectsBuffer.Create( L"Post Effects Buffer", bufferWidth, bufferHeight, 2, DXGI_FORMAT_R32_UINT );
 

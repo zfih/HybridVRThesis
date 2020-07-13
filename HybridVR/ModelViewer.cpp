@@ -1037,7 +1037,7 @@ void D3D12RaytracingMiniEngineSample::Startup(void)
 	m_DepthPSO[0].SetPrimitiveTopologyType(D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE);
 	m_DepthPSO[0].SetRenderTargetFormats(0, nullptr, DepthFormat);
 	m_DepthPSO[0].SetVertexShader(g_pDepthViewerVS, sizeof(g_pDepthViewerVS));
-
+	
 	// Make a copy of the desc before we mess with it
 	m_CutoutDepthPSO[0] = m_DepthPSO[0];
 	m_ShadowPSO = m_DepthPSO[0];

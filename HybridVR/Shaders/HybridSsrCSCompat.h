@@ -3,10 +3,10 @@
 #ifndef HLSL
 #include "../HlslCompat.h"
 #endif
-
+#pragma pack 4
 struct HybridSsrConstantBuffer
 {
-	//// Dynamic
+	float4 RenderTargetSize;
 	
 	float4x4 ViewProjection;
 	float4x4 InvViewProjection;
@@ -15,14 +15,11 @@ struct HybridSsrConstantBuffer
 	float4x4 View;
 	float4x4 InvView;
 	float3 CameraPos;
-
-	//// Constants
-
+	
 	float NearPlaneZ;
 	float FarPlaneZ;
 	
 	// (Width, Height, 1 / Width, 1 / Height)
-	float4 RenderTargetSize;
 
 	// Unclear
 	float SSRScale;

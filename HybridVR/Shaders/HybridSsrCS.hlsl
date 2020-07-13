@@ -46,11 +46,14 @@
 
 //// Resources
 
+
+/// CBVs
 cbuffer cbSSLR : register(b0)
 {
 HybridSsrConstantBuffer cb;
 };
 
+/// SRVs
 
 // Combined buffer
 Texture2D<float4> mainBuffer: register(t0);
@@ -61,8 +64,13 @@ Texture2D<float> depthBuffer : register(t1);
 // Normal + reflection buffer
 Texture2D<float4> normalReflectiveBuffer: register(t2);
 
-// 
+// Color
 Texture2D<float4> albedoBuffer: register(t3);
+
+
+/// UAVs
+
+// Output
 RWTexture2D<float4> outputRT : register(u0);
 
 
@@ -76,28 +84,46 @@ RWTexture2D<float4> outputRT : register(u0);
  * hitPixel: Pixel coordinates for first scene intersection
  * hitPoint: Camera-space location of the ray hit
  */
-bool traceScreenSpaceRay(
+bool TraceScreenSpaceRay(
 	float3 csOrig,
 	float3 csDir,
 	float jitter,
 	out float2 hitPixel,
 	out float3 hitPoint);
 
-// Returns camera space depth
-float LineariseDepth2(float depth, float nearPlane, float farPlane);
-float LineariseDepth(float depth, float nearPlane, float farPlane);
-float LinearDepthTexelFetch(int2 hitPixel, float nearPlane, float farPlane);
-
-bool IntersectsDepthBuffer(float z, float minZ, float maxZ);
-
-//// Utilities
-
-void Swap(inout float a, inout float b);
+// Returns the squared distance between a and b, avoiding the sqrt operation.
 float DistanceSquared(float2 a, float2 b);
 
+// Returns true if the ray intersects the depth buffer
+bool IntersectsDepthBuffer(float z, float minZ, float maxZ);
 
+// Returns camera depth in linear depth
+float LineariseDepth(float depth, float nearPlane, float farPlane);
 
+// Swaps the values of a and b
+void Swap(inout float a, inout float b);
+
+// Calculate the Fresnel
 float3 Fresnel(float3 F0, float3 L, float3 H);
+
+
+bool eq(float a, float b)
+{
+	return abs(a - b) < 0.0005;
+}
+
+bool zero(float4x4 mat)
+{
+	for(int x = 0; x < 4; x++)
+	{
+		for(int y = 0; y < 4; y++)
+		{
+			if(mat[x][y] != 0) return true;
+		}
+	}
+	return false;
+}
+
 
 #define THREADX 8
 #define THREADY 8
@@ -111,27 +137,26 @@ void CSMain(uint3 Gid : SV_GroupID, uint3 DTid : SV_DispatchThreadID, uint3 GTid
 
 	// Sample textures
 	float3 mainRT = mainBuffer[screenPos].xyz;
-	float depth = depthBuffer[screenPos];		
+	float depth = depthBuffer[screenPos];
 	float4 albedo = albedoBuffer[screenPos];
 	float4 normalReflective = normalReflectiveBuffer[screenPos];
 	float3 normal = normalReflective.xyz;
 	float reflectiveness = normalReflective.w;
 
 	// If this pixel has not been rendered to, let the skybox/clearvalue remain
-	if (depth == 0)
+	if(depth == 0)
 	{
-		outputRT[screenPos] = float4(1, 0, 1, 1);
+		//outputRT[screenPos] = float4(1,0,1, 1);
+		outputRT[screenPos] = float4(mainRT, 1);
 		return;
 	}
 
-
-	
-	//get world position from depth
+	// Get world position from depth
 	float2 uv = (screenPos.xy + 0.5) * cb.RenderTargetSize.zw;
 	float4 clipPos = float4(2 * uv - 1, depth, 1);
 	clipPos.y = -clipPos.y;
 
-	//convert normal to view space to find the correct reflection vector
+	// Convert normal to view space to find the correct reflection vector
 	float3 normalVS = mul((float3x3)cb.View, normal.xyz);
 
 	float4 viewPos = mul(cb.InvProjection, clipPos);
@@ -154,10 +179,11 @@ void CSMain(uint3 Gid : SV_GroupID, uint3 DTid : SV_DispatchThreadID, uint3 GTid
 	float jitter = cb.Stride > 1.0f ? float(int(screenPos.x + screenPos.y) & 1) * 0.5f : 0.0f;
 
 	// perform ray tracing - true if hit found, false otherwise
-	bool intersection = traceScreenSpaceRay(rayOrigin, rayDirection, jitter, hitPixel, hitPoint);
+	bool intersection = TraceScreenSpaceRay(rayOrigin, rayDirection, jitter, hitPixel, hitPoint);
 
 	// move hit pixel from pixel position to UVs;
-	if(hitPixel.x > cb.RenderTargetSize.x || hitPixel.x < 0.0f || hitPixel.y > cb.RenderTargetSize.y || hitPixel.y < 0.0f)
+	if(hitPixel.x > cb.RenderTargetSize.x || hitPixel.x < 0.0f || hitPixel.y > cb.RenderTargetSize.y || hitPixel.y <
+		0.0f)
 	{
 		intersection = false;
 	}
@@ -170,49 +196,12 @@ void CSMain(uint3 Gid : SV_GroupID, uint3 DTid : SV_DispatchThreadID, uint3 GTid
 	float3 specularColor = lerp(0.04f, albedo.rgb, reflectiveness);
 
 	float3 F = Fresnel(specularColor, L, H);
-	
+
+	//outputRT[screenPos] = float4(result.rgb, 1);
 	outputRT[screenPos] = float4(result.rgb * (F * cb.SSRScale) + mainRT.rgb, 1);
 }
 
-float LineariseDepth(float depth, float nearPlane, float farPlane)
-{
-	float ProjectionA = farPlane / (nearPlane - farPlane);
-	float ProjectionB = (-farPlane * nearPlane) / (farPlane - nearPlane);
-
-	// Sample the depth and convert to linear view space Z (assume it gets sampled as
-	// a floating point value of the range [0,1])
-	float linearDepth = ProjectionB / (depth - ProjectionA);
-
-	return linearDepth;
-}
-
-
-float LineariseDepth2(float depth, float nearPlane, float farPlane)
-{
-	// From http://www.humus.name/temp/Linearize%20depth.txt
-	// EZ = (n * f) / (f - z * (f - n))
-
-	return (farPlane * nearPlane) / (farPlane - depth * (farPlane - nearPlane));
-}
-
-bool IntersectsDepthBuffer(float z, float minZ, float maxZ)
-{
-	/*
-	* Based on how far away from the camera the depth is,
-	* adding a bit of extra thickness can help improve some
-	* artifacts. Driving this value up too high can cause
-	* artifacts of its own.
-	*/
-	//float depthScale = min(1.0f, z * StrideZCutoff);
-	//z += ZThickness + lerp(0.0f, 2.0f, depthScale);
-	return (maxZ >= z) && (minZ - cb.ZThickness <= z);
-}
-float LinearDepthTexelFetch(int2 hitPixel, float nearPlane, float farPlane)
-{
-	// Load returns 0 for any value accessed out of bounds
-	return LineariseDepth(depthBuffer.Load(int3(hitPixel, 0)).r, nearPlane, cb.FarPlaneZ);
-}
-bool traceScreenSpaceRay(
+bool TraceScreenSpaceRay(
 	// Camera-space ray origin, which must be within the view volume
 	float3 csOrig,
 	// Unit length camera-space ray direction
@@ -227,8 +216,8 @@ bool traceScreenSpaceRay(
 {
 	// Clip to the near plane
 	float rayLength = ((csOrig.z + csDir.z * cb.MaxDistance) < cb.NearPlaneZ)
-		? (cb.NearPlaneZ - csOrig.z) / csDir.z
-		: cb.MaxDistance;
+		                  ? (cb.NearPlaneZ - csOrig.z) / csDir.z
+		                  : cb.MaxDistance;
 	float3 csEndPoint = csOrig + csDir * rayLength;
 
 	// Project into homogeneous clip space
@@ -260,7 +249,7 @@ bool traceScreenSpaceRay(
 	// Permute so that the primary iteration is in x to collapse
 	// all quadrant-specific DDA cases later
 	bool permute = false;
-	if (abs(delta.x) < abs(delta.y))
+	if(abs(delta.x) < abs(delta.y))
 	{
 		// This is a more-vertical line
 		permute = true;
@@ -303,7 +292,7 @@ bool traceScreenSpaceRay(
 	float rayZMax = prevZMaxEstimate;
 	float sceneZMax = rayZMax + 200.0f;
 
-	for (;
+	for(;
 		((PQk.x * stepDir) <= end) && (stepCount < cb.MaxSteps) &&
 		!IntersectsDepthBuffer(sceneZMax, rayZMin, rayZMax) &&
 		(sceneZMax != 0.0f);
@@ -313,7 +302,7 @@ bool traceScreenSpaceRay(
 		rayZMax = (dPQk.z * 0.5f + PQk.z) / (dPQk.w * 0.5f + PQk.w);
 		prevZMaxEstimate = rayZMax;
 
-		if (rayZMin > rayZMax)
+		if(rayZMin > rayZMax)
 		{
 			Swap(rayZMin, rayZMax);
 		}
@@ -332,11 +321,35 @@ bool traceScreenSpaceRay(
 	return IntersectsDepthBuffer(sceneZMax, rayZMin, rayZMax);
 }
 
+float LineariseDepth(float depth, float nearPlane, float farPlane)
+{
+	float ProjectionA = farPlane / (nearPlane - farPlane);
+	float ProjectionB = (-farPlane * nearPlane) / (farPlane - nearPlane);
+
+	// Sample the depth and convert to linear view space Z (assume it gets sampled as
+	// a floating point value of the range [0,1])
+	float linearDepth = ProjectionB / (depth - ProjectionA);
+
+	return linearDepth;
+}
 
 float DistanceSquared(float2 a, float2 b)
 {
 	a -= b;
 	return dot(a, a);
+}
+
+bool IntersectsDepthBuffer(float z, float minZ, float maxZ)
+{
+	/*
+	* Based on how far away from the camera the depth is,
+	* adding a bit of extra thickness can help improve some
+	* artifacts. Driving this value up too high can cause
+	* artifacts of its own.
+	*/
+	//float depthScale = min(1.0f, z * StrideZCutoff);
+	//z += ZThickness + lerp(0.0f, 2.0f, depthScale);
+	return (maxZ >= z) && (minZ - cb.ZThickness <= z);
 }
 
 void Swap(inout float a, inout float b)

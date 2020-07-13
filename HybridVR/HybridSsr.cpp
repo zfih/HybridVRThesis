@@ -7,8 +7,8 @@
 #include "Camera.h"
 #include "PipelineState.h"
 #include "RootSignature.h"
-#include "ColorBuffer.h"
 #include "DepthBuffer.h"
+#include "ColorBuffer.h"
 #include "TextureManager.h"
 #include "CommandContext.h"
 
@@ -49,8 +49,7 @@ void InitializeResources(
 {
 	// Root signature
 	g_RS.Reset((int)RootParam::kCount, 0);
-	g_RS[(int)RootParam::kConstants].InitAsConstantBuffer(
-		(int)RootParam::kConstants);
+	g_RS[(int)RootParam::kConstants].InitAsConstantBuffer((int)RootParam::kConstants);
 	g_RS[(int)RootParam::kTextures].InitAsDescriptorRange(
 		D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 0, (int)TextureType::kCount);
 	g_RS[(int)RootParam::kRenderTarget].InitAsDescriptorRange(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 0, 1);
@@ -78,11 +77,10 @@ HybridSsrConstantBuffer CreateCBConstants(
 	// Copied from FeaxRenderer: FeaxRenderer.cpp around lines 2000.
 	result.SSRScale = 1;
 	result.ZThickness = 0.05;
-	result.Stride = 1;
+	result.Stride = 1.0;
 	result.MaxDistance = 200;
 	result.MaxSteps = 400;
 	result.StrideZCutoff = 0;
-	result.ReflectionsMode = 0;
 	result.NearPlaneZ = NearPlaneZ;
 	result.FarPlaneZ = FarPlaneZ;
 
@@ -125,11 +123,11 @@ void ComputeHybridSsr(
 	                 static_cast<float>(width),
 	                 static_cast<float>(height));
 
+	int size = sizeof(HybridSsrConstantBuffer);
 	ctx.WriteBuffer(g_ConstantBuffer, 0,
 	                &g_ConstantBufferData,
-	                sizeof(HybridSsrConstantBuffer));
-
-
+	                size);
+	
 	// Transition resources
 	ctx.TransitionResource(Color, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 	ctx.TransitionResource(Depth, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
@@ -189,7 +187,7 @@ void CreateCBDynamics(
 		ScreenWidth, ScreenHeight,
 		1.0f / ScreenWidth, 1.0f / ScreenHeight
 	};
-	CopyVectorToFloat4(Data.RTSize, rtSize);
+	CopyVectorToFloat4(Data.RenderTargetSize, rtSize);
 
 	CopyVectorToFloat3(Data.CameraPos, CameraPos);
 }
