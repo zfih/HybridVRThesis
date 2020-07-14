@@ -9,7 +9,8 @@ class ColorBuffer;
 class DepthBuffer;
 
 namespace Math {
-	class Camera;
+class VRCamera;
+class Camera;
 }
 
 namespace HybridSsr
@@ -23,6 +24,13 @@ enum class RootParam
 	kCount,
 };
 
+extern float g_SsrScale;
+extern float g_ZThickness;
+extern float g_Stride;
+extern float g_MaxSteps;
+extern float g_MaxDistance;
+extern float g_StrideZCutoff;
+
 enum class TextureType
 {
 	kMainBuffer,
@@ -33,13 +41,11 @@ enum class TextureType
 	kCount
 };
 
-void InitializeResources(
-	float NearPlaneZ,
-	float FarPlaneZ);
+void InitializeResources();
 
 void ComputeHybridSsr(
-	GraphicsContext& Ctx,
-	Math::Camera& Camera,
-	Cam::CameraType Type,
+	GraphicsContext& GraphicsCtx,
+	Math::VRCamera& VRCamera,
+	Cam::CameraType CamType,
 	ColorBuffer& Color, DepthBuffer& Depth, ColorBuffer& Normal);
 }

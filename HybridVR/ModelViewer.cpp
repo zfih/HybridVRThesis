@@ -1006,7 +1006,6 @@ void D3D12RaytracingMiniEngineSample::Startup(void)
 	m_RootSig[5].InitAsConstants(1, 1, D3D12_SHADER_VISIBILITY_PIXEL);
 	m_RootSig.Finalize(L"D3D12RaytracingMiniEngineSample",
 	                   D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
-
 	DXGI_FORMAT ColorFormat = g_SceneColorBuffer.GetFormat();
 	DXGI_FORMAT NormalFormat = g_SceneNormalBuffer.GetFormat();
 	DXGI_FORMAT DepthFormat = g_SceneDepthBuffer.GetFormat();
@@ -1082,7 +1081,7 @@ void D3D12RaytracingMiniEngineSample::Startup(void)
 	m_WaveTileCountPSO.Finalize();
 
 	Lighting::InitializeResources();
-	HybridSsr::InitializeResources(m_Camera.GetNearClip(), m_Camera.GetFarClip());
+	HybridSsr::InitializeResources();
 
 	m_ExtraTextures[0] = g_SSAOFullScreen.GetSRV();
 	m_ExtraTextures[1] = g_ShadowBuffer.GetSRV();
@@ -1096,7 +1095,7 @@ void D3D12RaytracingMiniEngineSample::Startup(void)
 	set_hard_coded_material_properties(
 		m_Model, m_pMaterialIsCutout, m_pMaterialIsReflective
 	);
-
+	
 
 	g_hitConstantBuffer.Create(L"Hit Constant Buffer", 1, sizeof(HitShaderConstants));
 	g_dynamicConstantBuffer.Create(L"Dynamic Constant Buffer", 1, sizeof(DynamicCB));
@@ -1289,7 +1288,6 @@ void D3D12RaytracingMiniEngineSample::RenderObjects(GraphicsContext &gfxContext,
 	XMStoreFloat3(&constants.viewerPos, m_Camera[curCam]->GetPosition());
 
 	gfxContext.SetDynamicConstantBufferView(0, sizeof(constants), &constants);
-
 	uint32_t materialIdx = 0xFFFFFFFFul;
 
 	uint32_t VertexStride = m_Model.m_VertexStride;
@@ -1571,7 +1569,7 @@ void D3D12RaytracingMiniEngineSample::RenderPrepass(GraphicsContext &Ctx, Cam::C
 				// prepass
 				if(!Settings::VRDepthStencil)
 				{
-					Ctx.ClearDepthAndStencil(g_SceneDepthBuffer);
+					Ctx.ClearSubDepthAndStencil(g_SceneDepthBuffer, CameraType);
 				}
 
 				Ctx.SetPipelineState(m_DepthPSO[0]);

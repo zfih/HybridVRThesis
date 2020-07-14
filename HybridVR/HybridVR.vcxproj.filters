@@ -78,7 +78,9 @@
       <Filter>Shaders</Filter>
     </FxCompile>
     <FxCompile Include="DiffuseHitShaderLib.hlsl" />
-    <FxCompile Include="Shaders\HybridSsrCS.hlsl" />
+    <FxCompile Include="Shaders\HybridSsrCS.hlsl">
+      <Filter>Shaders</Filter>
+    </FxCompile>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="ForwardPlusLighting.cpp" />

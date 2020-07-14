@@ -77,16 +77,16 @@ RWTexture2D<float4> outputRT : register(u0);
 /**
  * Returns true if the ray hit something
  * 
- * csOrig: Camera-space ray origin, must be within the view volume
- * csDir: Unit camera-space ray direction
+ * vsOrig: Camera-space ray origin, must be within the view volume
+ * vsDir: Unit camera-space ray direction
  * jitter: Number (0; 1) for how far to bump the ray in stride units
  *			to conceal banding artifacts
  * hitPixel: Pixel coordinates for first scene intersection
  * hitPoint: Camera-space location of the ray hit
  */
 bool TraceScreenSpaceRay(
-	float3 csOrig,
-	float3 csDir,
+	float3 vsOrig,
+	float3 vsDir,
 	float jitter,
 	out float2 hitPixel,
 	out float3 hitPoint);
@@ -106,12 +106,13 @@ void Swap(inout float a, inout float b);
 // Calculate the Fresnel
 float3 Fresnel(float3 F0, float3 L, float3 H);
 
-
+// Returns true if a~b within an epsilon
 bool eq(float a, float b)
 {
 	return abs(a - b) < 0.0005;
 }
 
+// Returns true if the mat is all zero
 bool zero(float4x4 mat)
 {
 	for(int x = 0; x < 4; x++)
@@ -137,16 +138,16 @@ void CSMain(uint3 Gid : SV_GroupID, uint3 DTid : SV_DispatchThreadID, uint3 GTid
 
 	// Sample textures
 	float3 mainRT = mainBuffer[screenPos].xyz;
-	float depth = depthBuffer[screenPos];
+	float depth = LineariseDepth(depthBuffer[screenPos], cb.NearPlaneZ, cb.FarPlaneZ);
 	float4 albedo = albedoBuffer[screenPos];
+	
 	float4 normalReflective = normalReflectiveBuffer[screenPos];
 	float3 normal = normalReflective.xyz;
 	float reflectiveness = normalReflective.w;
 
 	// If this pixel has not been rendered to, let the skybox/clearvalue remain
-	if(depth == 0)
+	if(depth == 0 || reflectiveness == 0)
 	{
-		//outputRT[screenPos] = float4(1,0,1, 1);
 		outputRT[screenPos] = float4(mainRT, 1);
 		return;
 	}
@@ -157,12 +158,12 @@ void CSMain(uint3 Gid : SV_GroupID, uint3 DTid : SV_DispatchThreadID, uint3 GTid
 	clipPos.y = -clipPos.y;
 
 	// Convert normal to view space to find the correct reflection vector
-	float3 normalVS = mul((float3x3)cb.View, normal.xyz);
+	float3 normalVS = mul(cb.View, normal);
 
 	float4 viewPos = mul(cb.InvProjection, clipPos);
 	viewPos.xyz /= viewPos.w;
 
-	float3 rayOrigin = viewPos.xyz + normalVS * 0.01;
+	float3 rayOrigin = viewPos.xyz * 0.99;//+ normalVS * 0.01;
 	float3 toPosition = normalize(rayOrigin.xyz);
 
 	/*
@@ -172,18 +173,18 @@ void CSMain(uint3 Gid : SV_GroupID, uint3 DTid : SV_DispatchThreadID, uint3 GTid
 	*/
 	float3 rayDirection = reflect(toPosition, normalVS);
 
+	float jitter = cb.Stride > 1.0f ? float(int(screenPos.x + screenPos.y) & 1) * 0.5f : 0.0f;
+
 	// out parameters
 	float2 hitPixel = float2(0.0f, 0.0f);
 	float3 hitPoint = float3(0.0f, 0.0f, 0.0f);
-
-	float jitter = cb.Stride > 1.0f ? float(int(screenPos.x + screenPos.y) & 1) * 0.5f : 0.0f;
 
 	// perform ray tracing - true if hit found, false otherwise
 	bool intersection = TraceScreenSpaceRay(rayOrigin, rayDirection, jitter, hitPixel, hitPoint);
 
 	// move hit pixel from pixel position to UVs;
-	if(hitPixel.x > cb.RenderTargetSize.x || hitPixel.x < 0.0f || hitPixel.y > cb.RenderTargetSize.y || hitPixel.y <
-		0.0f)
+	if(hitPixel.x > cb.RenderTargetSize.x || hitPixel.x < 0.0f ||
+		hitPixel.y > cb.RenderTargetSize.y || hitPixel.y < 0.0f)
 	{
 		intersection = false;
 	}
@@ -197,39 +198,39 @@ void CSMain(uint3 Gid : SV_GroupID, uint3 DTid : SV_DispatchThreadID, uint3 GTid
 
 	float3 F = Fresnel(specularColor, L, H);
 
-	//outputRT[screenPos] = float4(result.rgb, 1);
-	outputRT[screenPos] = float4(result.rgb * (F * cb.SSRScale) + mainRT.rgb, 1);
+	//outputRT[screenPos] = float4(LineariseDepth(depth, cb.NearPlaneZ, cb.FarPlaneZ),0,0,1); 
+	//outputRT[screenPos] = float4(result.rgb * (F * cb.SSRScale) + mainRT.rgb, 1);
+	outputRT[screenPos] = float4(result.rgb, 1);
 }
 
 bool TraceScreenSpaceRay(
-	// Camera-space ray origin, which must be within the view volume
-	float3 csOrig,
-	// Unit length camera-space ray direction
-	float3 csDir,
-	// Number between 0 and 1 for how far to bump the ray in stride units
-	// to conceal banding artifacts. Not needed if stride == 1.
+	float3 vsOrig,
+	float3 vsDir,
 	float jitter,
-	// Pixel coordinates of the first intersection with the scene
 	out float2 hitPixel,
-	// Camera space location of the ray hit
 	out float3 hitPoint)
 {
-	// Clip to the near plane
-	float rayLength = ((csOrig.z + csDir.z * cb.MaxDistance) < cb.NearPlaneZ)
-		                  ? (cb.NearPlaneZ - csOrig.z) / csDir.z
-		                  : cb.MaxDistance;
-	float3 csEndPoint = csOrig + csDir * rayLength;
+	// Max distance
+	float depthDistanceTraversed = vsOrig.z + vsDir.z * cb.MaxDistance;
+
+	float rayLength = cb.MaxDistance;
+	if(depthDistanceTraversed < cb.NearPlaneZ)
+	{
+		rayLength = (cb.NearPlaneZ - vsOrig.z) / vsDir.z;
+	}
+
+	float3 vsEndPoint = vsOrig + vsDir * rayLength;
 
 	// Project into homogeneous clip space
-	float4 H0 = mul(cb.Projection, float4(csOrig, 1.0f));
-	float4 H1 = mul(cb.Projection, float4(csEndPoint, 1.0f));
+	float4 H0 = mul(cb.Projection, float4(vsOrig, 1.0f));
+	float4 H1 = mul(cb.Projection, float4(vsEndPoint, 1.0f));
 
 	float k0 = 1.0f / H0.w;
 	float k1 = 1.0f / H1.w;
 
 	// The interpolated homogeneous version of the camera-space points
-	float3 Q0 = csOrig * k0;
-	float3 Q1 = csEndPoint * k1;
+	float3 Q0 = vsOrig * k0;
+	float3 Q1 = vsEndPoint * k1;
 
 	// Screen-space endpoints
 	float2 P0 = H0.xy * k0;
@@ -268,7 +269,7 @@ bool TraceScreenSpaceRay(
 
 	// Scale derivatives by the desired pixel stride and then
 	// offset the starting values by the jitter fraction
-	float strideScale = 1.0f - min(1.0f, csOrig.z * cb.StrideZCutoff);
+	float strideScale = 1.0f - min(1.0f, vsOrig.z * cb.StrideZCutoff);
 	float stride = 1.0f + strideScale * cb.Stride;
 	dP *= stride;
 	dQ *= stride;
@@ -287,7 +288,7 @@ bool TraceScreenSpaceRay(
 	float end = P1.x * stepDir;
 
 	float stepCount = 0.0f;
-	float prevZMaxEstimate = csOrig.z;
+	float prevZMaxEstimate = vsOrig.z;
 	float rayZMin = prevZMaxEstimate;
 	float rayZMax = prevZMaxEstimate;
 	float sceneZMax = rayZMax + 200.0f;
@@ -309,7 +310,7 @@ bool TraceScreenSpaceRay(
 
 		hitPixel = permute ? PQk.yx : PQk.xy;
 
-		sceneZMax = LineariseDepth(depthBuffer[hitPixel].r, cb.NearPlaneZ, cb.FarPlaneZ);
+		sceneZMax = -LineariseDepth(depthBuffer[hitPixel].r, cb.NearPlaneZ, cb.FarPlaneZ);
 
 		PQk += dPQk;
 	}
@@ -323,11 +324,9 @@ bool TraceScreenSpaceRay(
 
 float LineariseDepth(float depth, float nearPlane, float farPlane)
 {
-	float ProjectionA = farPlane / (nearPlane - farPlane);
+	float ProjectionA = farPlane / (farPlane - nearPlane);
 	float ProjectionB = (-farPlane * nearPlane) / (farPlane - nearPlane);
 
-	// Sample the depth and convert to linear view space Z (assume it gets sampled as
-	// a floating point value of the range [0,1])
 	float linearDepth = ProjectionB / (depth - ProjectionA);
 
 	return linearDepth;

@@ -18,34 +18,29 @@
 
 namespace HybridSsr
 {
-static HybridSsrConstantBuffer g_ConstantBufferData;
 static StructuredBuffer g_ConstantBuffer;
 static ComputePSO g_PSO;
 static RootSignature g_RS;
+
+float HybridSsr::g_SsrScale = 1;
+float HybridSsr::g_ZThickness = 0.05f;
+float HybridSsr::g_Stride = 1;
+float HybridSsr::g_MaxSteps = 400;
+float HybridSsr::g_MaxDistance = 200;
+float HybridSsr::g_StrideZCutoff = 0;
+
 
 void CopyVectorToFloat3(float3 &Dst, Math::Vector3 Src);
 void CopyVectorToFloat4(float4 &Dst, Math::Vector4 Src);
 void CopyMatrixToFloat4x4(float4x4 &Dst, Math::Matrix4 &Src);
 
-HybridSsrConstantBuffer CreateCBConstants(
-	float NearPlaneZ,
-	float FarPlaneZ);
-
-void CreateCBDynamics(
-	HybridSsrConstantBuffer &Data,
-	Math::Matrix4 &View,
-	Math::Matrix4 &InvView,
-	Math::Matrix4 &Projection,
-	Math::Matrix4 &InvProjection,
-	Math::Matrix4 &ViewProjection,
-	Math::Matrix4 &InvViewProjection,
-	Math::Vector3 &CameraPos,
+void CreateConstantBuffer(
+	ComputeContext &Ctx,
+	Math::Camera &Camera,
 	float ScreenWidth,
 	float ScreenHeight);
 
-void InitializeResources(
-	float NearPlaneZ,
-	float FarPlaneZ)
+void InitializeResources()
 {
 	// Root signature
 	g_RS.Reset((int)RootParam::kCount, 0);
@@ -54,80 +49,37 @@ void InitializeResources(
 		D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 0, (int)TextureType::kCount);
 	g_RS[(int)RootParam::kRenderTarget].InitAsDescriptorRange(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 0, 1);
 	g_RS.Finalize(L"HybridSsr Root Signature");
-	
-	g_ConstantBufferData = CreateCBConstants(
-		NearPlaneZ,
-		FarPlaneZ);
-	
+
+	g_ConstantBuffer.Create(L"HybridSsr Constant Buffer", 1, sizeof(HybridSsrConstantBuffer));
+
 	// Create PSO
 	g_PSO.SetRootSignature(g_RS);
 	g_PSO.SetComputeShader(g_pHybridSsrCS, sizeof(g_pHybridSsrCS));
 	g_PSO.Finalize();
 }
 
-HybridSsrConstantBuffer CreateCBConstants(
-	float NearPlaneZ,
-	float FarPlaneZ)
-{
-	g_ConstantBuffer.Create(L"HybridSsr Constant Buffer", 1, sizeof(HybridSsrConstantBuffer));
-
-	HybridSsrConstantBuffer result{};
-
-	// Defaults -
-	// Copied from FeaxRenderer: FeaxRenderer.cpp around lines 2000.
-	result.SSRScale = 1;
-	result.ZThickness = 0.05;
-	result.Stride = 1.0;
-	result.MaxDistance = 200;
-	result.MaxSteps = 400;
-	result.StrideZCutoff = 0;
-	result.NearPlaneZ = NearPlaneZ;
-	result.FarPlaneZ = FarPlaneZ;
-
-	return result;
-}
-
 void ComputeHybridSsr(
 	GraphicsContext &GraphicsCtx,
-	Math::Camera &Camera,
+	Math::VRCamera &VRCamera,
 	Cam::CameraType CamType,
 	ColorBuffer &Color, DepthBuffer &Depth, ColorBuffer &Normal)
 {
 	// Setup context
-	ComputeContext& ctx = GraphicsCtx.GetComputeContext();
+	ComputeContext &ctx = GraphicsCtx.GetComputeContext();
+
 	ScopedTimer timer(L"HybridSSR", ctx);
 
-	int width = Color.GetWidth();
-	int height = Color.GetHeight();
-	
-	// Setup resources
-	Math::Matrix4 v = Camera.GetViewMatrix();
-	Math::Matrix4 invV = Math::Invert(v);
+	const float width = static_cast<float>(Color.GetWidth());
+	const float height = static_cast<float>(Color.GetHeight());
 
-	Math::Matrix4 p = Camera.GetProjMatrix();
-	Math::Matrix4 invP = Math::Invert(p);
+	Math::Camera &camera = *VRCamera[CamType];
 
-	Math::Matrix4 vp = Camera.GetViewProjMatrix();
-	Math::Matrix4 invVp = Math::Invert(vp);
+	CreateConstantBuffer(
+		ctx,
+		camera,
+		width,
+		height);
 
-	Math::Vector3 position = Camera.GetPosition();
-
-	CreateCBDynamics(g_ConstantBufferData,
-	                 v,
-	                 invV,
-	                 p,
-	                 invP,
-	                 vp,
-	                 invVp,
-	                 position,
-	                 static_cast<float>(width),
-	                 static_cast<float>(height));
-
-	int size = sizeof(HybridSsrConstantBuffer);
-	ctx.WriteBuffer(g_ConstantBuffer, 0,
-	                &g_ConstantBufferData,
-	                size);
-	
 	// Transition resources
 	ctx.TransitionResource(Color, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 	ctx.TransitionResource(Depth, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
@@ -136,12 +88,16 @@ void ComputeHybridSsr(
 	// Setup pipeline
 	ctx.SetRootSignature(g_RS);
 	ctx.SetPipelineState(g_PSO);
+
+	// Constants 
 	ctx.SetConstantBuffer(
 		(int)RootParam::kConstants,
 		g_ConstantBuffer.GetGpuVirtualAddress());
+
+	// Textures
 	ctx.SetDynamicDescriptor(
 		(int)RootParam::kTextures,
-		(int)TextureType::kAlbedoBuffer, Color.GetSubSRV(CamType));
+		(int)TextureType::kMainBuffer, Color.GetSubSRV(CamType));
 	ctx.SetDynamicDescriptor(
 		(int)RootParam::kTextures,
 		(int)TextureType::kDepthBuffer, Depth.GetSubSRV(CamType));
@@ -150,10 +106,8 @@ void ComputeHybridSsr(
 		(int)TextureType::kNormalBuffer, Normal.GetSubSRV(CamType));
 	ctx.SetDynamicDescriptor(
 		(int)RootParam::kTextures,
-		(int)TextureType::kMainBuffer, Color.GetSubSRV(CamType));
-	ctx.SetDynamicDescriptor(
-		(int)RootParam::kTextures,
-		(int)TextureType::kMainBuffer, Color.GetSubSRV(CamType));
+		(int)TextureType::kAlbedoBuffer, Color.GetSubSRV(CamType));
+	// Render target UAV
 	ctx.SetDynamicDescriptor(
 		(int)RootParam::kRenderTarget, 0, Color.GetSubUAV(CamType));
 
@@ -164,32 +118,43 @@ void ComputeHybridSsr(
 	ctx.TransitionResource(Color, D3D12_RESOURCE_STATE_RENDER_TARGET);
 }
 
-void CreateCBDynamics(
-	HybridSsrConstantBuffer &Data,
-	Math::Matrix4 &View,
-	Math::Matrix4 &InvView,
-	Math::Matrix4 &Projection,
-	Math::Matrix4 &InvProjection,
-	Math::Matrix4 &ViewProjection,
-	Math::Matrix4 &InvViewProjection,
-	Math::Vector3 &CameraPos,
+void CreateConstantBuffer(
+	ComputeContext &Ctx,
+	Math::Camera &Camera,
 	float ScreenWidth,
 	float ScreenHeight)
 {
-	CopyMatrixToFloat4x4(Data.View, View);
-	CopyMatrixToFloat4x4(Data.InvView, InvView);
-	CopyMatrixToFloat4x4(Data.Projection, Projection);
-	CopyMatrixToFloat4x4(Data.InvProjection, InvProjection);
-	CopyMatrixToFloat4x4(Data.ViewProjection, ViewProjection);
-	CopyMatrixToFloat4x4(Data.InvViewProjection, InvViewProjection);
+	HybridSsrConstantBuffer data{};
 
 	const Math::Vector4 rtSize = {
 		ScreenWidth, ScreenHeight,
 		1.0f / ScreenWidth, 1.0f / ScreenHeight
 	};
-	CopyVectorToFloat4(Data.RenderTargetSize, rtSize);
+	CopyVectorToFloat4(data.RenderTargetSize, rtSize);
 
-	CopyVectorToFloat3(Data.CameraPos, CameraPos);
+	Math::Matrix4 v = Camera.GetViewMatrix();
+	CopyMatrixToFloat4x4(data.View, v);
+
+	Math::Matrix4 p = Camera.GetProjMatrix();
+	CopyMatrixToFloat4x4(data.Projection, p);
+
+	Math::Matrix4 invP = Math::Invert(p);
+	CopyMatrixToFloat4x4(data.InvProjection, invP);
+
+	data.NearPlaneZ = Camera.GetNearClip();
+	data.FarPlaneZ = Camera.GetFarClip();
+
+	data.SSRScale = g_SsrScale;
+	data.ZThickness = g_ZThickness;
+	data.Stride = g_Stride;
+	data.MaxSteps = g_MaxSteps;
+	data.MaxDistance = g_MaxDistance;
+	data.StrideZCutoff = g_StrideZCutoff;
+
+	Ctx.WriteBuffer(
+		g_ConstantBuffer, 0,
+		&data,
+		sizeof(data));
 }
 
 void CopyVectorToFloat3(float3 &Dst, Math::Vector3 Src)

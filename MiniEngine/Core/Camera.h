@@ -152,7 +152,7 @@ namespace Math
 
     inline Camera::Camera() : m_ReverseZ(true)
     {
-        SetPerspectiveMatrix( XM_PIDIV4, 9.0f / 16.0f, 1.0f, 1000.0f );
+        SetPerspectiveMatrix( XM_PIDIV4, 9.0f / 16.0f, 1.0f, 200.0f );
     }
 
     inline void Camera::SetPerspectiveMatrix( float verticalFovRadians, float aspectHeightOverWidth, float nearZClip, float farZClip )

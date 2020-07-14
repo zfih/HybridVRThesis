@@ -7,6 +7,8 @@
 #include "GraphicsCore.h"
 #include "CommandContext.h"
 #include "Settings.h"
+#include "HybridSsr.h"
+
 
 namespace GameCore
 {
@@ -647,7 +649,15 @@ void ImGui::BuildGUI(Math::Camera* cam, GameCore::CameraController* controller)
             Settings::UseImGui = checkbox;
 		} // use imgui
     }
-	
+
+    {// Temp variables, should be put somewhere else
+	    ImGui::DragFloat("SSRScale", &HybridSsr::g_SsrScale, 0, 2);
+	    ImGui::DragFloat("ZThickness", &HybridSsr::g_ZThickness, 0, 1);
+	    ImGui::DragFloat("MaxSteps", &HybridSsr::g_MaxSteps, 0, 1000);
+	    ImGui::DragFloat("Stride", &HybridSsr::g_Stride, 1, 5);
+	    ImGui::DragFloat("MaxDistance", &HybridSsr::g_MaxDistance, 0, 1000);
+	    ImGui::DragFloat("StrideZCutoff", &HybridSsr::g_StrideZCutoff, 0, 5);
+	}
     ImGui::End();
 }
 
