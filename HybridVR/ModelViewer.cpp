@@ -1171,10 +1171,9 @@ void D3D12RaytracingMiniEngineSample::Startup(void)
     //m_ExtraTextures[0] = SSAOFullScreen()->GetSRV();
     m_ExtraTextures[1] = g_ShadowBuffer.GetSRV();
 
-	m_LowPassSig.Reset(3, 1);
+	m_LowPassSig.Reset(2, 1);
 	m_LowPassSig[0].InitAsDescriptorRange(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 0, 1);
 	m_LowPassSig[1].InitAsDescriptorRange(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 0, 1);
-	m_LowPassSig[2].InitAsDescriptorRange(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 1, 1);
 	m_LowPassSig.InitStaticSampler(0, SamplerLinearWrapDesc);
 	m_LowPassSig.Finalize(L"LowPassSignature", D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
 
@@ -1185,7 +1184,7 @@ void D3D12RaytracingMiniEngineSample::Startup(void)
 	m_DownsampleSig.Reset(3, 1);
 	m_DownsampleSig[0].InitAsDescriptorRange(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 0, 1);
 	m_DownsampleSig[1].InitAsDescriptorRange(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 1, 1);
-	m_DownsampleSig[2].InitAsDescriptorRange(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 2, 1);
+	m_DownsampleSig[2].InitAsDescriptorRange(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 0, 1);
 	m_DownsampleSig.InitStaticSampler(0, SamplerLinearWrapDesc);
 	m_DownsampleSig.Finalize(L"DownsampleSignature", D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
 	
@@ -1193,11 +1192,12 @@ void D3D12RaytracingMiniEngineSample::Startup(void)
 	m_DownsamplePSO.SetComputeShader(g_pDownsampleCS, sizeof(g_pDownsampleCS));
 	m_DownsamplePSO.Finalize();
 
-	m_FrameIntegrationSig.Reset(4, 1);
+	m_FrameIntegrationSig.Reset(5, 1);
 	m_FrameIntegrationSig[0].InitAsConstants(0, 1);
-	m_FrameIntegrationSig[1].InitAsDescriptorRange(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 0, 1);
-	m_FrameIntegrationSig[2].InitAsDescriptorRange(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 0, 1);
-	m_FrameIntegrationSig[3].InitAsDescriptorRange(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 1, 1);
+	m_FrameIntegrationSig[1].InitAsDescriptorRange(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 0, 1);
+	m_FrameIntegrationSig[2].InitAsDescriptorRange(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 1, 1);
+	m_FrameIntegrationSig[3].InitAsDescriptorRange(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 2, 1);
+	m_FrameIntegrationSig[4].InitAsDescriptorRange(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 3, 1);
 	m_FrameIntegrationSig.InitStaticSampler(0, SamplerLinearWrapDesc);
 	m_FrameIntegrationSig.Finalize(L"FrameIntegrationSignature", D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
 
@@ -1620,6 +1620,12 @@ void D3D12RaytracingMiniEngineSample::RenderColor(GraphicsContext& Ctx, Camera& 
 			SceneColorBuffer()->GetSubRTV(CameraType),
 			SceneNormalBuffer().GetSubRTV(CameraType),
 		};
+		
+		if (Graphics::GetFrameCount() % 2 == 1)
+		{
+			rtvs[0] = g_SceneColorBufferFullRes.GetMipRTV(CameraType, 2);
+		}
+		
 
 		Ctx.SetRenderTargets(2, rtvs,
 			SceneDepthBuffer()->GetSubDSV(CameraType));
@@ -1899,11 +1905,10 @@ void D3D12RaytracingMiniEngineSample::FrameIntegration()
 			cmpContext.SetPipelineState(m_LowPassPSO);
 
 			cmpContext.TransitionResource(g_SceneColorBufferFullRes, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, true);
-			//cmpContext.TransitionResource(g_SceneColorBufferLowResPassed, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, true);
+			cmpContext.TransitionResource(g_SceneColorBufferLowPassed, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, true);
 
 			cmpContext.SetDynamicDescriptor(0, 0, g_SceneColorBufferFullRes.GetSRV());
-			cmpContext.SetDynamicDescriptor(1, 0, g_SceneColorBufferFullRes.GetMipUAV(0, 2));
-			cmpContext.SetDynamicDescriptor(2, 0, g_SceneColorBufferFullRes.GetMipUAV(1, 2));
+			cmpContext.SetDynamicDescriptor(1, 0, g_SceneColorBufferLowPassed.GetUAV());
 
 			cmpContext.Dispatch2D(g_SceneColorBufferLowPassed.GetWidth(), g_SceneColorBufferLowPassed.GetHeight());
 
@@ -1911,11 +1916,11 @@ void D3D12RaytracingMiniEngineSample::FrameIntegration()
 			cmpContext.SetPipelineState(m_DownsamplePSO);
 
 			cmpContext.TransitionResource(g_SceneColorBufferFullRes, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, true);
-			cmpContext.TransitionResource(g_SceneColorBufferLowRes, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, true);
+			cmpContext.TransitionResource(g_SceneColorBufferLowPassed, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, true);
 
 			cmpContext.SetDynamicDescriptor(0, 0, g_SceneColorBufferFullRes.GetMipUAV(0, 2));
 			cmpContext.SetDynamicDescriptor(1, 0, g_SceneColorBufferFullRes.GetMipUAV(1, 2));
-			cmpContext.SetDynamicDescriptor(2, 0, g_SceneColorBufferLowRes.GetUAV());
+			cmpContext.SetDynamicDescriptor(0, 0, g_SceneColorBufferLowPassed.GetSRV());
 
 			cmpContext.Dispatch2D(g_SceneColorBufferLowRes.GetWidth(), g_SceneColorBufferLowRes.GetHeight());
 
@@ -1930,7 +1935,8 @@ void D3D12RaytracingMiniEngineSample::FrameIntegration()
 		cmpContext.TransitionResource(g_SceneColorBufferFullRes, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, true);
 
 		cmpContext.SetConstant(0, Graphics::GetFrameCount() % 2 == 0);
-		cmpContext.SetDynamicDescriptor(1, 0, g_SceneColorBufferLowRes.GetSRV());
+		cmpContext.SetDynamicDescriptor(1, 0, g_SceneColorBufferFullRes.GetMipUAV(0, 2));
+		cmpContext.SetDynamicDescriptor(1, 0, g_SceneColorBufferFullRes.GetMipUAV(1, 2));
 		cmpContext.SetDynamicDescriptor(2, 0, g_SceneColorBufferFullRes.GetUAV());
 		cmpContext.SetDynamicDescriptor(3, 0, g_SceneColorBufferResidules.GetUAV());
 

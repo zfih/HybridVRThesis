@@ -70,6 +70,7 @@ public:
     const D3D12_CPU_DESCRIPTOR_HANDLE& GetRTV(void) const { return m_RTVHandle; }
     const D3D12_CPU_DESCRIPTOR_HANDLE& GetUAV(void) const { return m_MipUAVHandles[0][0]; }
     const D3D12_CPU_DESCRIPTOR_HANDLE& GetMipUAV(uint32_t arrayIndex, uint32_t mipLevel) const { return m_MipUAVHandles[arrayIndex][mipLevel]; }
+    const D3D12_CPU_DESCRIPTOR_HANDLE& GetMipRTV(uint32_t arrayIndex, uint32_t mipLevel) const { return m_MipRTVHandles[arrayIndex][mipLevel]; }
 
 
     void SetClearColor( Color ClearColor ) { m_ClearColor = ClearColor; }
@@ -122,6 +123,7 @@ protected:
     uint32_t m_SampleCount;
 
     std::vector< std::vector<D3D12_CPU_DESCRIPTOR_HANDLE> > m_MipUAVHandles;
+    std::vector< std::vector<D3D12_CPU_DESCRIPTOR_HANDLE> > m_MipRTVHandles;
 	std::vector<D3D12_CPU_DESCRIPTOR_HANDLE> m_RTVSubHandles;
 	std::vector<D3D12_CPU_DESCRIPTOR_HANDLE> m_UAVSubHandles;
 	std::vector<D3D12_CPU_DESCRIPTOR_HANDLE> m_SRVSubHandles;

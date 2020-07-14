@@ -104,6 +104,20 @@ void ColorBuffer::CreateDerivedViews(ID3D12Device* Device, DXGI_FORMAT Format, u
                 Graphics::AllocateDescriptor(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
 			Device->CreateRenderTargetView(Resource, &RTVDesc, rtvHandle);
 			m_RTVSubHandles.push_back(rtvHandle);
+
+            std::vector<D3D12_CPU_DESCRIPTOR_HANDLE> handles(NumMips);
+
+            // Create the UAVs for each mip level (RWTexture2D)
+            for (uint32_t i = 0; i < NumMips; ++i)
+            {
+                handles[i] = Graphics::AllocateDescriptor(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+
+                Device->CreateRenderTargetView(Resource, &RTVDesc, handles[i]);
+            	
+                RTVDesc.Texture2D.MipSlice++;
+            }
+
+            m_MipRTVHandles.push_back(handles);
 		}
 
         m_UAVSubHandles.reserve(ArraySize);
