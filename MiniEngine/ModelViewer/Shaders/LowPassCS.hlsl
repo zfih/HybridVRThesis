@@ -1,12 +1,7 @@
 
 Texture2DArray<float3> HighResImage : register(t0);
-RWTexture2DArray<float3> LowPassedImage : register(u0);
-
-float3 ApplySRGBCurve(float3 x)
-{
-	// Approximately pow(x, 1.0 / 2.2)
-	return x < 0.0031308 ? 12.92 * x : 1.055 * pow(x, 1.0 / 2.4) - 0.055;
-}
+RWTexture2D<float3> LeftMip : register(u0);
+RWTexture2D<float3> RightMip : register(u1);
 
 void filter(uint3 DTid, int cam)
 {
@@ -24,19 +19,26 @@ void filter(uint3 DTid, int cam)
 			4.10018648 / 273.0f, 1.0278445 / 273.0f }
 	};
 
-	float3 colourSum = float3(0, 0, 0);
+	float3 colorSum = float3(0, 0, 0);
 
 	for (int y = -2; y < 3; y++)
 	{
 		for (int x = -2; x < 3; x++)
 		{
 			float weight = weights[x + 2][y + 2];
-			colourSum += weight * 
+			colorSum += weight * 
 						 HighResImage[float3(DTid.x + x, DTid.y + y, cam)];
 		}
 	}
 
-	LowPassedImage[uint3(DTid.x, DTid.y, cam)] = colourSum;
+	if (cam == 0)
+	{
+		LeftMip[uint2(DTid.xy)] = colorSum;
+	}
+	else
+	{
+		RightMip[uint2(DTid.xy)] = colorSum;
+	}
 }
 
 [numthreads(8, 8, 1)]

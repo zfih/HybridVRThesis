@@ -69,7 +69,7 @@ public:
     const D3D12_CPU_DESCRIPTOR_HANDLE& GetSRV(void) const { return m_SRVHandle; }
     const D3D12_CPU_DESCRIPTOR_HANDLE& GetRTV(void) const { return m_RTVHandle; }
     const D3D12_CPU_DESCRIPTOR_HANDLE& GetUAV(void) const { return m_MipUAVHandles[0][0]; }
-    const D3D12_CPU_DESCRIPTOR_HANDLE& GetMip(uint32_t arrayIndex, uint32_t mipLevel) const { return m_MipUAVHandles[arrayIndex][mipLevel]; }
+    const D3D12_CPU_DESCRIPTOR_HANDLE& GetMipUAV(uint32_t arrayIndex, uint32_t mipLevel) const { return m_MipUAVHandles[arrayIndex][mipLevel]; }
 
 
     void SetClearColor( Color ClearColor ) { m_ClearColor = ClearColor; }

@@ -122,7 +122,7 @@ void ColorBuffer::CreateDerivedViews(ID3D12Device* Device, DXGI_FORMAT Format, u
                 Resource, nullptr, &UAVDesc, uavHandle);
             m_UAVSubHandles.push_back(uavHandle);
 
-            std::vector<D3D12_CPU_DESCRIPTOR_HANDLE> handles(m_NumMipMaps);
+            std::vector<D3D12_CPU_DESCRIPTOR_HANDLE> handles(NumMips);
 
             // Create the UAVs for each mip level (RWTexture2D)
             for (uint32_t i = 0; i < NumMips; ++i)
@@ -155,6 +155,22 @@ void ColorBuffer::CreateDerivedViews(ID3D12Device* Device, DXGI_FORMAT Format, u
             m_SRVSubHandles.push_back(srvHandle);
         }
 	}
+    else
+    {
+        std::vector<D3D12_CPU_DESCRIPTOR_HANDLE> handles(NumMips);
+
+        // Create the UAVs for each mip level (RWTexture2D)
+        for (uint32_t i = 0; i < NumMips; ++i)
+        {
+            handles[i] = Graphics::AllocateDescriptor(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+
+            Device->CreateUnorderedAccessView(Resource, nullptr, &UAVDesc, handles[i]);
+
+            UAVDesc.Texture2D.MipSlice++;
+        }
+
+        m_MipUAVHandles.push_back(handles);
+    }
 }
 
 void ColorBuffer::CreateFromSwapChain( const std::wstring& Name, ID3D12Resource* BaseResource )
