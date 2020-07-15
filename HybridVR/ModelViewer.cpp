@@ -1487,6 +1487,7 @@ void D3D12RaytracingMiniEngineSample::RenderColor(GraphicsContext &Ctx, Camera &
 	Ctx.SetDynamicDescriptors(3, 0, ARRAYSIZE(m_ExtraTextures), m_ExtraTextures);
 	Ctx.SetDynamicConstantBufferView(1, sizeof(Constants), &Constants);
 
+	
 	bool RenderIDs = !Settings::TAA_Enable;
 
 	{
@@ -1514,6 +1515,11 @@ void D3D12RaytracingMiniEngineSample::RenderColor(GraphicsContext &Ctx, Camera &
 		Ctx.SetPipelineState(m_CutoutModelPSO[0]);
 		RenderObjects(Ctx, CameraType, m_Camera[CameraType]->GetViewProjMatrix(), kCutout);
 	}
+}
+
+void InitializeDepthBounds(GraphicsContext &Ctx)
+{
+	Ctx.SetDepthBounds(1, 0);
 }
 
 void D3D12RaytracingMiniEngineSample::RenderEye(Cam::CameraType eye, bool SkipDiffusePass, bool SkipShadowMap,

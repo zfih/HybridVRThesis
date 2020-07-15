@@ -138,7 +138,7 @@ void CSMain(uint3 Gid : SV_GroupID, uint3 DTid : SV_DispatchThreadID, uint3 GTid
 
 	// Sample textures
 	float3 mainRT = mainBuffer[screenPos].xyz;
-	float depth = LineariseDepth(depthBuffer[screenPos], cb.NearPlaneZ, cb.FarPlaneZ);
+	float depth = depthBuffer[screenPos];
 	float4 albedo = albedoBuffer[screenPos];
 	
 	float4 normalReflective = normalReflectiveBuffer[screenPos];

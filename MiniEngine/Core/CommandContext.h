@@ -225,6 +225,8 @@ public:
     void SetStencilRef( UINT StencilRef );
     void SetBlendFactor( Color BlendFactor );
     void SetPrimitiveTopology( D3D12_PRIMITIVE_TOPOLOGY Topology );
+    void SetDepthBounds(float min, float max);
+	
 
     void SetConstantArray( UINT RootIndex, UINT NumConstants, const void* pConstants );
     void SetConstant( UINT RootIndex, DWParam Val, UINT Offset = 0 );
@@ -368,6 +370,13 @@ inline void GraphicsContext::SetBlendFactor( Color BlendFactor )
 inline void GraphicsContext::SetPrimitiveTopology( D3D12_PRIMITIVE_TOPOLOGY Topology )
 {
     m_CommandList->IASetPrimitiveTopology(Topology);
+}
+
+inline void GraphicsContext::SetDepthBounds(const float Min, const float Max)
+{
+    ID3D12GraphicsCommandList1 *list = nullptr;
+    m_CommandList->QueryInterface(IID_PPV_ARGS(&list));
+    list->OMSetDepthBounds(Min, Max);
 }
 
 inline void ComputeContext::SetConstantArray( UINT RootEntry, UINT NumConstants, const void* pConstants )
