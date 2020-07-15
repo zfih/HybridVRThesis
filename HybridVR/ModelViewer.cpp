@@ -1750,6 +1750,7 @@ void D3D12RaytracingMiniEngineSample::MainRender(GraphicsContext& Ctx, Cam::Came
                 // Make the 3D queue wait for the Compute queue to finish SSAO
                 g_CommandManager.GetGraphicsQueue().StallForProducer(g_CommandManager.GetComputeQueue());
             }
+			
 			// TODO: TMP REWORK: HANDLE LOW RES
 			RenderColor(Ctx, Camera, CameraType, g_SceneDepthBuffer, Constants);
 		}
@@ -1881,8 +1882,20 @@ void D3D12RaytracingMiniEngineSample::RenderScene()
 	psConstants.InvTileDim[0] = 1.0f / Settings::LightGridDim;
 	psConstants.InvTileDim[1] = 1.0f / Settings::LightGridDim;
 	// TODO: TMP REWORK: HANDLE LOW RES
-	psConstants.TileCount[0] = Math::DivideByMultiple(g_SceneColorBuffer.GetWidth(), Settings::LightGridDim);
-	psConstants.TileCount[1] = Math::DivideByMultiple(g_SceneColorBuffer.GetHeight(), Settings::LightGridDim);
+	if(m_currentMip)
+	{
+		psConstants.TileCount[0] = Math::DivideByMultiple(
+			Graphics::divisionHelperFunc(g_SceneColorBuffer.GetWidth()), 
+			Settings::LightGridDim);
+		psConstants.TileCount[1] = Math::DivideByMultiple(
+			Graphics::divisionHelperFunc(g_SceneColorBuffer.GetHeight()),
+			Settings::LightGridDim);
+	}
+	else
+	{
+		psConstants.TileCount[0] = Math::DivideByMultiple(g_SceneColorBuffer.GetWidth(), Settings::LightGridDim);
+		psConstants.TileCount[1] = Math::DivideByMultiple(g_SceneColorBuffer.GetHeight(), Settings::LightGridDim);
+	}
 	psConstants.FirstLightIndex[0] = Lighting::m_FirstConeLight;
 	psConstants.FirstLightIndex[1] = Lighting::m_FirstConeShadowedLight;
 	psConstants.FrameIndexMod2 = TemporalEffects::GetFrameIndexMod2();
