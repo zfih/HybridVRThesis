@@ -338,6 +338,8 @@ private:
 	RootSignature m_FrameIntegrationSig;
 	ComputePSO m_FrameIntegrationPSO;
 
+	UINT m_currentMip;
+
 	D3D12_CPU_DESCRIPTOR_HANDLE m_DefaultSampler;
 	D3D12_CPU_DESCRIPTOR_HANDLE m_ShadowSampler;
 	D3D12_CPU_DESCRIPTOR_HANDLE m_BiasedDefaultSampler;
@@ -1616,29 +1618,13 @@ void D3D12RaytracingMiniEngineSample::RenderColor(GraphicsContext& Ctx, Camera& 
 
 		D3D12_CPU_DESCRIPTOR_HANDLE rtvs[2]{
 			// TODO: TMP REWORK: HANDLE LOW RES
-			g_SceneColorBuffer.GetSubRTV(CameraType),
+			g_SceneColorBuffer.GetMipRTV(CameraType, m_currentMip),
 			// TODO: TMP REWORK: HANDLE LOW RES
-			g_SceneNormalBuffer.GetSubRTV(CameraType),
+			g_SceneNormalBuffer.GetMipRTV(CameraType, m_currentMip),
 		};
-
 		
-		if (Graphics::GetFrameCount() % 2 == 1)
-		{
-			//TODO: TMP REWORK: how to handle low res
-			rtvs[0] = g_SceneColorBuffer.GetMipRTV(CameraType, 2);
-			rtvs[0] = g_SceneNormalBuffer.GetMipRTV(CameraType, 2);
-
-			Ctx.SetRenderTargets(2, rtvs,
-				// TODO: TMP REWORK: HANDLE LOW RES
-				g_SceneDepthBuffer.GetMipDSV(CameraType, 2));
-		}
-		else
-		{
-			Ctx.SetRenderTargets(2, rtvs,
-				// TODO: TMP REWORK: HANDLE LOW RES
-				g_SceneDepthBuffer.GetSubDSV(CameraType));
-		}
-
+		Ctx.SetRenderTargets(2, rtvs,
+			g_SceneDepthBuffer.GetMipDSV(CameraType, m_currentMip));
 
 		Ctx.SetViewportAndScissor(
 			m_MainViewport, m_MainScissor);
@@ -1712,8 +1698,8 @@ void D3D12RaytracingMiniEngineSample::RenderPrepass(GraphicsContext& Ctx, Cam::C
 				}
 
 				Ctx.SetPipelineState(m_DepthPSO[0]);
-				// TODO: TMP REWORK: HANDLE LOW RES
-				Ctx.SetDepthStencilTarget(g_SceneDepthBuffer.GetSubDSV(CameraType));
+				
+				Ctx.SetDepthStencilTarget(g_SceneDepthBuffer.GetMipDSV(CameraType, m_currentMip));
 
 				Ctx.SetViewportAndScissor(m_MainViewport, m_MainScissor);
 			}
@@ -1857,6 +1843,9 @@ void D3D12RaytracingMiniEngineSample::RenderShadowMap()
 
 void D3D12RaytracingMiniEngineSample::RenderScene()
 {
+	// if uneven frame we use mip 2 else mip 0
+	m_currentMip = (Graphics::GetFrameCount() % 2) * 2;
+	
 	const bool skipDiffusePass =
 		Settings::RayTracingMode == Settings::RTM_DIFFUSE_WITH_SHADOWMAPS ||
 		Settings::RayTracingMode == Settings::RTM_DIFFUSE_WITH_SHADOWRAYS ||
