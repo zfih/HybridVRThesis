@@ -299,7 +299,8 @@ void SSAO::Render( GraphicsContext& GfxContext, const float* ProjMat, float Near
 {
     uint32_t FrameIndex = TemporalEffects::GetFrameIndexMod2();
 
-    ColorBuffer& LinearDepth = *Graphics::LinearDepth(FrameIndex);
+    // TODO: TMP REWORK: HANDLE LOW RES
+    ColorBuffer& LinearDepth = Graphics::g_LinearDepth[FrameIndex];
 
     const float zMagic = (FarClipDist - NearClipDist) / NearClipDist;
 
@@ -307,9 +308,10 @@ void SSAO::Render( GraphicsContext& GfxContext, const float* ProjMat, float Near
     {
         ScopedTimer _prof(L"Generate SSAO", GfxContext);
 
-        GfxContext.TransitionResource(*SSAOFullScreen(), D3D12_RESOURCE_STATE_RENDER_TARGET, true);
-        GfxContext.ClearColor(*SSAOFullScreen());
-        GfxContext.TransitionResource(*SSAOFullScreen(), D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+    	// TODO: TMP REWORK: HANDLE LOW RES
+        GfxContext.TransitionResource(g_SSAOFullScreen, D3D12_RESOURCE_STATE_RENDER_TARGET, true);
+        GfxContext.ClearColor(g_SSAOFullScreen);
+        GfxContext.TransitionResource(g_SSAOFullScreen, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 
         if (!Settings::ComputeLinearZ)
             return;
@@ -317,9 +319,11 @@ void SSAO::Render( GraphicsContext& GfxContext, const float* ProjMat, float Near
         ComputeContext& Context = GfxContext.GetComputeContext();
         Context.SetRootSignature(s_RootSignature);
 
-        Context.TransitionResource(*SceneDepthBuffer(), D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+        // TODO: TMP REWORK: HANDLE LOW RES
+        Context.TransitionResource(g_SceneDepthBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
         Context.SetConstants(0, zMagic);
-        Context.SetDynamicDescriptor(3, 0, SceneDepthBuffer()->GetSubSRV(CurCam));
+        // TODO: TMP REWORK: HANDLE LOW RES
+        Context.SetDynamicDescriptor(3, 0, g_SceneDepthBuffer.GetSubSRV(CurCam));
 
         Context.TransitionResource(LinearDepth, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
         Context.SetDynamicDescriptors(2, 0, 1, &LinearDepth.GetUAV());
@@ -328,19 +332,23 @@ void SSAO::Render( GraphicsContext& GfxContext, const float* ProjMat, float Near
 
         if (Settings::SSAO_DebugDraw)
         {
-            Context.TransitionResource(*SceneColorBuffer(), D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+            // TODO: TMP REWORK: HANDLE LOW RES
+            Context.TransitionResource(g_SceneColorBuffer, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
             Context.TransitionResource(LinearDepth, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-            Context.SetDynamicDescriptors(2, 0, 1, &SceneColorBuffer()->GetUAV());
+            // TODO: TMP REWORK: HANDLE LOW RES
+            Context.SetDynamicDescriptors(2, 0, 1, &g_SceneColorBuffer.GetUAV());
             Context.SetDynamicDescriptors(3, 0, 1, &LinearDepth.GetSRV() );
             Context.SetPipelineState(s_DebugSSAOCS);
-            Context.Dispatch2D(SSAOFullScreen()->GetWidth(), SSAOFullScreen()->GetHeight());
+            // TODO: TMP REWORK: HANDLE LOW RES
+            Context.Dispatch2D(g_SSAOFullScreen.GetWidth(), g_SSAOFullScreen.GetHeight());
         }
 
         return;
     }
 
-    GfxContext.TransitionResource(*SceneDepthBuffer(), D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-    GfxContext.TransitionResource(*SSAOFullScreen(), D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+    // TODO: TMP REWORK: HANDLE LOW RES
+    GfxContext.TransitionResource(g_SceneDepthBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+    GfxContext.TransitionResource(g_SSAOFullScreen, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 
     if (Settings::AsyncCompute)
     {
@@ -359,34 +367,42 @@ void SSAO::Render( GraphicsContext& GfxContext, const float* ProjMat, float Near
 
     // Phase 1:  Decompress, linearize, downsample, and deinterleave the depth buffer
     Context.SetConstants(0, zMagic);
-    Context.SetDynamicDescriptor(3, 0, SceneDepthBuffer()->GetSubSRV(CurCam) );
+    // TODO: TMP REWORK: HANDLE LOW RES
+    Context.SetDynamicDescriptor(3, 0, g_SceneDepthBuffer.GetSubSRV(CurCam) );
 
+    // TODO: TMP REWORK: HANDLE LOW RES
     Context.TransitionResource(LinearDepth, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-    Context.TransitionResource(*DepthDownsize1(), D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-    Context.TransitionResource(*DepthTiled1(), D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-    Context.TransitionResource(*DepthDownsize2(), D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-    Context.TransitionResource(*DepthTiled2(), D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+    Context.TransitionResource(g_DepthDownsize1, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+    Context.TransitionResource(g_DepthTiled1, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+    Context.TransitionResource(g_DepthDownsize2, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+    Context.TransitionResource(g_DepthTiled2, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 
-    D3D12_CPU_DESCRIPTOR_HANDLE DownsizeUAVs[5] = { LinearDepth.GetUAV(), DepthDownsize1()->GetUAV(), DepthTiled1()->GetUAV(),
-        DepthDownsize2()->GetUAV(), DepthTiled2()->GetUAV() };
+    // TODO: TMP REWORK: HANDLE LOW RES
+    D3D12_CPU_DESCRIPTOR_HANDLE DownsizeUAVs[5] = { LinearDepth.GetUAV(), g_DepthDownsize1.GetUAV(), g_DepthTiled1.GetUAV(),
+        g_DepthDownsize2.GetUAV(), g_DepthTiled2.GetUAV() };
     Context.SetDynamicDescriptors(2, 0, 5, DownsizeUAVs);
 
     Context.SetPipelineState(s_DepthPrepare1CS);
-    Context.Dispatch2D(DepthTiled2()->GetWidth() * 8, DepthTiled2()->GetHeight() * 8);
+    // TODO: TMP REWORK: HANDLE LOW RES
+    Context.Dispatch2D(g_DepthTiled2.GetWidth() * 8, g_DepthTiled2.GetHeight() * 8);
 
     if (Settings::HierarchyDepth > 2)
     {
-        Context.SetConstants(0, 1.0f / DepthDownsize2()->GetWidth(), 1.0f / DepthDownsize2()->GetHeight());
-        Context.TransitionResource(*DepthDownsize2(), D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-        Context.TransitionResource(*DepthDownsize3(), D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-        Context.TransitionResource(*DepthTiled3(), D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-        Context.TransitionResource(*DepthDownsize4(), D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-        Context.TransitionResource(*DepthTiled4(), D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-        D3D12_CPU_DESCRIPTOR_HANDLE DownsizeAgainUAVs[4] = { DepthDownsize3()->GetUAV(), DepthTiled3()->GetUAV(), DepthDownsize4()->GetUAV(), DepthTiled4()->GetUAV() };
+        // TODO: TMP REWORK: HANDLE LOW RES
+        Context.SetConstants(0, 1.0f / g_DepthDownsize2.GetWidth(), 1.0f / g_DepthDownsize2.GetHeight());
+        Context.TransitionResource(g_DepthDownsize2, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+        Context.TransitionResource(g_DepthDownsize3, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+        Context.TransitionResource(g_DepthTiled3, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+        Context.TransitionResource(g_DepthDownsize4, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+        Context.TransitionResource(g_DepthTiled4, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+        // TODO: TMP REWORK: HANDLE LOW RES
+        D3D12_CPU_DESCRIPTOR_HANDLE DownsizeAgainUAVs[4] = { g_DepthDownsize3.GetUAV(), g_DepthTiled3.GetUAV(), g_DepthDownsize4.GetUAV(), g_DepthTiled4.GetUAV() };
         Context.SetDynamicDescriptors(2, 0, 4, DownsizeAgainUAVs);
-        Context.SetDynamicDescriptors(3, 0, 1, &DepthDownsize2()->GetSRV() );
+        // TODO: TMP REWORK: HANDLE LOW RES
+        Context.SetDynamicDescriptors(3, 0, 1, &g_DepthDownsize2.GetSRV() );
         Context.SetPipelineState(s_DepthPrepare2CS);
-        Context.Dispatch2D(DepthTiled4()->GetWidth() * 8, DepthTiled4()->GetHeight() * 8);
+        // TODO: TMP REWORK: HANDLE LOW RES
+        Context.Dispatch2D(g_DepthTiled4.GetWidth() * 8, g_DepthTiled4.GetHeight() * 8);
     }
 
     } // End decompress
@@ -395,61 +411,68 @@ void SSAO::Render( GraphicsContext& GfxContext, const float* ProjMat, float Near
     // Load first element of projection matrix which is the cotangent of the horizontal FOV divided by 2.
     const float FovTangent = 1.0f / ProjMat[0];
 
-    Context.TransitionResource(*AOMerged1(), D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-    Context.TransitionResource(*AOMerged2(), D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-    Context.TransitionResource(*AOMerged3(), D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-    Context.TransitionResource(*AOMerged4(), D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-    Context.TransitionResource(*AOHighQuality1(), D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-    Context.TransitionResource(*AOHighQuality2(), D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-    Context.TransitionResource(*AOHighQuality3(), D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-    Context.TransitionResource(*AOHighQuality4(), D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-    Context.TransitionResource(*DepthTiled1(), D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-    Context.TransitionResource(*DepthTiled2(), D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-    Context.TransitionResource(*DepthTiled3(), D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-    Context.TransitionResource(*DepthTiled4(), D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-    Context.TransitionResource(*DepthDownsize1(), D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-    Context.TransitionResource(*DepthDownsize2(), D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-    Context.TransitionResource(*DepthDownsize3(), D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-    Context.TransitionResource(*DepthDownsize4(), D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+    // TODO: TMP REWORK: HANDLE LOW RES
+    Context.TransitionResource(g_AOMerged1, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+    Context.TransitionResource(g_AOMerged2, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+    Context.TransitionResource(g_AOMerged3, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+    Context.TransitionResource(g_AOMerged4, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+    Context.TransitionResource(g_AOHighQuality1, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+    Context.TransitionResource(g_AOHighQuality2, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+    Context.TransitionResource(g_AOHighQuality3, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+    Context.TransitionResource(g_AOHighQuality4, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+    Context.TransitionResource(g_DepthTiled1, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+    Context.TransitionResource(g_DepthTiled2, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+    Context.TransitionResource(g_DepthTiled3, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+    Context.TransitionResource(g_DepthTiled4, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+    Context.TransitionResource(g_DepthDownsize1, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+    Context.TransitionResource(g_DepthDownsize2, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+    Context.TransitionResource(g_DepthDownsize3, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+    Context.TransitionResource(g_DepthDownsize4, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 
     // Phase 2:  Render SSAO for each sub-tile
     if (Settings::HierarchyDepth > 3)
     {
         Context.SetPipelineState( s_Render1CS );
-        ComputeAO( Context, *AOMerged4(), *DepthTiled4(), FovTangent );
+        // TODO: TMP REWORK: HANDLE LOW RES
+        ComputeAO( Context, g_AOMerged4, g_DepthTiled4, FovTangent );
 		if (Settings::SSAO_QualityLevel >= Settings::kSsaoQualityLow)
         {
             Context.SetPipelineState( s_Render2CS );
-            ComputeAO( Context, *AOHighQuality4(), *DepthDownsize4(), FovTangent );
+            // TODO: TMP REWORK: HANDLE LOW RES
+            ComputeAO( Context, g_AOHighQuality4, g_DepthDownsize4, FovTangent );
         }
     }
     if (Settings::HierarchyDepth > 2)
     {
         Context.SetPipelineState( s_Render1CS );
-        ComputeAO( Context, *AOMerged3(), *DepthTiled3(), FovTangent );
+        // TODO: TMP REWORK: HANDLE LOW RES
+        ComputeAO( Context, g_AOMerged3, g_DepthTiled3, FovTangent );
 		if (Settings::SSAO_QualityLevel >= Settings::kSsaoQualityMedium)
         {
             Context.SetPipelineState( s_Render2CS );
-            ComputeAO( Context, *AOHighQuality3(), *DepthDownsize3(), FovTangent );
+            // TODO: TMP REWORK: HANDLE LOW RES
+            ComputeAO( Context, g_AOHighQuality3, g_DepthDownsize3, FovTangent );
         }
     }
     if (Settings::HierarchyDepth > 1)
     {
         Context.SetPipelineState( s_Render1CS );
-        ComputeAO( Context, *AOMerged2(), *DepthTiled2(), FovTangent );
+        // TODO: TMP REWORK: HANDLE LOW RES
+        ComputeAO( Context, g_AOMerged2, g_DepthTiled2, FovTangent );
 		if (Settings::SSAO_QualityLevel >= Settings::kSsaoQualityHigh)
         {
             Context.SetPipelineState( s_Render2CS );
-            ComputeAO( Context, *AOHighQuality2(), *DepthDownsize2(), FovTangent );
+            // TODO: TMP REWORK: HANDLE LOW RES
+            ComputeAO( Context, g_AOHighQuality2, g_DepthDownsize2, FovTangent );
         }
     }
     {
         Context.SetPipelineState( s_Render1CS );
-        ComputeAO( Context, *AOMerged1(), *DepthTiled1(), FovTangent );
+        ComputeAO( Context, g_AOMerged1, g_DepthTiled1, FovTangent );
 		if (Settings::SSAO_QualityLevel >= Settings::kSsaoQualityVeryHigh)
         {
             Context.SetPipelineState( s_Render2CS );
-            ComputeAO( Context, *AOHighQuality1(), *DepthDownsize1(), FovTangent );
+            ComputeAO( Context, g_AOHighQuality1, g_DepthDownsize1, FovTangent );
         }
     }
 
@@ -458,46 +481,56 @@ void SSAO::Render( GraphicsContext& GfxContext, const float* ProjMat, float Near
 
     // Phase 4:  Iteratively blur and upsample, combining each result
 
-    ColorBuffer* NextSRV = AOMerged4();
+    // TODO: TMP REWORK: HANDLE LOW RES
+    ColorBuffer* NextSRV = &g_AOMerged4;
 
 
     // 120 x 68 -> 240 x 135
     if (Settings::HierarchyDepth > 3)
     {
-        BlurAndUpsample( Context, *AOSmooth3(), *DepthDownsize3(), *DepthDownsize4(), NextSRV,
-            Settings::SSAO_QualityLevel >= Settings::kSsaoQualityLow ? AOHighQuality4() : nullptr, AOMerged3());
-
-        NextSRV = AOSmooth3();
+        // TODO: TMP REWORK: HANDLE LOW RES
+        BlurAndUpsample( Context, g_AOSmooth3, g_DepthDownsize3, g_DepthDownsize4, NextSRV,
+            Settings::SSAO_QualityLevel >= Settings::kSsaoQualityLow ? &g_AOHighQuality4 : nullptr, &g_AOMerged3);
+        // TODO: TMP REWORK: HANDLE LOW RES
+        NextSRV = &g_AOSmooth3;
     }
     else
-        NextSRV = AOMerged3();
+        // TODO: TMP REWORK: HANDLE LOW RES
+        NextSRV = &g_AOMerged3;
 
 
     // 240 x 135 -> 480 x 270
     if (Settings::HierarchyDepth > 2)
     {
-        BlurAndUpsample( Context, *AOSmooth2(), *DepthDownsize2(), *DepthDownsize3(), NextSRV,
-            Settings::SSAO_QualityLevel >= Settings::kSsaoQualityMedium ? AOHighQuality3() : nullptr, AOMerged2() );
+        // TODO: TMP REWORK: HANDLE LOW RES
+        BlurAndUpsample( Context, g_AOSmooth2, g_DepthDownsize2, g_DepthDownsize3, NextSRV,
+            Settings::SSAO_QualityLevel >= Settings::kSsaoQualityMedium ? &g_AOHighQuality3 : nullptr, &g_AOMerged2 );
 
-        NextSRV = AOSmooth2();
+        // TODO: TMP REWORK: HANDLE LOW RES
+        NextSRV = &g_AOSmooth2;
     }
     else
-        NextSRV = AOMerged2();
+        // TODO: TMP REWORK: HANDLE LOW RES
+        NextSRV = &g_AOMerged2;
 
     // 480 x 270 -> 960 x 540
     if (Settings::HierarchyDepth > 1)
     {
-        BlurAndUpsample( Context, *AOSmooth1(), *DepthDownsize1(), *DepthDownsize2(), NextSRV,
-            Settings::SSAO_QualityLevel >= Settings::kSsaoQualityHigh ? AOHighQuality2() : nullptr, AOMerged1() );
+        // TODO: TMP REWORK: HANDLE LOW RES
+        BlurAndUpsample( Context, g_AOSmooth1, g_DepthDownsize1, g_DepthDownsize2, NextSRV,
+            Settings::SSAO_QualityLevel >= Settings::kSsaoQualityHigh ? &g_AOHighQuality2 : nullptr, &g_AOMerged1 );
 
-        NextSRV = AOSmooth1();
+    	// TODO: TMP REWORK: HANDLE LOW RES
+        NextSRV = &g_AOSmooth1;
     }
     else
-        NextSRV = AOMerged1();
+        // TODO: TMP REWORK: HANDLE LOW RES
+        NextSRV = &g_AOMerged1;
 
     // 960 x 540 -> 1920 x 1080
-    BlurAndUpsample( Context, *SSAOFullScreen(), LinearDepth, *DepthDownsize1(), NextSRV,
-        Settings::SSAO_QualityLevel >= Settings::kSsaoQualityVeryHigh ? AOHighQuality1() : nullptr, nullptr );
+        // TODO: TMP REWORK: HANDLE LOW RES
+    BlurAndUpsample( Context, g_SSAOFullScreen, LinearDepth, g_DepthDownsize1, NextSRV,
+        Settings::SSAO_QualityLevel >= Settings::kSsaoQualityVeryHigh ? &g_AOHighQuality1 : nullptr, nullptr );
 
     } // End blur and upsample
 
@@ -515,12 +548,17 @@ void SSAO::Render( GraphicsContext& GfxContext, const float* ProjMat, float Near
         }
 
         ComputeContext& CC = GfxContext.GetComputeContext();
-        CC.TransitionResource(*SceneColorBuffer(), D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-        CC.TransitionResource(*SSAOFullScreen(), D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+        // TODO: TMP REWORK: HANDLE LOW RES
+        CC.TransitionResource(g_SceneColorBuffer, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+        // TODO: TMP REWORK: HANDLE LOW RES
+        CC.TransitionResource(g_SSAOFullScreen, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
         CC.SetRootSignature(s_RootSignature);
         CC.SetPipelineState(s_DebugSSAOCS);
-        CC.SetDynamicDescriptors(2, 0, 1, &SceneColorBuffer()->GetUAV());
-        CC.SetDynamicDescriptors(3, 0, 1, &SSAOFullScreen()->GetSRV());
-        CC.Dispatch2D(SSAOFullScreen()->GetWidth(), SSAOFullScreen()->GetHeight());
+        // TODO: TMP REWORK: HANDLE LOW RES
+        CC.SetDynamicDescriptors(2, 0, 1, &g_SceneColorBuffer.GetUAV());
+        // TODO: TMP REWORK: HANDLE LOW RES
+        CC.SetDynamicDescriptors(3, 0, 1, &g_SSAOFullScreen.GetSRV());
+        // TODO: TMP REWORK: HANDLE LOW RES
+        CC.Dispatch2D(g_SSAOFullScreen.GetWidth(), g_SSAOFullScreen.GetHeight());
     }
 }

@@ -262,11 +262,6 @@ void Graphics::Resize(uint32_t width, uint32_t height, bool force)
     g_CurrentBuffer = 0;
 
     g_CommandManager.IdleGPU();
-
-    if(force)
-    {
-        ResizeDisplayDependentBuffersTMP(g_NativeWidth, g_NativeHeight);
-    }
 	
     ResizeDisplayDependentBuffers(g_NativeWidth, g_NativeHeight);
 }
@@ -734,14 +729,16 @@ void Graphics::PreparePresentHDR(void)
     GraphicsContext& Context = GraphicsContext::Begin(L"Present");
 
     // We're going to be reading these buffers to write to the swap chain buffer(s)
-    Context.TransitionResource(*SceneColorBuffer(), D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+    // TODO: TMP REWORK: HANDLE LOW RES
+    Context.TransitionResource(g_SceneColorBuffer, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
     Context.TransitionResource(g_OverlayBuffer, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
     Context.TransitionResource(g_DisplayPlane[g_CurrentBuffer], D3D12_RESOURCE_STATE_RENDER_TARGET);
 
     Context.SetRootSignature(s_PresentRS);
     Context.SetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
-    Context.SetDynamicDescriptor(0, 0, SceneColorBuffer()->GetSRV());
+    // TODO: TMP REWORK: HANDLE LOW RES
+    Context.SetDynamicDescriptor(0, 0, g_SceneColorBuffer.GetSRV());
     Context.SetDynamicDescriptor(0, 1, g_OverlayBuffer.GetSRV());
 
     D3D12_CPU_DESCRIPTOR_HANDLE RTVs[] =
@@ -790,11 +787,12 @@ void Graphics::SubmitToVRHMD(bool isArray)
 	// TODO: Check if g_SceneColorBuffer is the correct one
 	if(isArray)
 	{
-        VR::Submit(g_SceneColorBufferFullRes);
+        // TODO: TMP REWORK: HANDLE LOW RES
+        VR::Submit(g_SceneColorBuffer);
 	}
 	else
 	{
-        VR::Submit(g_SceneColorBufferFullRes, g_SceneColorBufferFullRes);
+        VR::Submit(g_SceneColorBuffer, g_SceneColorBuffer);
 	}
 }
 
@@ -803,7 +801,8 @@ void Graphics::PreparePresentLDR(void)
     GraphicsContext& Context = GraphicsContext::Begin(L"Present");
 
     // We're going to be reading these buffers to write to the swap chain buffer(s)
-    Context.TransitionResource(g_SceneColorBufferFullRes, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, true);
+    // TODO: TMP REWORK: HANDLE LOW RES
+    Context.TransitionResource(g_SceneColorBuffer, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, true);
     Context.Flush();
 	
     SubmitToVRHMD(true);
@@ -814,7 +813,8 @@ void Graphics::PreparePresentLDR(void)
     // Copy (and convert) the LDR buffer to the back buffer
     if (Settings::TMPMode == 2)
     {
-        Context.SetDynamicDescriptor(0, 0, g_SceneColorBufferLowRes.GetSRV());
+    	//TODO: FIX LOW RES
+        //Context.SetDynamicDescriptor(0, 0, g_SceneColorBufferLowRes.GetSRV());
     }
     else if (Settings::TMPMode == 5)
     {
@@ -822,7 +822,8 @@ void Graphics::PreparePresentLDR(void)
     }
     else
     {
-        Context.SetDynamicDescriptor(0, 0, g_SceneColorBufferFullRes.GetSRV());
+        // TODO: TMP REWORK: HANDLE LOW RES
+        Context.SetDynamicDescriptor(0, 0, g_SceneColorBuffer.GetSRV());
     }
     //Context.SetDynamicDescriptor(0, 1, g_SceneColorBufferLowPassed.GetSRV());
 
@@ -929,24 +930,29 @@ void Graphics::HiddenMeshDepthPrepass()
     context.SetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
 	// Transition and clear depth
-    context.TransitionResource(*SceneDepthBuffer(), D3D12_RESOURCE_STATE_DEPTH_WRITE);
+    // TODO: TMP REWORK: HANDLE LOW RES
+    context.TransitionResource(g_SceneDepthBuffer, D3D12_RESOURCE_STATE_DEPTH_WRITE);
     context.TransitionResource(g_DisplayPlane[g_CurrentBuffer], D3D12_RESOURCE_STATE_RENDER_TARGET, true);
-    context.ClearDepthAndStencil(*SceneDepthBuffer());
+    // TODO: TMP REWORK: HANDLE LOW RES
+    context.ClearDepthAndStencil(g_SceneDepthBuffer);
 
 	// Set pipelinestate
     context.SetRootSignature(HiddenMeshDepthRS);
     context.SetPipelineState(HiddenMeshDepthPSO);
     context.SetStencilRef(0x0);
-    context.SetViewportAndScissor(0, 0, SceneDepthBuffer()->GetWidth(), SceneDepthBuffer()->GetHeight());
+    // TODO: TMP REWORK: HANDLE LOW RES
+    context.SetViewportAndScissor(0, 0, g_SceneDepthBuffer.GetWidth(), g_SceneDepthBuffer.GetHeight());
 
 	// set vertex buffer and depth stencil then draw
     context.SetVertexBuffer(0, BufferLeft.VertexBufferView());
-    context.SetDepthStencilTarget(SceneDepthBuffer()->GetSubDSV(vr::Eye_Left));
+    // TODO: TMP REWORK: HANDLE LOW RES
+	context.SetDepthStencilTarget(g_SceneDepthBuffer.GetSubDSV(vr::Eye_Left));
     context.Draw(BufferLeft.GetElementCount());
 
 	// repeat for right eye
     context.SetVertexBuffer(0, BufferRight.VertexBufferView());
-	context.SetDepthStencilTarget(SceneDepthBuffer()->GetSubDSV(vr::Eye_Right));
+    // TODO: TMP REWORK: HANDLE LOW RES
+	context.SetDepthStencilTarget(g_SceneDepthBuffer.GetSubDSV(vr::Eye_Right));
     context.Draw(BufferRight.GetElementCount());
 
     context.Finish();
