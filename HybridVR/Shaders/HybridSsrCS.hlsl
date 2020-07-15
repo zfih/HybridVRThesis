@@ -149,6 +149,7 @@ void CSMain(uint3 Gid : SV_GroupID, uint3 DTid : SV_DispatchThreadID, uint3 GTid
 	if(depth == 0 || reflectiveness == 0)
 	{
 		outputRT[screenPos] = float4(mainRT, 1);
+		//outputRT[screenPos] = float4(1,0,0, 1);
 		return;
 	}
 
@@ -310,7 +311,7 @@ bool TraceScreenSpaceRay(
 
 		hitPixel = permute ? PQk.yx : PQk.xy;
 
-		sceneZMax = -LineariseDepth(depthBuffer[hitPixel].r, cb.NearPlaneZ, cb.FarPlaneZ);
+		sceneZMax = -LineariseDepth(1 - depthBuffer[hitPixel].r, cb.NearPlaneZ, cb.FarPlaneZ);
 
 		PQk += dPQk;
 	}

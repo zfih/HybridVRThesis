@@ -1517,11 +1517,6 @@ void D3D12RaytracingMiniEngineSample::RenderColor(GraphicsContext &Ctx, Camera &
 	}
 }
 
-void InitializeDepthBounds(GraphicsContext &Ctx)
-{
-	Ctx.SetDepthBounds(1, 0);
-}
-
 void D3D12RaytracingMiniEngineSample::RenderEye(Cam::CameraType eye, bool SkipDiffusePass, bool SkipShadowMap,
                                                 PSConstants &psConstants)
 {
