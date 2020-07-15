@@ -1620,18 +1620,25 @@ void D3D12RaytracingMiniEngineSample::RenderColor(GraphicsContext& Ctx, Camera& 
 			// TODO: TMP REWORK: HANDLE LOW RES
 			g_SceneNormalBuffer.GetSubRTV(CameraType),
 		};
+
 		
 		if (Graphics::GetFrameCount() % 2 == 1)
 		{
 			//TODO: TMP REWORK: how to handle low res
 			rtvs[0] = g_SceneColorBuffer.GetMipRTV(CameraType, 2);
 			rtvs[0] = g_SceneNormalBuffer.GetMipRTV(CameraType, 2);
-		}
-		
 
-		Ctx.SetRenderTargets(2, rtvs,
-			// TODO: TMP REWORK: HANDLE LOW RES
-			g_SceneDepthBuffer.GetMipDSV(CameraType, 2));
+			Ctx.SetRenderTargets(2, rtvs,
+				// TODO: TMP REWORK: HANDLE LOW RES
+				g_SceneDepthBuffer.GetMipDSV(CameraType, 2));
+		}
+		else
+		{
+			Ctx.SetRenderTargets(2, rtvs,
+				// TODO: TMP REWORK: HANDLE LOW RES
+				g_SceneDepthBuffer.GetSubDSV(CameraType));
+		}
+
 
 		Ctx.SetViewportAndScissor(
 			m_MainViewport, m_MainScissor);
