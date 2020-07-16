@@ -1730,7 +1730,7 @@ void D3D12RaytracingMiniEngineSample::MainRender(GraphicsContext& Ctx, Cam::Came
 		{
 			Ctx.TransitionResource(g_SceneColorBuffer, D3D12_RESOURCE_STATE_RENDER_TARGET, true);
 			Ctx.TransitionResource(g_SceneNormalBuffer, D3D12_RESOURCE_STATE_RENDER_TARGET, true);
-			Ctx.ClearColor(g_SceneColorBuffer, CameraType);
+			Ctx.ClearColor(g_SceneColorBuffer, CameraType, g_CurrentMip);
 
 			if (Settings::AsyncCompute)
 			{

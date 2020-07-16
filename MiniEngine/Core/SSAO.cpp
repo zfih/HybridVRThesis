@@ -367,32 +367,35 @@ void SSAO::Render( GraphicsContext& GfxContext, const float* ProjMat, float Near
     Context.TransitionResource(g_DepthDownsize2, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
     Context.TransitionResource(g_DepthTiled2, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 
-    // TODO: TMP REWORK: HANDLE LOW RES
-    D3D12_CPU_DESCRIPTOR_HANDLE DownsizeUAVs[5] = { LinearDepth.GetUAV(), g_DepthDownsize1.GetUAV(), g_DepthTiled1.GetUAV(),
-        g_DepthDownsize2.GetUAV(), g_DepthTiled2.GetUAV() };
+    D3D12_CPU_DESCRIPTOR_HANDLE DownsizeUAVs[5] = {
+    	LinearDepth.GetMipUAV(CurCam, g_CurrentMip),
+    	g_DepthDownsize1.GetMipUAV(CurCam, g_CurrentMip),
+    	g_DepthTiled1.GetMipUAV(CurCam, g_CurrentMip),
+        g_DepthDownsize2.GetMipUAV(CurCam, g_CurrentMip),
+    	g_DepthTiled2.GetMipUAV(CurCam, g_CurrentMip) };
     Context.SetDynamicDescriptors(2, 0, 5, DownsizeUAVs);
 
     Context.SetPipelineState(s_DepthPrepare1CS);
-    // TODO: TMP REWORK: HANDLE LOW RES
-    Context.Dispatch2D(g_DepthTiled2.GetWidth() * 8, g_DepthTiled2.GetHeight() * 8);
+    Context.Dispatch2D(g_DepthTiled2.GetMipWidth(g_CurrentMip) * 8, g_DepthTiled2.GetMipHeight(g_CurrentMip) * 8);
 
     if (Settings::HierarchyDepth > 2)
     {
-        // TODO: TMP REWORK: HANDLE LOW RES
-        Context.SetConstants(0, 1.0f / g_DepthDownsize2.GetWidth(), 1.0f / g_DepthDownsize2.GetHeight());
+        Context.SetConstants(0, 1.0f / g_DepthDownsize2.GetMipWidth(g_CurrentMip), 1.0f / g_DepthDownsize2.GetMipHeight(g_CurrentMip), g_CurrentMip);
         Context.TransitionResource(g_DepthDownsize2, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
         Context.TransitionResource(g_DepthDownsize3, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
         Context.TransitionResource(g_DepthTiled3, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
         Context.TransitionResource(g_DepthDownsize4, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
         Context.TransitionResource(g_DepthTiled4, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-        // TODO: TMP REWORK: HANDLE LOW RES
-        D3D12_CPU_DESCRIPTOR_HANDLE DownsizeAgainUAVs[4] = { g_DepthDownsize3.GetUAV(), g_DepthTiled3.GetUAV(), g_DepthDownsize4.GetUAV(), g_DepthTiled4.GetUAV() };
+    	
+        D3D12_CPU_DESCRIPTOR_HANDLE DownsizeAgainUAVs[4] = {
+        	g_DepthDownsize3.GetMipUAV(CurCam, g_CurrentMip),
+        	g_DepthTiled3.GetMipUAV(CurCam, g_CurrentMip),
+        	g_DepthDownsize4.GetMipUAV(CurCam, g_CurrentMip),
+        	g_DepthTiled4.GetMipUAV(CurCam, g_CurrentMip) };
         Context.SetDynamicDescriptors(2, 0, 4, DownsizeAgainUAVs);
-        // TODO: TMP REWORK: HANDLE LOW RES
         Context.SetDynamicDescriptors(3, 0, 1, &g_DepthDownsize2.GetSRV() );
         Context.SetPipelineState(s_DepthPrepare2CS);
-        // TODO: TMP REWORK: HANDLE LOW RES
-        Context.Dispatch2D(g_DepthTiled4.GetWidth() * 8, g_DepthTiled4.GetHeight() * 8);
+        Context.Dispatch2D(g_DepthTiled4.GetMipWidth(g_CurrentMip) * 8, g_DepthTiled4.GetMipHeight(g_CurrentMip) * 8);
     }
 
     } // End decompress
@@ -401,7 +404,6 @@ void SSAO::Render( GraphicsContext& GfxContext, const float* ProjMat, float Near
     // Load first element of projection matrix which is the cotangent of the horizontal FOV divided by 2.
     const float FovTangent = 1.0f / ProjMat[0];
 
-    // TODO: TMP REWORK: HANDLE LOW RES
     Context.TransitionResource(g_AOMerged1, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
     Context.TransitionResource(g_AOMerged2, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
     Context.TransitionResource(g_AOMerged3, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
@@ -419,6 +421,9 @@ void SSAO::Render( GraphicsContext& GfxContext, const float* ProjMat, float Near
     Context.TransitionResource(g_DepthDownsize3, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
     Context.TransitionResource(g_DepthDownsize4, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 
+
+    // TODO: TMP REWORK: PROGRESS BOOKMARK
+    	
     // Phase 2:  Render SSAO for each sub-tile
     if (Settings::HierarchyDepth > 3)
     {

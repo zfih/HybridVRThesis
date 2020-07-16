@@ -198,7 +198,8 @@ public:
     void ClearUAV( GpuBuffer& Target );
     void ClearUAV( ColorBuffer& Target );
     void ClearColor( ColorBuffer& Target );
-	void ClearColor(ColorBuffer& Target, int subRTV);
+	void ClearColor(ColorBuffer& Target, uint32_t ArrayIndex);
+	void ClearColor(ColorBuffer& Target, uint32_t ArrayIndex, uint32_t MipLevel);
     void ClearDepth( DepthBuffer& Target );
     void ClearStencil( DepthBuffer& Target );
     void ClearDepthAndStencil( DepthBuffer& Target );
