@@ -114,7 +114,7 @@ void ColorBuffer::CreateDerivedViews(ID3D12Device* Device, DXGI_FORMAT Format, u
 
                 Device->CreateRenderTargetView(Resource, &RTVDesc, handles[i]);
             	
-                RTVDesc.Texture2D.MipSlice++;
+                RTVDesc.Texture2DArray.MipSlice++;
             }
 
             m_MipRTVHandles.push_back(handles);
@@ -145,7 +145,7 @@ void ColorBuffer::CreateDerivedViews(ID3D12Device* Device, DXGI_FORMAT Format, u
 
                 Device->CreateUnorderedAccessView(Resource, nullptr, &UAVDesc, handles[i]);
 
-                UAVDesc.Texture2D.MipSlice++;
+                UAVDesc.Texture2DArray.MipSlice++;
             }
 
             m_MipUAVHandles.push_back(handles);

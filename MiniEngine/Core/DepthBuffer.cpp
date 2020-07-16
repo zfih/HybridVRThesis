@@ -198,14 +198,14 @@ void DepthBuffer::CreateDerivedViews(ID3D12Device* Device, DXGI_FORMAT Format, u
 
 		std::vector<D3D12_CPU_DESCRIPTOR_HANDLE> handles(NumMips);
 
-		// Create the UAVs for each mip level (RWTexture2D)
+		// Create the DSVs for each mip level (RWTexture2D)
 		for (uint32_t i = 0; i < NumMips; ++i)
 		{
 			handles[i] = Graphics::AllocateDescriptor(D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
 
 			Device->CreateDepthStencilView(Resource, &dsvDesc, handles[i]);
 
-			dsvDesc.Texture2DArray.MipSlice++;
+			dsvDesc.Texture2D.MipSlice++;
 		}
 
 		m_MipDSVHandles.push_back(handles);
@@ -218,6 +218,7 @@ void DepthBuffer::CreateDerivedViews(ID3D12Device* Device, DXGI_FORMAT Format, u
 		dsvDesc.Format = Format;
 		dsvDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2DARRAY;
 		dsvDesc.Texture2DArray.MipSlice = 0;
+		dsvDesc.Texture2D.MipSlice = 0;
 		dsvDesc.Texture2DArray.FirstArraySlice = i;
 		dsvDesc.Texture2DArray.ArraySize = ArraySize - i;
 		dsvDesc.Flags = D3D12_DSV_FLAG_READ_ONLY_DEPTH;
@@ -229,14 +230,14 @@ void DepthBuffer::CreateDerivedViews(ID3D12Device* Device, DXGI_FORMAT Format, u
 
 		std::vector<D3D12_CPU_DESCRIPTOR_HANDLE> handles(NumMips);
 
-		// Create the UAVs for each mip level (RWTexture2D)
+		// Create the DSVs for each mip level (RWTexture2D)
 		for (uint32_t i = 0; i < NumMips; ++i)
 		{
 			handles[i] = Graphics::AllocateDescriptor(D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
 
 			Device->CreateDepthStencilView(Resource, &dsvDesc, handles[i]);
 
-			dsvDesc.Texture2DArray.MipSlice++;
+			dsvDesc.Texture2D.MipSlice++;
 		}
 
 		m_MipDSVReadOnlyHandles.push_back(handles);

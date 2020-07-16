@@ -117,7 +117,7 @@ void FXAA::Render( ComputeContext& Context, bool bUsePreComputedLuma, UINT curCa
     if (Settings::FXAA_ForceOffPreComputedLuma)
         bUsePreComputedLuma = false;
 
-    // TODO: TMP REWORK: HANDLE LOW RES
+	// TODO: TMP REWORK: MAYBE THIS NEED FIXING
     ColorBuffer& Target = g_bTypedUAVLoadSupport_R11G11B10_FLOAT ? g_SceneColorBuffer : g_PostEffectsBuffer;
 
     Context.SetRootSignature(RootSig);

@@ -43,6 +43,7 @@
 namespace Graphics
 {
     extern ColorBuffer g_GenMipsBuffer;
+
 }
 
 namespace Settings
@@ -76,6 +77,8 @@ namespace GameCore
 
     bool UpdateApplication( IGameApp& game )
     {
+        // if uneven frame we use mip 2 else mip 0
+        Graphics::g_CurrentMip = (Graphics::GetFrameCount() % 2) * 2;
         if (!Settings::UseImGui)
         {
             GraphicsContext& UiContext = GraphicsContext::Begin(L"Render UI");
@@ -131,10 +134,8 @@ namespace GameCore
             GraphicsContext& MipsContext = GraphicsContext::Begin();
 
             // Exclude from timings this copy necessary to setup the test
-            // TODO: TMP REWORK: HANDLE LOW RES
             MipsContext.TransitionResource(g_SceneColorBuffer, D3D12_RESOURCE_STATE_GENERIC_READ);
             MipsContext.TransitionResource(g_GenMipsBuffer, D3D12_RESOURCE_STATE_COPY_DEST);
-            // TODO: TMP REWORK: HANDLE LOW RES
             MipsContext.CopySubresource(g_GenMipsBuffer, 0, g_SceneColorBuffer, 0);
 
             EngineProfiling::BeginBlock(L"GenerateMipMaps()", &MipsContext);

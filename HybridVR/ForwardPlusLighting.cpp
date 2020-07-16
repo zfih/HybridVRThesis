@@ -289,9 +289,23 @@ void Lighting::FillLightGrid(GraphicsContext& gfxContext, const Camera& camera)
     Context.SetDynamicDescriptor(2, 1, m_LightGridBitMask.GetUAV());
 
     // todo: assumes 1920x1080 resolution
-    // TODO: TMP REWORK: HANDLE LOW RES
-    uint32_t tileCountX = Math::DivideByMultiple(g_SceneColorBuffer.GetWidth(), Settings::LightGridDim);
-    uint32_t tileCountY = Math::DivideByMultiple(g_SceneColorBuffer.GetHeight(), Settings::LightGridDim);
+    uint32_t tileCountX;
+    uint32_t tileCountY;
+	
+    if(Graphics::g_CurrentMip)
+    {
+        tileCountX = Math::DivideByMultiple(
+            Graphics::divisionHelperFunc(g_SceneColorBuffer.GetWidth()), 
+            Settings::LightGridDim);
+        tileCountY = Math::DivideByMultiple(
+            Graphics::divisionHelperFunc(g_SceneColorBuffer.GetHeight()),
+            Settings::LightGridDim);
+    }
+	else
+	{
+        tileCountX = Math::DivideByMultiple(g_SceneColorBuffer.GetWidth(), Settings::LightGridDim);
+        tileCountY = Math::DivideByMultiple(g_SceneColorBuffer.GetHeight(), Settings::LightGridDim);
+	}
 
     float FarClipDist = camera.GetFarClip();
     float NearClipDist = camera.GetNearClip();
@@ -307,9 +321,8 @@ void Lighting::FillLightGrid(GraphicsContext& gfxContext, const Camera& camera)
     } csConstants;
 	
     // todo: assumes 1920x1080 resolution
-    // TODO: TMP REWORK: HANDLE LOW RES
-    csConstants.ViewportWidth = g_SceneColorBuffer.GetWidth();
-    csConstants.ViewportHeight = g_SceneColorBuffer.GetHeight();
+    csConstants.ViewportWidth = Graphics::g_CurrentMip ? Graphics::divisionHelperFunc(g_SceneColorBuffer.GetWidth()) : g_SceneColorBuffer.GetWidth();
+    csConstants.ViewportHeight = Graphics::g_CurrentMip ? Graphics::divisionHelperFunc(g_SceneColorBuffer.GetHeight()) : g_SceneColorBuffer.GetHeight();
     csConstants.InvTileDim = 1.0f / Settings::LightGridDim;
 
     csConstants.RcpZMagic = RcpZMagic;

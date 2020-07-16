@@ -85,4 +85,6 @@ namespace Graphics
 
     extern StructuredBuffer &ScreenQuadVB;
     extern StructuredBuffer &ScreenQuadIB;
+
+    extern uint32_t g_CurrentMip;
 }

@@ -299,7 +299,6 @@ void SSAO::Render( GraphicsContext& GfxContext, const float* ProjMat, float Near
 {
     uint32_t FrameIndex = TemporalEffects::GetFrameIndexMod2();
 
-    // TODO: TMP REWORK: HANDLE LOW RES
     ColorBuffer& LinearDepth = Graphics::g_LinearDepth[FrameIndex];
 
     const float zMagic = (FarClipDist - NearClipDist) / NearClipDist;
@@ -308,7 +307,6 @@ void SSAO::Render( GraphicsContext& GfxContext, const float* ProjMat, float Near
     {
         ScopedTimer _prof(L"Generate SSAO", GfxContext);
 
-    	// TODO: TMP REWORK: HANDLE LOW RES
         GfxContext.TransitionResource(g_SSAOFullScreen, D3D12_RESOURCE_STATE_RENDER_TARGET, true);
         GfxContext.ClearColor(g_SSAOFullScreen);
         GfxContext.TransitionResource(g_SSAOFullScreen, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
@@ -319,10 +317,8 @@ void SSAO::Render( GraphicsContext& GfxContext, const float* ProjMat, float Near
         ComputeContext& Context = GfxContext.GetComputeContext();
         Context.SetRootSignature(s_RootSignature);
 
-        // TODO: TMP REWORK: HANDLE LOW RES
         Context.TransitionResource(g_SceneDepthBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-        Context.SetConstants(0, zMagic);
-        // TODO: TMP REWORK: HANDLE LOW RES
+        Context.SetConstants(0, zMagic, g_CurrentMip);
         Context.SetDynamicDescriptor(3, 0, g_SceneDepthBuffer.GetSubSRV(CurCam));
 
         Context.TransitionResource(LinearDepth, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
@@ -332,21 +328,17 @@ void SSAO::Render( GraphicsContext& GfxContext, const float* ProjMat, float Near
 
         if (Settings::SSAO_DebugDraw)
         {
-            // TODO: TMP REWORK: HANDLE LOW RES
             Context.TransitionResource(g_SceneColorBuffer, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
             Context.TransitionResource(LinearDepth, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-            // TODO: TMP REWORK: HANDLE LOW RES
-            Context.SetDynamicDescriptors(2, 0, 1, &g_SceneColorBuffer.GetUAV());
+            Context.SetDynamicDescriptors(2, 0, 1, &g_SceneColorBuffer.GetMipUAV(CurCam, g_CurrentMip));
             Context.SetDynamicDescriptors(3, 0, 1, &LinearDepth.GetSRV() );
             Context.SetPipelineState(s_DebugSSAOCS);
-            // TODO: TMP REWORK: HANDLE LOW RES
-            Context.Dispatch2D(g_SSAOFullScreen.GetWidth(), g_SSAOFullScreen.GetHeight());
+            Context.Dispatch2D(g_SSAOFullScreen.GetMipWidth(g_CurrentMip), g_SSAOFullScreen.GetMipHeight(g_CurrentMip));
         }
 
         return;
     }
 
-    // TODO: TMP REWORK: HANDLE LOW RES
     GfxContext.TransitionResource(g_SceneDepthBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
     GfxContext.TransitionResource(g_SSAOFullScreen, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 
@@ -366,11 +358,9 @@ void SSAO::Render( GraphicsContext& GfxContext, const float* ProjMat, float Near
     { ScopedTimer _prof(L"Decompress and downsample", Context);
 
     // Phase 1:  Decompress, linearize, downsample, and deinterleave the depth buffer
-    Context.SetConstants(0, zMagic);
-    // TODO: TMP REWORK: HANDLE LOW RES
+    Context.SetConstants(0, zMagic, g_CurrentMip);
     Context.SetDynamicDescriptor(3, 0, g_SceneDepthBuffer.GetSubSRV(CurCam) );
 
-    // TODO: TMP REWORK: HANDLE LOW RES
     Context.TransitionResource(LinearDepth, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
     Context.TransitionResource(g_DepthDownsize1, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
     Context.TransitionResource(g_DepthTiled1, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);

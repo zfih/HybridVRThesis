@@ -140,7 +140,6 @@ void Graphics::InitializeRenderingBuffers( uint32_t bufferWidth, uint32_t buffer
         g_VelocityBuffer.Create( L"Motion Vectors", bufferWidth, bufferHeight, 1, DXGI_FORMAT_R32_UINT );
         g_PostEffectsBuffer.Create( L"Post Effects Buffer", bufferWidth, bufferHeight, 1, DXGI_FORMAT_R32_UINT );
 
-        // TODO: TMP REWORK: HANDLE LOW RES
         g_SceneNormalBuffer.CreateArray(L"Main Normal Buffer", g_SceneColorBuffer.GetWidth(), g_SceneColorBuffer.GetHeight(), arrayCount, mipCount, DXGI_FORMAT_R8G8B8A8_UNORM);
 
         esram.PushStack();    // Render HDR image
@@ -344,7 +343,7 @@ void Graphics::DestroyRenderingBuffers()
 }
 
 
-// TODO: MAKE NEW GETTERFUNCS
+// TODO: TMP REWORK: MAKE NEW GETTERFUNCS
 //#define GetterFunc(BufType, BufName) BufType* Graphics::BufName(int cam) \
 //{ \
 //    if (Graphics::GetFrameCount() % 2 == 1) \

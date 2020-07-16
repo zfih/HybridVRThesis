@@ -243,13 +243,12 @@ void DepthOfField::Render( CommandContext& BaseContext, float /*NearClipDist*/, 
             Context.SetPipelineState(s_DoFPreFilterFastCS);
         else
             Context.SetPipelineState(s_DoFPreFilterCS);
-    	// TODO: TMP REWORK: HANDLE LOW RES
         Context.TransitionResource(g_SceneColorBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
         Context.TransitionResource(g_DoFPresortBuffer, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
         Context.TransitionResource(g_DoFPrefilter, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
         Context.SetDynamicDescriptor(1, 0, LinearDepth.GetSRV());
         Context.SetDynamicDescriptor(1, 1, g_DoFTileClass[1].GetSRV());
-        // TODO: TMP REWORK: HANDLE LOW RES
+        // TODO: TMP REWORK: HANDLE LOW RES (Fix SRV sampling in shader if we need DOF)
         Context.SetDynamicDescriptor(1, 2, g_SceneColorBuffer.GetSubSRV(curCam));
         Context.SetDynamicDescriptor(1, 3, g_DoFWorkQueue.GetSRV());
         Context.SetDynamicDescriptor(2, 0, g_DoFPresortBuffer.GetUAV());
@@ -325,14 +324,13 @@ void DepthOfField::Render( CommandContext& BaseContext, float /*NearClipDist*/, 
 
     {
         ScopedTimer _prof2(L"DoF Final Combine", Context);
-        // TODO: TMP REWORK: HANDLE LOW RES
         Context.TransitionResource(g_SceneColorBuffer, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 
         if (Settings::DebugTiles)
         {
             Context.SetPipelineState(s_DoFDebugRedCS);
             Context.SetDynamicDescriptor(1, 5, g_DoFWorkQueue.GetSRV());
-            // TODO: TMP REWORK: HANDLE LOW RES
+            // TODO: TMP REWORK: HANDLE LOW RES (Give MIP UAV and such correctly if DOF needed)
             Context.SetDynamicDescriptor(2, 0, g_SceneColorBuffer.GetSubUAV(curCam));
             Context.DispatchIndirect(s_IndirectParameters, 0);
 
@@ -352,7 +350,7 @@ void DepthOfField::Render( CommandContext& BaseContext, float /*NearClipDist*/, 
             Context.SetDynamicDescriptor(1, 2, g_DoFTileClass[1].GetSRV());
             Context.SetDynamicDescriptor(1, 3, LinearDepth.GetSRV());
             Context.SetDynamicDescriptor(1, 4, g_DoFWorkQueue.GetSRV());
-            // TODO: TMP REWORK: HANDLE LOW RES
+            // TODO: TMP REWORK: HANDLE LOW RES  (Give MIP UAV and such correctly if DOF needed)
             Context.SetDynamicDescriptor(2, 0, g_SceneColorBuffer.GetSubUAV(curCam));
             Context.DispatchIndirect(s_IndirectParameters, 0);
 
@@ -361,7 +359,6 @@ void DepthOfField::Render( CommandContext& BaseContext, float /*NearClipDist*/, 
             Context.DispatchIndirect(s_IndirectParameters, 12);
         }
     	
-        // TODO: TMP REWORK: HANDLE LOW RES
         Context.InsertUAVBarrier(g_SceneColorBuffer);
     }
 }

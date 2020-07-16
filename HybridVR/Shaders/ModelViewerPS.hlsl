@@ -333,6 +333,9 @@ struct MRT
 [RootSignature(ModelViewer_RootSig)]
 MRT main(VSOutput vsOutput)
 {
+    // same as g_CurrentMip in Cpp code
+    uint mip = FrameIndexMod2 * 2;
+
     MRT mrt;
 	mrt.Color = 0.0;
     mrt.Normal = 0.0;
@@ -343,7 +346,8 @@ MRT main(VSOutput vsOutput)
     float3 diffuseAlbedo = SAMPLE_TEX(texDiffuse);
     float3 colorSum = 0;
     {
-        float ao = texSSAO[pixelPos];
+        // TODO: Check if this works after SSAO has been fixed
+        float ao = texSSAO.SampleLevel(sampler0, pixelPos, mip);
         colorSum += ApplyAmbientLight(diffuseAlbedo, ao, AmbientColor);
     }
 

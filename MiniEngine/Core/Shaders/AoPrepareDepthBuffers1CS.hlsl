@@ -21,13 +21,15 @@ RWTexture2DArray<float> DS4xAtlas : register(u4);
 cbuffer CB0 : register(b0)
 {
     float ZMagic;
+    uint mip;
 }
 
 Texture2D<float> Depth : register(t0);
+SamplerState Sampler : register(s0);
 
 float Linearize( uint2 st )
 {
-    float depth = Depth[st];
+    float depth = Depth.SampleLevel(Sampler, st, mip);
     float dist = 1.0 / (ZMagic * depth + 1.0);
     LinearZ[st] = dist;
     return dist;

@@ -216,6 +216,9 @@ namespace Graphics
 
     StructuredBuffer &ScreenQuadVB = StructuredBuffer();
     StructuredBuffer &ScreenQuadIB = StructuredBuffer();
+
+    // if uneven frame we use mip 2 else mip 0
+    uint32_t g_CurrentMip = 0;
 }
 
 void Graphics::Resize(uint32_t width, uint32_t height)
@@ -521,7 +524,7 @@ void Graphics::Initialize(void)
 
     float vertices[] =
     {
-        // Position    // UV
+        // Position    // UV, Camera
         -1, -1, 0, 1,  0, 0, 0,
         -1,  1, 0, 1,  0, 1, 0,
          0, -1, 0, 1,  1, 0, 0,
@@ -729,7 +732,6 @@ void Graphics::PreparePresentHDR(void)
     GraphicsContext& Context = GraphicsContext::Begin(L"Present");
 
     // We're going to be reading these buffers to write to the swap chain buffer(s)
-    // TODO: TMP REWORK: HANDLE LOW RES
     Context.TransitionResource(g_SceneColorBuffer, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
     Context.TransitionResource(g_OverlayBuffer, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
     Context.TransitionResource(g_DisplayPlane[g_CurrentBuffer], D3D12_RESOURCE_STATE_RENDER_TARGET);
@@ -784,10 +786,8 @@ void Graphics::CompositeOverlays( GraphicsContext& Context )
 
 void Graphics::SubmitToVRHMD(bool isArray)
 {
-	// TODO: Check if g_SceneColorBuffer is the correct one
 	if(isArray)
 	{
-        // TODO: TMP REWORK: HANDLE LOW RES
         VR::Submit(g_SceneColorBuffer);
 	}
 	else
@@ -801,7 +801,6 @@ void Graphics::PreparePresentLDR(void)
     GraphicsContext& Context = GraphicsContext::Begin(L"Present");
 
     // We're going to be reading these buffers to write to the swap chain buffer(s)
-    // TODO: TMP REWORK: HANDLE LOW RES
     Context.TransitionResource(g_SceneColorBuffer, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, true);
     Context.Flush();
 	
@@ -811,18 +810,13 @@ void Graphics::PreparePresentLDR(void)
     Context.SetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
     // Copy (and convert) the LDR buffer to the back buffer
-    if (Settings::TMPMode == 2)
-    {
-    	//TODO: FIX LOW RES
-        //Context.SetDynamicDescriptor(0, 0, g_SceneColorBufferLowRes.GetSRV());
-    }
-    else if (Settings::TMPMode == 5)
+	if (Settings::TMPMode == 5)
     {
         Context.SetDynamicDescriptor(0, 0, g_SceneColorBufferResidules.GetSRV());
     }
     else
     {
-        // TODO: TMP REWORK: HANDLE LOW RES
+        // TODO: TMP REWORK: Handle rendering low res
         Context.SetDynamicDescriptor(0, 0, g_SceneColorBuffer.GetSRV());
     }
     //Context.SetDynamicDescriptor(0, 1, g_SceneColorBufferLowPassed.GetSRV());
