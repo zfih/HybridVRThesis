@@ -1151,7 +1151,7 @@ void D3D12RaytracingMiniEngineSample::Startup(void)
 	m_CameraPosArray[4].pitch = 0.0f;
 	LoadCamPos();
 
-	m_Camera.Setup(false);
+	m_Camera.Setup(true);
 	m_Camera.SetZRange(1.0f, 10000.0f);
 	LODGlobal::g_camera = &m_Camera;
 	m_CameraController.reset(new VRCameraController(m_Camera, Vector3(kYUnitVector)));

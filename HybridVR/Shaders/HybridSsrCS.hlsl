@@ -99,31 +99,12 @@ bool IntersectsDepthBuffer(float z, float minZ, float maxZ);
 
 // Returns camera depth in linear depth
 float LineariseDepth(float depth, float nearPlane, float farPlane);
-
+float SampleDepth(float2 pixel);
 // Swaps the values of a and b
 void Swap(inout float a, inout float b);
 
 // Calculate the Fresnel
 float3 Fresnel(float3 F0, float3 L, float3 H);
-
-// Returns true if a~b within an epsilon
-bool eq(float a, float b)
-{
-	return abs(a - b) < 0.0005;
-}
-
-// Returns true if the mat is all zero
-bool zero(float4x4 mat)
-{
-	for(int x = 0; x < 4; x++)
-	{
-		for(int y = 0; y < 4; y++)
-		{
-			if(mat[x][y] != 0) return true;
-		}
-	}
-	return false;
-}
 
 
 #define THREADX 8
@@ -140,16 +121,20 @@ void CSMain(uint3 Gid : SV_GroupID, uint3 DTid : SV_DispatchThreadID, uint3 GTid
 	float3 mainRT = mainBuffer[screenPos].xyz;
 	float depth = depthBuffer[screenPos];
 	float4 albedo = albedoBuffer[screenPos];
-	
+
 	float4 normalReflective = normalReflectiveBuffer[screenPos];
 	float3 normal = normalReflective.xyz;
 	float reflectiveness = normalReflective.w;
+
+	float linearDepth = LineariseDepth(1 - depth, cb.NearPlaneZ, cb.FarPlaneZ);
+	outputRT[screenPos] = float4(linearDepth,0,0, 1);
+	return;
+
 
 	// If this pixel has not been rendered to, let the skybox/clearvalue remain
 	if(depth == 0 || reflectiveness == 0)
 	{
 		outputRT[screenPos] = float4(mainRT, 1);
-		//outputRT[screenPos] = float4(1,0,0, 1);
 		return;
 	}
 
@@ -164,7 +149,7 @@ void CSMain(uint3 Gid : SV_GroupID, uint3 DTid : SV_DispatchThreadID, uint3 GTid
 	float4 viewPos = mul(cb.InvProjection, clipPos);
 	viewPos.xyz /= viewPos.w;
 
-	float3 rayOrigin = viewPos.xyz * 0.99;//+ normalVS * 0.01;
+	float3 rayOrigin = viewPos.xyz * 0.99; //+ normalVS * 0.01;
 	float3 toPosition = normalize(rayOrigin.xyz);
 
 	/*
@@ -230,7 +215,9 @@ bool TraceScreenSpaceRay(
 	float k1 = 1.0f / H1.w;
 
 	// The interpolated homogeneous version of the camera-space points
+	// Origin Homogenous
 	float3 Q0 = vsOrig * k0;
+	// EndPoint homogenous
 	float3 Q1 = vsEndPoint * k1;
 
 	// Screen-space endpoints
@@ -281,29 +268,43 @@ bool TraceScreenSpaceRay(
 	k0 += dk * jitter;
 
 	// Slide P from P0 to P1, (now-homogeneous) Q from Q0 to Q1, k from k0 to k1
+
+	// Current screen space position. Including view space Z and original 1 / W
 	float4 PQk = float4(P0, Q0.z, k0);
+
+	// Amount screen space pixels we're stepping by.
+	//  z = Z difference of inverted depth and
+	//  w = difference in inverted W. 
 	float4 dPQk = float4(dP, dQ.z, dk);
+
+	// Origin 
 	float3 Q = Q0;
 
 	// Adjust end condition for iteration direction
 	float end = P1.x * stepDir;
 
+	float prevZMinEstimate = vsOrig.z;
+	float rayZMin = prevZMinEstimate;
+	float rayZMax = prevZMinEstimate;
+	float sceneZMin = rayZMin - cb.MaxDistance; // Was hardcoded 200
+
+	bool inBounds = PQk.x * stepDir <= end;
+	bool hasIntersection = false;
+	
 	float stepCount = 0.0f;
-	float prevZMaxEstimate = vsOrig.z;
-	float rayZMin = prevZMaxEstimate;
-	float rayZMax = prevZMaxEstimate;
-	float sceneZMax = rayZMax + 200.0f;
-
-	for(;
-		((PQk.x * stepDir) <= end) && (stepCount < cb.MaxSteps) &&
-		!IntersectsDepthBuffer(sceneZMax, rayZMin, rayZMax) &&
-		(sceneZMax != 0.0f);
-		++stepCount)
+	for(; inBounds &&
+	      stepCount < cb.MaxSteps &&
+	      !hasIntersection &&
+	      sceneZMin != 1.0f;
+	      ++stepCount)
 	{
-		rayZMin = prevZMaxEstimate;
-		rayZMax = (dPQk.z * 0.5f + PQk.z) / (dPQk.w * 0.5f + PQk.w);
-		prevZMaxEstimate = rayZMax;
+		rayZMax = prevZMinEstimate;
+		
+		// Take depth out of homogeneous coordinates
+		rayZMin = (dPQk.z * 0.5f + PQk.z) / (dPQk.w * 0.5f + PQk.w);
+		prevZMinEstimate = rayZMin;
 
+		// If we are tracing towards the eye. Swap em!
 		if(rayZMin > rayZMax)
 		{
 			Swap(rayZMin, rayZMax);
@@ -311,24 +312,32 @@ bool TraceScreenSpaceRay(
 
 		hitPixel = permute ? PQk.yx : PQk.xy;
 
-		sceneZMax = -LineariseDepth(1 - depthBuffer[hitPixel].r, cb.NearPlaneZ, cb.FarPlaneZ);
+		sceneZMin = -LineariseDepth(SampleDepth(hitPixel), cb.NearPlaneZ, cb.FarPlaneZ);
 
 		PQk += dPQk;
+		hasIntersection = IntersectsDepthBuffer(sceneZMin, rayZMin, rayZMax);
+		inBounds = PQk.x * stepDir <= end;
 	}
 
 	// Advance Q based on the number of steps
 	Q.xy += dQ.xy * stepCount;
 	hitPoint = Q * (1.0f / PQk.w);
 
-	return IntersectsDepthBuffer(sceneZMax, rayZMin, rayZMax);
+	return hasIntersection;
+}
+
+float SampleDepth(float2 pixel)
+{
+	return 1 - depthBuffer[pixel];	
 }
 
 float LineariseDepth(float depth, float nearPlane, float farPlane)
 {
-	float ProjectionA = farPlane / (farPlane - nearPlane);
-	float ProjectionB = (-farPlane * nearPlane) / (farPlane - nearPlane);
-
-	float linearDepth = ProjectionB / (depth - ProjectionA);
+	// near = 1
+	// far = 10000
+	float a = nearPlane / (farPlane - nearPlane);
+	float b = (-farPlane * nearPlane) / (farPlane - nearPlane);
+	float linearDepth = b / (depth - a);
 
 	return linearDepth;
 }
@@ -341,14 +350,6 @@ float DistanceSquared(float2 a, float2 b)
 
 bool IntersectsDepthBuffer(float z, float minZ, float maxZ)
 {
-	/*
-	* Based on how far away from the camera the depth is,
-	* adding a bit of extra thickness can help improve some
-	* artifacts. Driving this value up too high can cause
-	* artifacts of its own.
-	*/
-	//float depthScale = min(1.0f, z * StrideZCutoff);
-	//z += ZThickness + lerp(0.0f, 2.0f, depthScale);
 	return (maxZ >= z) && (minZ - cb.ZThickness <= z);
 }
 
