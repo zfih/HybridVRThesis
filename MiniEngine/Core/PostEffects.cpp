@@ -229,7 +229,6 @@ void PostEffects::GenerateBloom( ComputeContext& Context, UINT curCam )
     Context.SetConstants(0, 1.0f / kBloomWidth, 1.0f / kBloomHeight, (float)Settings::BloomThreshold );
     Context.TransitionResource(g_aBloomUAV1[0], D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
     Context.TransitionResource(g_LumaLR, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-    // TODO: TMP REWORK: HANDLE LOW RES
     Context.TransitionResource(g_SceneColorBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
     Context.TransitionResource(g_Exposure, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 
@@ -381,7 +380,6 @@ void PostEffects::ProcessHDR( ComputeContext& Context, UINT curCam )
         ExtractLuma(Context, curCam);
 
     if (g_bTypedUAVLoadSupport_R11G11B10_FLOAT)
-        // TODO: TMP REWORK: HANDLE LOW RES
         Context.TransitionResource(g_SceneColorBuffer, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
     else
         Context.TransitionResource(g_PostEffectsBuffer, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
@@ -432,7 +430,6 @@ void PostEffects::ProcessLDR(CommandContext& BaseContext, UINT curCam)
     if (bGenerateBloom || Settings::FXAA_DebugDraw || Settings::SSAO_DebugDraw || !g_bTypedUAVLoadSupport_R11G11B10_FLOAT)
     {
         if (g_bTypedUAVLoadSupport_R11G11B10_FLOAT)
-            // TODO: TMP REWORK: HANDLE LOW RES
             Context.TransitionResource(g_SceneColorBuffer, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
         else
             Context.TransitionResource(g_PostEffectsBuffer, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
@@ -473,7 +470,6 @@ void PostEffects::CopyBackPostBuffer( ComputeContext& Context, UINT curCam )
     ScopedTimer _prof(L"Copy Post back to Scene", Context);
     Context.SetRootSignature(PostEffectsRS);
     Context.SetPipelineState(CopyBackPostBufferCS);
-    // TODO: TMP REWORK: HANDLE LOW RES
     Context.TransitionResource(g_SceneColorBuffer, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
     Context.TransitionResource(g_PostEffectsBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
     // TODO: TMP REWORK: HANDLE LOW RES
@@ -489,7 +485,6 @@ void PostEffects::Render( UINT curCam )
 
     Context.SetRootSignature(PostEffectsRS);
 
-    // TODO: TMP REWORK: HANDLE LOW RES
     Context.TransitionResource(g_SceneColorBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 
     if (Settings::EnableHDR && !Settings::SSAO_DebugDraw && !(Settings::DOF_Enable && Settings::DOF_DebugMode >= 3))
@@ -524,7 +519,6 @@ void PostEffects::Render( UINT curCam )
         D3D12_CPU_DESCRIPTOR_HANDLE SRVs[2] = { g_Histogram.GetSRV(), g_Exposure.GetSRV() };
         Context.SetDynamicDescriptors(2, 0, 2, SRVs);
         Context.Dispatch(1, 32);
-        // TODO: TMP REWORK: HANDLE LOW RES
         Context.TransitionResource(g_SceneColorBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
     }
 

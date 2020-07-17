@@ -79,7 +79,6 @@ void MotionBlur::Initialize( void )
         s_MotionBlurFinalPassPS.SetPrimitiveTopologyType(D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE);
         s_MotionBlurFinalPassPS.SetVertexShader( g_pScreenQuadVS, sizeof(g_pScreenQuadVS) );
         s_MotionBlurFinalPassPS.SetPixelShader( g_pMotionBlurFinalPassPS, sizeof(g_pMotionBlurFinalPassPS) );
-        // TODO: TMP REWORK: HANDLE LOW RES
         s_MotionBlurFinalPassPS.SetRenderTargetFormat(g_SceneColorBuffer.GetFormat(), DXGI_FORMAT_UNKNOWN);
         s_MotionBlurFinalPassPS.Finalize();
 
@@ -147,7 +146,6 @@ void MotionBlur::GenerateCameraVelocityBuffer( CommandContext& BaseContext, cons
     if (UseLinearZ)
         Context.TransitionResource(LinearDepth, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
     else
-        // TODO: TMP REWORK: HANDLE LOW RES
         Context.TransitionResource(g_SceneDepthBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 
     Context.SetPipelineState(s_CameraVelocityCS[UseLinearZ ? 1 : 0]);
@@ -204,14 +202,12 @@ void MotionBlur::RenderCameraBlur( CommandContext& BaseContext, const Matrix4& r
     if (UseLinearZ)
         Context.TransitionResource(LinearDepth, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
     else
-        // TODO: TMP REWORK: HANDLE LOW RES
         Context.TransitionResource(g_SceneDepthBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 
     if (Settings::MotionBlur_Enable)
     {
         Context.TransitionResource(g_VelocityBuffer, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
         Context.TransitionResource(g_MotionPrepBuffer, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-        // TODO: TMP REWORK: HANDLE LOW RES
         Context.TransitionResource(g_SceneColorBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 
         Context.SetPipelineState(s_CameraMotionBlurPrePassCS[UseLinearZ ? 1 : 0]);
@@ -228,7 +224,6 @@ void MotionBlur::RenderCameraBlur( CommandContext& BaseContext, const Matrix4& r
             Context.SetPipelineState(s_MotionBlurFinalPassCS);
             Context.SetConstants(0, 1.0f / Width, 1.0f / Height);
 
-            // TODO: TMP REWORK: HANDLE LOW RES
             Context.TransitionResource(g_SceneColorBuffer, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
             Context.TransitionResource(g_VelocityBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
             Context.TransitionResource(g_MotionPrepBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
@@ -247,7 +242,6 @@ void MotionBlur::RenderCameraBlur( CommandContext& BaseContext, const Matrix4& r
             GraphicsContext& GrContext = BaseContext.GetGraphicsContext();
             GrContext.SetRootSignature(s_RootSignature);
             GrContext.SetPipelineState(s_MotionBlurFinalPassPS);
-            // TODO: TMP REWORK: HANDLE LOW RES
             GrContext.TransitionResource(g_SceneColorBuffer, D3D12_RESOURCE_STATE_RENDER_TARGET);
             GrContext.TransitionResource(g_VelocityBuffer, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
             GrContext.TransitionResource(g_MotionPrepBuffer, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
@@ -285,7 +279,6 @@ void MotionBlur::RenderObjectBlur( CommandContext& BaseContext, ColorBuffer& vel
     Context.SetRootSignature(s_RootSignature);
 
     Context.TransitionResource(g_MotionPrepBuffer, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-    // TODO: TMP REWORK: HANDLE LOW RES
     Context.TransitionResource(g_SceneColorBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
     Context.TransitionResource(velocityBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 
@@ -301,7 +294,6 @@ void MotionBlur::RenderObjectBlur( CommandContext& BaseContext, ColorBuffer& vel
     {
         Context.SetPipelineState(s_MotionBlurFinalPassCS);
     	
-        // TODO: TMP REWORK: HANDLE LOW RES
         Context.TransitionResource(g_SceneColorBuffer, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
         Context.TransitionResource(velocityBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
         Context.TransitionResource(g_MotionPrepBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
@@ -323,7 +315,6 @@ void MotionBlur::RenderObjectBlur( CommandContext& BaseContext, ColorBuffer& vel
         GrContext.SetRootSignature(s_RootSignature);
         GrContext.SetPipelineState(s_MotionBlurFinalPassPS);
 
-        // TODO: TMP REWORK: HANDLE LOW RES
         GrContext.TransitionResource(g_SceneColorBuffer, D3D12_RESOURCE_STATE_RENDER_TARGET);
         GrContext.TransitionResource(velocityBuffer, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
         GrContext.TransitionResource(g_MotionPrepBuffer, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);

@@ -31,7 +31,7 @@ SamplerState Sampler : register(s0);
 [numthreads( 8, 8, 1 )]
 void main( uint3 Gid : SV_GroupID, uint GI : SV_GroupIndex, uint3 GTid : SV_GroupThreadID, uint3 DTid : SV_DispatchThreadID )
 {
-    float m1 = DS4x.Sample(Sampler, DTid.xy << 1, mip);
+    float m1 = DS4x.SampleLevel(Sampler, DTid.xy << 1, mip);
 
     uint2 st = DTid.xy;
     uint2 stAtlas = st >> 2;

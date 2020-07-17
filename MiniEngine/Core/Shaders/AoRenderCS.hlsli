@@ -24,6 +24,13 @@ Texture2D<float> DepthTex : register(t0);
 #endif
 RWTexture2D<float> Occlusion : register(u0);
 SamplerState LinearBorderSampler : register(s1);
+SamplerState LinearBorderSamplerLowRes : register(s2);
+
+cbuffer CB0 : register(b0)
+{
+    uint mip;
+}
+
 cbuffer CB1 : register(b1)
 {
     float4 gInvThicknessTable[3];
@@ -114,10 +121,21 @@ void main( uint3 Gid : SV_GroupID, uint GI : SV_GroupIndex, uint3 GTid : SV_Grou
 #endif
 
     // Fetch four depths and store them in LDS
+    float4 depths;
 #ifdef INTERLEAVE_RESULT
-    float4 depths = DepthTex.Gather(LinearBorderSampler, float3(QuadCenterUV, DTid.z));
+    if (mip) {
+        depths = DepthTex.Gather(LinearBorderSamplerLowRes, float3(QuadCenterUV, DTid.z));
+    }
+    else {
+        depths = DepthTex.Gather(LinearBorderSampler, float3(QuadCenterUV, DTid.z));
+    }
 #else
-    float4 depths = DepthTex.Gather(LinearBorderSampler, QuadCenterUV);
+    if (mip) {
+        depths = DepthTex.Gather(LinearBorderSamplerLowRes, QuadCenterUV);
+    }
+    else {
+        depths = DepthTex.Gather(LinearBorderSampler, QuadCenterUV);
+    }
 #endif
     int destIdx = GTid.x * 2 + GTid.y * 2 * TILE_DIM;
     DepthSamples[destIdx] = depths.w;

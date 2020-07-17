@@ -194,11 +194,9 @@ void TemporalEffects::ApplyTemporalAA(ComputeContext& Context, UINT curCam)
     Context.SetDynamicConstantBufferView(3, sizeof(cbv), &cbv);
 
     Context.TransitionResource(g_VelocityBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-    // TODO: TMP REWORK: HANDLE LOW RES
     Context.TransitionResource(g_SceneColorBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
     Context.TransitionResource(g_TemporalColor[Src], D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
     Context.TransitionResource(g_TemporalColor[Dst], D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-    // TODO: TMP REWORK: HANDLE LOW RES
     Context.TransitionResource(g_LinearDepth[Src], D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
     Context.TransitionResource(g_LinearDepth[Dst], D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
     Context.SetDynamicDescriptor(1, 0, g_VelocityBuffer.GetSRV());
@@ -217,7 +215,6 @@ void TemporalEffects::SharpenImage(ComputeContext& Context, ColorBuffer& Tempora
 {
     ScopedTimer _prof(L"Sharpen or Copy Image", Context);
 	
-    // TODO: TMP REWORK: HANDLE LOW RES
     Context.TransitionResource(g_SceneColorBuffer, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
     Context.TransitionResource(TemporalColor, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 

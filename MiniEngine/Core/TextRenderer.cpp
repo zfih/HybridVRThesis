@@ -216,7 +216,6 @@ void TextRenderer::Initialize( void )
     s_TextPSO[0].Finalize();
 
     s_TextPSO[1] = s_TextPSO[0];
-    // TODO: TMP REWORK: HANDLE LOW RES
     s_TextPSO[1].SetRenderTargetFormats(1, &g_SceneColorBuffer.GetFormat(), DXGI_FORMAT_UNKNOWN);
     s_TextPSO[1].Finalize();
 
@@ -225,7 +224,6 @@ void TextRenderer::Initialize( void )
     s_ShadowPSO[0].Finalize();
 
     s_ShadowPSO[1] = s_ShadowPSO[0];
-    // TODO: TMP REWORK: HANDLE LOW RES
     s_ShadowPSO[1].SetRenderTargetFormats(1, &g_SceneColorBuffer.GetFormat(), DXGI_FORMAT_UNKNOWN);
     s_ShadowPSO[1].Finalize();
 }

@@ -1958,6 +1958,7 @@ void g_initialize_dynamicCb(
 	DynamicCB inputs = {};
 
 	inputs.curCam = CurCam;
+	inputs.mip = g_CurrentMip;
 
 	const Matrix4 mvp = Camera[CurCam]->GetViewProjMatrix();
 	const Matrix4 transInvMvp = Transpose(Invert(mvp));

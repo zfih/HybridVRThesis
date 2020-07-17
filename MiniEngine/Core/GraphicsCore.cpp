@@ -924,7 +924,6 @@ void Graphics::HiddenMeshDepthPrepass()
     context.SetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
 	// Transition and clear depth
-    // TODO: TMP REWORK: HANDLE LOW RES
     context.TransitionResource(g_SceneDepthBuffer, D3D12_RESOURCE_STATE_DEPTH_WRITE);
     context.TransitionResource(g_DisplayPlane[g_CurrentBuffer], D3D12_RESOURCE_STATE_RENDER_TARGET, true);
     // TODO: TMP REWORK: HANDLE LOW RES

@@ -30,8 +30,8 @@ void RayGen()
     float2 readGBufferAt = xy;
 
     // Read depth and normal
-    float sceneDepth = depth.Load(int4(readGBufferAt, g_dynamic.curCam, 0));
-    float4 normalData = normals.Load(int4(readGBufferAt, g_dynamic.curCam, 0));
+    float sceneDepth = depth.Load(int4(readGBufferAt, g_dynamic.curCam, g_dynamic.mip));
+    float4 normalData = normals.Load(int4(readGBufferAt, g_dynamic.curCam, g_dynamic.mip));
     if (normalData.w == 0.0)
         return;
 

@@ -26,6 +26,11 @@ Texture2D<float> HiResAO : register(t4);
 RWTexture2D<float> AoResult : register(u0);
 
 SamplerState LinearSampler : register(s0);
+SamplerState LinearSamplerLowRes : register(s2);
+
+cbuffer CB0 : register(b0) {
+    uint mip;
+}
 
 cbuffer CB1 : register(b1)
 {
@@ -208,13 +213,31 @@ void main( uint3 Gid : SV_GroupID, uint GI : SV_GroupIndex, uint3 GTid : SV_Grou
     float2 UV0 = DTid.xy * InvLowResolution;
     float2 UV1 = DTid.xy * 2 * InvHighResolution;
 
+    float4 HiSSAOs;
+    float4 HiDepths;
+    float4 LoDepths;
+
+    if (mip) {
 #ifdef BLEND_WITH_HIGHER_RESOLUTION
-    float4 HiSSAOs  = HiResAO.Gather(LinearSampler, UV1);
+        HiSSAOs = HiResAO.Gather(LinearSamplerLowRes, UV1);
 #else
-    float4 HiSSAOs = 1.0;
+        HiSSAOs = 1.0;
 #endif
-    float4 LoDepths = LoResDB.Gather(LinearSampler, UV0);
-    float4 HiDepths = HiResDB.Gather(LinearSampler, UV1);
+        LoDepths = LoResDB.Gather(LinearSamplerLowRes, UV0);
+        HiDepths = HiResDB.Gather(LinearSamplerLowRes, UV1);
+    }
+    else
+    {
+#ifdef BLEND_WITH_HIGHER_RESOLUTION
+        HiSSAOs = HiResAO.Gather(LinearSampler, UV1);
+#else
+        HiSSAOs = 1.0;
+#endif
+        LoDepths = LoResDB.Gather(LinearSampler, UV0);
+        HiDepths = HiResDB.Gather(LinearSampler, UV1);
+    }
+
+
 
     int2 OutST = DTid.xy << 1;
     AoResult[OutST + int2(-1,  0)] = BilateralUpsample( HiDepths.x, HiSSAOs.x, LoDepths.xyzw, LoSSAOs.xyzw );
