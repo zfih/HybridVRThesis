@@ -808,6 +808,7 @@ void Graphics::PreparePresentLDR(void)
 
     Context.SetRootSignature(s_PresentRS);
     Context.SetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+    Context.SetConstants(0, g_CurrentMip);
 
     // Copy (and convert) the LDR buffer to the back buffer
 	if (Settings::TMPMode == 5)
@@ -816,8 +817,7 @@ void Graphics::PreparePresentLDR(void)
     }
     else
     {
-        // TODO: TMP REWORK: Handle rendering low res
-        Context.SetDynamicDescriptor(0, 0, g_SceneColorBuffer.GetSRV());
+        Context.SetDynamicDescriptor(0, 0, g_SceneColorBuffer.GetSRV()); // Mip handled in shader
     }
     //Context.SetDynamicDescriptor(0, 1, g_SceneColorBufferLowPassed.GetSRV());
 
@@ -926,26 +926,25 @@ void Graphics::HiddenMeshDepthPrepass()
 	// Transition and clear depth
     context.TransitionResource(g_SceneDepthBuffer, D3D12_RESOURCE_STATE_DEPTH_WRITE);
     context.TransitionResource(g_DisplayPlane[g_CurrentBuffer], D3D12_RESOURCE_STATE_RENDER_TARGET, true);
-    // TODO: TMP REWORK: HANDLE LOW RES
+    // TODO: TMP REWORK: Check with NSight if this clears the whole buffer
     context.ClearDepthAndStencil(g_SceneDepthBuffer);
 
 	// Set pipelinestate
     context.SetRootSignature(HiddenMeshDepthRS);
     context.SetPipelineState(HiddenMeshDepthPSO);
     context.SetStencilRef(0x0);
-    // TODO: TMP REWORK: HANDLE LOW RES
-    context.SetViewportAndScissor(0, 0, g_SceneDepthBuffer.GetWidth(), g_SceneDepthBuffer.GetHeight());
+    context.SetViewportAndScissor(0, 0, 
+        g_SceneDepthBuffer.GetMipWidth(g_CurrentMip), 
+        g_SceneDepthBuffer.GetMipHeight(g_CurrentMip));
 
 	// set vertex buffer and depth stencil then draw
     context.SetVertexBuffer(0, BufferLeft.VertexBufferView());
-    // TODO: TMP REWORK: HANDLE LOW RES
-	context.SetDepthStencilTarget(g_SceneDepthBuffer.GetSubDSV(vr::Eye_Left));
+	context.SetDepthStencilTarget(g_SceneDepthBuffer.GetMipDSV(vr::Eye_Left, g_CurrentMip));
     context.Draw(BufferLeft.GetElementCount());
 
 	// repeat for right eye
     context.SetVertexBuffer(0, BufferRight.VertexBufferView());
-    // TODO: TMP REWORK: HANDLE LOW RES
-	context.SetDepthStencilTarget(g_SceneDepthBuffer.GetSubDSV(vr::Eye_Right));
+	context.SetDepthStencilTarget(g_SceneDepthBuffer.GetMipDSV(vr::Eye_Right, g_CurrentMip));
     context.Draw(BufferRight.GetElementCount());
 
     context.Finish();
