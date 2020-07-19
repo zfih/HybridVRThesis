@@ -137,7 +137,7 @@ enum RaytracingTypes
 	NumTypes
 };
 
-const static UINT MaxRayRecursion = 2;
+const static UINT MaxRayRecursion = 3;
 
 const static UINT c_NumCameraPositions = 5;
 
@@ -207,6 +207,7 @@ static const int MAX_RT_DESCRIPTORS = 1000;
 struct MaterialRootConstant
 {
 	UINT MaterialID;
+	UINT Reflective;
 };
 
 RaytracingDispatchRayInputs g_RaytracingInputs[RaytracingTypes::NumTypes];
@@ -278,6 +279,9 @@ private:
 	void RaytraceReflections(GraphicsContext& context, ColorBuffer& colorTarget,
 	                         DepthBuffer& depth, ColorBuffer& normals);
 
+	void InitializeStateObjects(const Model& model, UINT numMeshes);
+	void InitializeRaytracingStateObjects(const Model& model, UINT numMeshes);
+
 	void SaveCamPos();
 	void LoadCamPos();
 	const char* m_CamPosFilename = "SavedCamPos.txt";
@@ -323,7 +327,7 @@ private:
 
 int wmain(int argc, wchar_t** argv)
 {
-	g_CreateScene(Scene::kBistroInterior);
+	g_CreateScene(Scene::kSponza);
 	
 #if _DEBUG
 	CComPtr<ID3D12Debug> debugInterface;
@@ -500,6 +504,9 @@ void InitializeViews(const Model& model)
 			g_pRaytracingDescriptorHeap->AllocateDescriptor(srvHandle, unused);
 			Graphics::g_Device->CopyDescriptorsSimple(1, srvHandle, model.GetSRVs(i)[3],
 			                                          D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+			g_pRaytracingDescriptorHeap->AllocateDescriptor(srvHandle, unused);
+			Graphics::g_Device->CopyDescriptorsSimple(1, srvHandle, model.GetSRVs(i)[1],
+			                                          D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 
 			g_GpuSceneMaterialSrvs[i] = g_pRaytracingDescriptorHeap->GetGpuHandle(slot);
 		}
@@ -543,7 +550,8 @@ void SetPipelineStateStackSize(
 	stateObjectProperties->SetPipelineStackSize(totalStackSize);
 }
 
-void InitializeRaytracingStateObjects(const Model& model, UINT numMeshes)
+void D3D12RaytracingMiniEngineSample::InitializeRaytracingStateObjects(
+	const Model& model, UINT numMeshes)
 {
 	// Initialize subobject list
 	// ----------------------------------------------------------------//
@@ -657,7 +665,7 @@ void InitializeRaytracingStateObjects(const Model& model, UINT numMeshes)
 
 	D3D12_RAYTRACING_SHADER_CONFIG shaderConfig;
 	shaderConfig.MaxAttributeSizeInBytes = 8;
-	shaderConfig.MaxPayloadSizeInBytes = 8;
+	shaderConfig.MaxPayloadSizeInBytes = 16;
 	shaderConfigStateObject.pDesc = &shaderConfig;
 	shaderConfigStateObject.Type =
 		D3D12_STATE_SUBOBJECT_TYPE_RAYTRACING_SHADER_CONFIG;
@@ -719,6 +727,8 @@ void InitializeRaytracingStateObjects(const Model& model, UINT numMeshes)
 
 			MaterialRootConstant material;
 			material.MaterialID = i;
+			const Model::Mesh & mesh = m_Model.m_pMesh[i];
+			material.Reflective = m_pMaterialIsReflective[mesh.materialIndex];
 			memcpy(pShaderRecord + offsetToMaterialConstants,
 			       &material,
 			       sizeof(material));
@@ -731,7 +741,7 @@ void InitializeRaytracingStateObjects(const Model& model, UINT numMeshes)
 	// Baricentric
 	{
 		CComPtr<ID3D12StateObject> pbarycentricPSO;
-		g_pRaytracingDevice->CreateStateObject(&stateObject,
+		auto hres = g_pRaytracingDevice->CreateStateObject(&stateObject,
 		                                       IID_PPV_ARGS(&pbarycentricPSO));
 		GetShaderTable(model, pbarycentricPSO, pHitShaderTable.data());
 		g_RaytracingInputs[Primarybarycentric] = RaytracingDispatchRayInputs(
@@ -843,7 +853,8 @@ void InitializeRaytracingStateObjects(const Model& model, UINT numMeshes)
 	}
 }
 
-void InitializeStateObjects(const Model& model, UINT numMeshes)
+void D3D12RaytracingMiniEngineSample::InitializeStateObjects(
+	const Model& model, UINT numMeshes)
 {
 	D3D12_STATIC_SAMPLER_DESC staticSamplerDescs[2] = {};
 	D3D12_STATIC_SAMPLER_DESC& defaultSampler = staticSamplerDescs[0];
@@ -913,7 +924,7 @@ void InitializeStateObjects(const Model& model, UINT numMeshes)
 
 	D3D12_DESCRIPTOR_RANGE1 localTextureDescriptorRange = {};
 	localTextureDescriptorRange.BaseShaderRegister = 6;
-	localTextureDescriptorRange.NumDescriptors = 2;
+	localTextureDescriptorRange.NumDescriptors = 3;
 	localTextureDescriptorRange.RegisterSpace = 0;
 	localTextureDescriptorRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
 	localTextureDescriptorRange.Flags = D3D12_DESCRIPTOR_RANGE_FLAG_NONE;

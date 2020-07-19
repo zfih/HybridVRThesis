@@ -18,6 +18,7 @@
 cbuffer Material : register(b3)
 {
     uint MaterialID;
+    uint Reflective;
 }
 
 StructuredBuffer<RayTraceMeshInfo> g_meshInfo : register(t1);
@@ -30,6 +31,7 @@ SamplerComparisonState shadowSampler : register(s1);
 
 Texture2D<float4> g_localTexture : register(t6);
 Texture2D<float4> g_localNormal : register(t7);
+Texture2D<float4> g_localSpecular : register(t8);
 
 Texture2DArray<float4>   normals  : register(t13);
 
@@ -292,7 +294,7 @@ void Hit(inout RayPayload payload, in BuiltInTriangleIntersectionAttributes attr
     const float3 diffuseColor = g_localTexture.SampleGrad(g_s0, uv, ddx, ddy).rgb;
     float3 normal;
     float3 specularAlbedo = float3(0.56, 0.56, 0.56);
-    float specularMask = 0;     // TODO: read the texture
+    float specularMask = g_localSpecular.SampleGrad(g_s0, uv, ddx, ddy).g;
     float gloss = 128.0;
     {
         normal = g_localNormal.SampleGrad(g_s0, uv, ddx, ddy).rgb * 2.0 - 1.0;
@@ -315,6 +317,7 @@ void Hit(inout RayPayload payload, in BuiltInTriangleIntersectionAttributes attr
         RayPayload shadowPayload;
         shadowPayload.SkipShading = true;
         shadowPayload.RayHitT = FLT_MAX;
+        shadowPayload.Bounces = payload.Bounces + 1;
         TraceRay(g_accel, RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH,~0,0,1,0,rayDesc,shadowPayload);
         if (shadowPayload.RayHitT < FLT_MAX)
         {
@@ -340,11 +343,15 @@ void Hit(inout RayPayload payload, in BuiltInTriangleIntersectionAttributes attr
 
     outputColor = ApplySRGBCurve(outputColor);
 
+        float reflectivity =
+            specularMask * pow(1.0 - saturate(dot(-viewDir, normal)), 5.0);
     // TODO: Should be passed in via material info
     if (IsReflection)
     {
-		float reflectivity = 
-            normals[int3(DispatchRaysIndex().xy, g_dynamic.curCam)].w;
+		/*float reflectivity = 
+            normals[int3(DispatchRaysIndex().xy, g_dynamic.curCam)].w;*/
+
+
 		/*if(g_dynamic.curCam == 1)
 		{
             outputColor = float4(1, 0, 0, 0);
@@ -360,7 +367,32 @@ void Hit(inout RayPayload payload, in BuiltInTriangleIntersectionAttributes attr
         }*/
         outputColor = g_screenOutput[int3(DispatchRaysIndex().xy, g_dynamic.curCam)].rgb + reflectivity * outputColor;
     }
+    
+    if (payload.Bounces > 0)
+    {
+        outputColor = g_screenOutput[int3(DispatchRaysIndex().xy, g_dynamic.curCam)].rgb + payload.Reflectivity * outputColor;
+    }
 
 
 	g_screenOutput[int3(DispatchRaysIndex().xy, g_dynamic.curCam)] = float4(outputColor, 1);
+
+    if (Reflective)
+    {
+        float3 primaryRayDirection = WorldRayDirection();
+        float3 reflectionDirection = reflect(primaryRayDirection, normal);
+            /*normalize(-primaryRayDirection - 2 * 
+                dot(-primaryRayDirection, normal) * normal);*/ // This was copied from ModelViewerPS but doesn't work? :thinking:
+        float3 reflectionOrigin = worldPosition + reflectionDirection * 0.1f;
+        RayDesc rayDesc = { 
+            reflectionOrigin,
+            0.0f,
+            reflectionDirection,
+            FLT_MAX };
+        RayPayload reflectionPayload;
+        reflectionPayload.SkipShading = false;
+        reflectionPayload.RayHitT = FLT_MAX;
+        reflectionPayload.Bounces = payload.Bounces + 1;
+        reflectionPayload.Reflectivity = reflectivity;
+        TraceRay(g_accel, RAY_FLAG_CULL_BACK_FACING_TRIANGLES, ~0, 0, 1, 0, rayDesc, reflectionPayload);
+    }
 }

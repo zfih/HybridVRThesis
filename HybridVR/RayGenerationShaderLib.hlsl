@@ -26,6 +26,7 @@ void RayGen()
     RayPayload payload;
     payload.SkipShading = false;
     payload.RayHitT = FLT_MAX;
+    payload.Bounces = 0;
     TraceRay(g_accel, RAY_FLAG_CULL_BACK_FACING_TRIANGLES, ~0,0,1,0, rayDesc, payload);
 }
 
