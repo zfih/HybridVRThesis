@@ -205,7 +205,7 @@ void DepthBuffer::CreateDerivedViews(ID3D12Device* Device, DXGI_FORMAT Format, u
 
 			Device->CreateDepthStencilView(Resource, &dsvDesc, handles[i]);
 
-			dsvDesc.Texture2D.MipSlice++;
+			dsvDesc.Texture2DArray.MipSlice++;
 		}
 
 		m_MipDSVHandles.push_back(handles);
@@ -237,7 +237,7 @@ void DepthBuffer::CreateDerivedViews(ID3D12Device* Device, DXGI_FORMAT Format, u
 
 			Device->CreateDepthStencilView(Resource, &dsvDesc, handles[i]);
 
-			dsvDesc.Texture2D.MipSlice++;
+			dsvDesc.Texture2DArray.MipSlice++;
 		}
 
 		m_MipDSVReadOnlyHandles.push_back(handles);

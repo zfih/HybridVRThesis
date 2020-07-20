@@ -1187,12 +1187,11 @@ void D3D12RaytracingMiniEngineSample::Startup(void)
 	m_DownsamplePSO.SetComputeShader(g_pDownsampleCS, sizeof(g_pDownsampleCS));
 	m_DownsamplePSO.Finalize();
 
-	m_FrameIntegrationSig.Reset(5, 1);
+	m_FrameIntegrationSig.Reset(4, 1);
 	m_FrameIntegrationSig[0].InitAsConstants(0, 1);
 	m_FrameIntegrationSig[1].InitAsDescriptorRange(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 0, 1);
 	m_FrameIntegrationSig[2].InitAsDescriptorRange(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 1, 1);
-	m_FrameIntegrationSig[3].InitAsDescriptorRange(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 2, 1);
-	m_FrameIntegrationSig[4].InitAsDescriptorRange(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 3, 1);
+	m_FrameIntegrationSig[3].InitAsDescriptorRange(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 0, 1);
 	m_FrameIntegrationSig.InitStaticSampler(0, SamplerLinearWrapDesc);
 	m_FrameIntegrationSig.Finalize(L"FrameIntegrationSignature", D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
 
@@ -1619,7 +1618,7 @@ void D3D12RaytracingMiniEngineSample::RenderColor(GraphicsContext& Ctx, Camera& 
 		};
 		
 		Ctx.SetRenderTargets(ARRAYSIZE(rtvs), rtvs,
-			g_SceneDepthBuffer.GetMipDSV(CameraType, 0));
+			g_SceneDepthBuffer.GetMipDSV(CameraType, Graphics::g_CurrentMip));
 
 		Ctx.SetViewportAndScissor(
 			m_MainViewport, m_MainScissor);
@@ -1933,10 +1932,9 @@ void D3D12RaytracingMiniEngineSample::FrameIntegration()
 
 		cmpContext.SetConstant(0, Graphics::GetFrameCount() % 2 == 0);
 		// Mip level handled in shader
-		cmpContext.SetDynamicDescriptor(1, 0, g_SceneColorBuffer.GetMipUAV(0, 2));
-		cmpContext.SetDynamicDescriptor(2, 0, g_SceneColorBuffer.GetMipUAV(1, 2));
-		cmpContext.SetDynamicDescriptor(3, 0, g_SceneColorBuffer.GetUAV());
-		cmpContext.SetDynamicDescriptor(4, 0, g_SceneColorBufferResidules.GetUAV());
+		cmpContext.SetDynamicDescriptor(1, 0, g_SceneColorBuffer.GetUAV());
+		cmpContext.SetDynamicDescriptor(2, 0, g_SceneColorBufferResidules.GetUAV());
+		cmpContext.SetDynamicDescriptor(3, 0, g_SceneColorBuffer.GetSRV());
 
 		cmpContext.Dispatch2D(g_SceneColorBuffer.GetWidth(), g_SceneColorBuffer.GetHeight());
 	}
