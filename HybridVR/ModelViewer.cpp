@@ -1367,15 +1367,15 @@ void D3D12RaytracingMiniEngineSample::Update(float deltaT)
 	// temporal AA.
 	TemporalEffects::GetJitterOffset(m_MainViewport.TopLeftX, m_MainViewport.TopLeftY);
 
-	m_MainViewport.Width = static_cast<float>(g_SceneColorBuffer.GetWidth());
-	m_MainViewport.Height = static_cast<float>(g_SceneColorBuffer.GetHeight());
+	m_MainViewport.Width = static_cast<float>(g_SceneColorBuffer.GetMipWidth(g_CurrentMip));
+	m_MainViewport.Height = static_cast<float>(g_SceneColorBuffer.GetMipHeight(g_CurrentMip));
 	m_MainViewport.MinDepth = 0.0f;
 	m_MainViewport.MaxDepth = 1.0f;
 
 	m_MainScissor.left = 0;
 	m_MainScissor.top = 0;
-	m_MainScissor.right = static_cast<LONG>(g_SceneColorBuffer.GetWidth());
-	m_MainScissor.bottom = static_cast<LONG>(g_SceneColorBuffer.GetHeight());
+	m_MainScissor.right = static_cast<LONG>(g_SceneColorBuffer.GetMipWidth(g_CurrentMip));
+	m_MainScissor.bottom = static_cast<LONG>(g_SceneColorBuffer.GetMipHeight(g_CurrentMip));
 }
 
 void D3D12RaytracingMiniEngineSample::RenderObjects(GraphicsContext& gfxContext, UINT curCam, const Matrix4& ViewProjMat,
@@ -1686,12 +1686,12 @@ void D3D12RaytracingMiniEngineSample::RenderPrepass(GraphicsContext& Ctx, Cam::C
 				// prepass
 				if (!Settings::VRDepthStencil)
 				{
-					Ctx.ClearDepthAndStencil(g_SceneDepthBuffer);
+					Ctx.ClearDepthAndStencil(g_SceneDepthBuffer, CameraType, g_CurrentMip);
 				}
 
 				Ctx.SetPipelineState(m_DepthPSO[0]);
 				
-				Ctx.SetDepthStencilTarget(g_SceneDepthBuffer.GetMipDSV(CameraType, 0));
+				Ctx.SetDepthStencilTarget(g_SceneDepthBuffer.GetMipDSV(CameraType, g_CurrentMip));
 
 				Ctx.SetViewportAndScissor(m_MainViewport, m_MainScissor);
 			}

@@ -314,6 +314,11 @@ void GraphicsContext::ClearDepthAndStencil( DepthBuffer& Target )
     m_CommandList->ClearDepthStencilView(Target.GetDSV(), D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, Target.GetClearDepth(), Target.GetClearStencil(), 0, nullptr);
 }
 
+void GraphicsContext::ClearDepthAndStencil( DepthBuffer& Target, uint32_t sub, uint32_t mip )
+{
+    m_CommandList->ClearDepthStencilView(Target.GetMipDSV(sub, mip), D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, Target.GetClearDepth(), Target.GetClearStencil(), 0, nullptr);
+}
+
 void GraphicsContext::SetViewportAndScissor( const D3D12_VIEWPORT& vp, const D3D12_RECT& rect )
 {
     ASSERT(rect.left < rect.right && rect.top < rect.bottom);
