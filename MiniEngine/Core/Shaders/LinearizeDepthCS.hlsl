@@ -14,18 +14,24 @@
 #include "SSAORS.hlsli"
 
 RWTexture2D<float> LinearZ : register(u0);
-Texture2D<float> Depth : register(t0);
+Texture2DArray<float> Depth : register(t0);
 SamplerState Sampler : register(s0);
 
 cbuffer CB0 : register(b0)
 {
     float ZMagic;                // (zFar - zNear) / zNear
     uint mip;
+    uint curcam;
 }
 
 [RootSignature(SSAO_RootSig)]
 [numthreads( 16, 16, 1 )]
 void main( uint3 Gid : SV_GroupID, uint GI : SV_GroupIndex, uint3 GTid : SV_GroupThreadID, uint3 DTid : SV_DispatchThreadID )
 {
-    LinearZ[DTid.xy] = 1.0 / (ZMagic * Depth.SampleLevel(Sampler, DTid.xy, mip) + 1.0);
+    float nTextureWidth;
+    float nTextureHeight;
+    LinearZ.GetDimensions(nTextureWidth, nTextureHeight);
+    float3 uv = float3(DTid.x / nTextureWidth, DTid.y / nTextureHeight, curcam);
+    
+    LinearZ[DTid.xy] = 1.0 / (ZMagic * Depth.SampleLevel(Sampler, uv, mip) + 1.0);
 }

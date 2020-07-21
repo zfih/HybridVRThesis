@@ -224,7 +224,7 @@ namespace SSAO
 
         Context.SetConstants(0, g_CurrentMip);
         Context.SetDynamicConstantBufferView(1, sizeof(SsaoCB), SsaoCB);
-        Context.SetDynamicDescriptor(2, 0, Destination.GetMipUAV(0, g_CurrentMip));
+        Context.SetDynamicDescriptor(2, 0, Destination.GetUAV());
         Context.SetDynamicDescriptor(3, 0, DepthBuffer.GetSRV() );
 
         if (ArrayCount == 1)
@@ -312,7 +312,7 @@ void SSAO::Render( GraphicsContext& GfxContext, const float* ProjMat, float Near
         ScopedTimer _prof(L"Generate SSAO", GfxContext);
 
         GfxContext.TransitionResource(g_SSAOFullScreen, D3D12_RESOURCE_STATE_RENDER_TARGET, true);
-        GfxContext.ClearColor(g_SSAOFullScreen);
+        GfxContext.ClearColor(g_SSAOFullScreen, 0, g_CurrentMip);
         GfxContext.TransitionResource(g_SSAOFullScreen, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 
         if (!Settings::ComputeLinearZ)
@@ -322,8 +322,8 @@ void SSAO::Render( GraphicsContext& GfxContext, const float* ProjMat, float Near
         Context.SetRootSignature(s_RootSignature);
 
         Context.TransitionResource(g_SceneDepthBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-        Context.SetConstants(0, zMagic, g_CurrentMip);
-        Context.SetDynamicDescriptor(3, 0, g_SceneDepthBuffer.GetSubSRV(CurCam));
+        Context.SetConstants(0, zMagic, g_CurrentMip, CurCam);
+        Context.SetDynamicDescriptor(3, 0, g_SceneDepthBuffer.GetDepthSRV());
 
         Context.TransitionResource(LinearDepth, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
         Context.SetDynamicDescriptors(2, 0, 1, &LinearDepth.GetUAV());
@@ -362,8 +362,8 @@ void SSAO::Render( GraphicsContext& GfxContext, const float* ProjMat, float Near
     { ScopedTimer _prof(L"Decompress and downsample", Context);
 
     // Phase 1:  Decompress, linearize, downsample, and deinterleave the depth buffer
-    Context.SetConstants(0, zMagic, g_CurrentMip);
-    Context.SetDynamicDescriptor(3, 0, g_SceneDepthBuffer.GetSubSRV(CurCam) );
+    Context.SetConstants(0, zMagic,g_CurrentMip, CurCam);
+    Context.SetDynamicDescriptor(3, 0, g_SceneDepthBuffer.GetDepthSRV() );
 
     Context.TransitionResource(LinearDepth, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
     Context.TransitionResource(g_DepthDownsize1, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
@@ -373,10 +373,10 @@ void SSAO::Render( GraphicsContext& GfxContext, const float* ProjMat, float Near
 
     D3D12_CPU_DESCRIPTOR_HANDLE DownsizeUAVs[5] = {
     	LinearDepth.GetUAV(),
-    	g_DepthDownsize1.GetMipUAV(0, g_CurrentMip),
-    	g_DepthTiled1.GetMipUAV(0, g_CurrentMip),
-        g_DepthDownsize2.GetMipUAV(0, g_CurrentMip),
-    	g_DepthTiled2.GetMipUAV(0, g_CurrentMip) };
+    	g_DepthDownsize1.GetUAV(),
+    	g_DepthTiled1.GetUAV(),
+        g_DepthDownsize2.GetUAV(),
+    	g_DepthTiled2.GetUAV() };
     Context.SetDynamicDescriptors(2, 0, 5, DownsizeUAVs);
 
     Context.SetPipelineState(s_DepthPrepare1CS);
@@ -392,10 +392,10 @@ void SSAO::Render( GraphicsContext& GfxContext, const float* ProjMat, float Near
         Context.TransitionResource(g_DepthTiled4, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
     	
         D3D12_CPU_DESCRIPTOR_HANDLE DownsizeAgainUAVs[4] = {
-        	g_DepthDownsize3.GetMipUAV(0, g_CurrentMip),
-        	g_DepthTiled3.GetMipUAV(0, g_CurrentMip),
-        	g_DepthDownsize4.GetMipUAV(0, g_CurrentMip),
-        	g_DepthTiled4.GetMipUAV(0, g_CurrentMip) };
+        	g_DepthDownsize3.GetUAV(),
+        	g_DepthTiled3.GetUAV(),
+        	g_DepthDownsize4.GetUAV(),
+        	g_DepthTiled4.GetUAV() };
         Context.SetDynamicDescriptors(2, 0, 4, DownsizeAgainUAVs);
         Context.SetDynamicDescriptors(3, 0, 1, &g_DepthDownsize2.GetSRV() );
         Context.SetPipelineState(s_DepthPrepare2CS);

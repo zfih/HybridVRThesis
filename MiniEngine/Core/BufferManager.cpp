@@ -156,28 +156,28 @@ void Graphics::InitializeRenderingBuffers( uint32_t bufferWidth, uint32_t buffer
 
                 esram.PushStack();    // Begin Shading
 
-                    g_SSAOFullScreen.Create( L"SSAO Full Res", bufferWidth, bufferHeight, mipCount, DXGI_FORMAT_R8_UNORM );
+                    g_SSAOFullScreen.Create( L"SSAO", bufferWidth, bufferHeight, 1, DXGI_FORMAT_R8_UNORM );
 
                     esram.PushStack();    // Begin generating SSAO
-                        g_DepthDownsize1.Create( L"Depth Down-Sized 1 Full Res", bufferWidth1, bufferHeight1, mipCount, DXGI_FORMAT_R32_FLOAT, esram );
-                        g_DepthDownsize2.Create( L"Depth Down-Sized 2 Full Res", bufferWidth2, bufferHeight2, mipCount, DXGI_FORMAT_R32_FLOAT, esram );
-                        g_DepthDownsize3.Create( L"Depth Down-Sized 3 Full Res", bufferWidth3, bufferHeight3, mipCount, DXGI_FORMAT_R32_FLOAT, esram );
-                        g_DepthDownsize4.Create( L"Depth Down-Sized 4 Full Res", bufferWidth4, bufferHeight4, mipCount, DXGI_FORMAT_R32_FLOAT, esram );
-                        g_DepthTiled1.CreateArray( L"Depth De-Interleaved 1 Full Res", bufferWidth3, bufferHeight3, 16, mipCount, DXGI_FORMAT_R16_FLOAT, esram );
-                        g_DepthTiled2.CreateArray( L"Depth De-Interleaved 2 Full Res", bufferWidth4, bufferHeight4, 16, mipCount, DXGI_FORMAT_R16_FLOAT, esram );
-                        g_DepthTiled3.CreateArray( L"Depth De-Interleaved 3 Full Res", bufferWidth5, bufferHeight5, 16, mipCount, DXGI_FORMAT_R16_FLOAT, esram );
-                        g_DepthTiled4.CreateArray( L"Depth De-Interleaved 4 Full Res", bufferWidth6, bufferHeight6, 16, mipCount, DXGI_FORMAT_R16_FLOAT, esram );
-                        g_AOMerged1.Create( L"AO Re-Interleaved 1 Full Res", bufferWidth1, bufferHeight1, mipCount, DXGI_FORMAT_R8_UNORM, esram );
-                        g_AOMerged2.Create( L"AO Re-Interleaved 2 Full Res", bufferWidth2, bufferHeight2, mipCount, DXGI_FORMAT_R8_UNORM, esram );
-                        g_AOMerged3.Create( L"AO Re-Interleaved 3 Full Res", bufferWidth3, bufferHeight3, mipCount, DXGI_FORMAT_R8_UNORM, esram );
-                        g_AOMerged4.Create( L"AO Re-Interleaved 4 Full Res", bufferWidth4, bufferHeight4, mipCount, DXGI_FORMAT_R8_UNORM, esram );
-                        g_AOSmooth1.Create( L"AO Smoothed 1 Full Res", bufferWidth1, bufferHeight1, mipCount, DXGI_FORMAT_R8_UNORM, esram );
-                        g_AOSmooth2.Create( L"AO Smoothed 2 Full Res", bufferWidth2, bufferHeight2, mipCount, DXGI_FORMAT_R8_UNORM, esram );
-                        g_AOSmooth3.Create( L"AO Smoothed 3 Full Res", bufferWidth3, bufferHeight3, mipCount, DXGI_FORMAT_R8_UNORM, esram );
-                        g_AOHighQuality1.Create( L"AO High Quality 1 Full Res", bufferWidth1, bufferHeight1, mipCount, DXGI_FORMAT_R8_UNORM, esram );
-                        g_AOHighQuality2.Create( L"AO High Quality 2 Full Res", bufferWidth2, bufferHeight2, mipCount, DXGI_FORMAT_R8_UNORM, esram );
-                        g_AOHighQuality3.Create( L"AO High Quality 3 Full Res", bufferWidth3, bufferHeight3, mipCount, DXGI_FORMAT_R8_UNORM, esram );
-                        g_AOHighQuality4.Create( L"AO High Quality 4 Full Res", bufferWidth4, bufferHeight4, mipCount, DXGI_FORMAT_R8_UNORM, esram );
+                        g_DepthDownsize1.Create( L"Depth Down-Sized 1", bufferWidth1, bufferHeight1, 1, DXGI_FORMAT_R32_FLOAT, esram );
+                        g_DepthDownsize2.Create( L"Depth Down-Sized 2", bufferWidth2, bufferHeight2, 1, DXGI_FORMAT_R32_FLOAT, esram );
+                        g_DepthDownsize3.Create( L"Depth Down-Sized 3", bufferWidth3, bufferHeight3, 1, DXGI_FORMAT_R32_FLOAT, esram );
+                        g_DepthDownsize4.Create( L"Depth Down-Sized 4", bufferWidth4, bufferHeight4, 1, DXGI_FORMAT_R32_FLOAT, esram );
+                        g_DepthTiled1.CreateArray( L"Depth De-Interleaved 1", bufferWidth3, bufferHeight3, 16, DXGI_FORMAT_R16_FLOAT, esram );
+                        g_DepthTiled2.CreateArray( L"Depth De-Interleaved 2", bufferWidth4, bufferHeight4, 16, DXGI_FORMAT_R16_FLOAT, esram );
+                        g_DepthTiled3.CreateArray( L"Depth De-Interleaved 3", bufferWidth5, bufferHeight5, 16, DXGI_FORMAT_R16_FLOAT, esram );
+                        g_DepthTiled4.CreateArray( L"Depth De-Interleaved 4", bufferWidth6, bufferHeight6, 16, DXGI_FORMAT_R16_FLOAT, esram );
+                        g_AOMerged1.Create( L"AO Re-Interleaved 1", bufferWidth1, bufferHeight1, 1, DXGI_FORMAT_R8_UNORM, esram );
+                        g_AOMerged2.Create( L"AO Re-Interleaved 2", bufferWidth2, bufferHeight2, 1, DXGI_FORMAT_R8_UNORM, esram );
+                        g_AOMerged3.Create( L"AO Re-Interleaved 3", bufferWidth3, bufferHeight3, 1, DXGI_FORMAT_R8_UNORM, esram );
+                        g_AOMerged4.Create( L"AO Re-Interleaved 4", bufferWidth4, bufferHeight4, 1, DXGI_FORMAT_R8_UNORM, esram );
+                        g_AOSmooth1.Create( L"AO Smoothed 1", bufferWidth1, bufferHeight1, 1, DXGI_FORMAT_R8_UNORM, esram );
+                        g_AOSmooth2.Create( L"AO Smoothed 2", bufferWidth2, bufferHeight2, 1, DXGI_FORMAT_R8_UNORM, esram );
+                        g_AOSmooth3.Create( L"AO Smoothed 3", bufferWidth3, bufferHeight3, 1, DXGI_FORMAT_R8_UNORM, esram );
+                        g_AOHighQuality1.Create( L"AO High Quality 1", bufferWidth1, bufferHeight1, 1, DXGI_FORMAT_R8_UNORM, esram );
+                        g_AOHighQuality2.Create( L"AO High Quality 2", bufferWidth2, bufferHeight2, 1, DXGI_FORMAT_R8_UNORM, esram );
+                        g_AOHighQuality3.Create( L"AO High Quality 3", bufferWidth3, bufferHeight3, 1, DXGI_FORMAT_R8_UNORM, esram );
+                        g_AOHighQuality4.Create( L"AO High Quality 4", bufferWidth4, bufferHeight4, 1, DXGI_FORMAT_R8_UNORM, esram );
 	
                    esram.PopStack();    // End generating SSAO
 
