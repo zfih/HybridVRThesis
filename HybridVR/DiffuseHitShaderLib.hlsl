@@ -287,9 +287,6 @@ void Hit(inout RayPayload payload, in BuiltInTriangleIntersectionAttributes attr
     CalculateTrianglePartialDerivatives(uv0, uv1, uv2, p0, p1, p2, dpdu, dpdv);
     float2 ddx, ddy;
     CalculateUVDerivatives(triangleNormal, dpdu, dpdv, worldPosition, xOffsetPoint, yOffsetPoint, ddx, ddy);
-    
-    const float3 viewDir = normalize(-WorldRayDirection());
-    uint materialInstanceId = info.m_materialInstanceId;
 
     const float3 diffuseColor = g_localTexture.SampleGrad(g_s0, uv, ddx, ddy).rgb;
     float3 normal;
@@ -297,7 +294,7 @@ void Hit(inout RayPayload payload, in BuiltInTriangleIntersectionAttributes attr
     float specularMask = g_localSpecular.SampleGrad(g_s0, uv, ddx, ddy).g;
     float gloss = 128.0;
     {
-        normal = g_localNormal.SampleGrad(g_s0, uv, ddx, ddy).rgb * 2.0 - 1.0;
+		normal = g_localNormal.SampleGrad(g_s0, uv, ddx, ddy).rgb * 2.0 - 1.0;
         AntiAliasSpecular(normal, gloss);
         float3x3 tbn = float3x3(vsTangent, vsBitangent, vsNormal);
         normal = normalize(mul(normal, tbn));
@@ -331,6 +328,7 @@ void Hit(inout RayPayload payload, in BuiltInTriangleIntersectionAttributes attr
         shadow = GetShadow(shadowCoord.xyz);
     }
     
+    const float3 viewDir = normalize(-WorldRayDirection());
     outputColor +=  shadow * ApplyLightCommon(
         diffuseColor,
         specularAlbedo,
@@ -343,56 +341,48 @@ void Hit(inout RayPayload payload, in BuiltInTriangleIntersectionAttributes attr
 
     outputColor = ApplySRGBCurve(outputColor);
 
-        float reflectivity =
-            specularMask * pow(1.0 - saturate(dot(-viewDir, normal)), 5.0);
+	float reflectivity;
     // TODO: Should be passed in via material info
-    if (IsReflection)
-    {
-		/*float reflectivity = 
-            normals[int3(DispatchRaysIndex().xy, g_dynamic.curCam)].w;*/
-
-
-		/*if(g_dynamic.curCam == 1)
-		{
-            outputColor = float4(1, 0, 0, 0);
-		}
-        else if(g_dynamic.curCam ==0)
-        {
-            outputColor = float4(0, 1, 0, 0);
-        }
-        else
-        {
-            outputColor = float4(0, 0, 1, 0);
-
-        }*/
-        outputColor = g_screenOutput[int3(DispatchRaysIndex().xy, g_dynamic.curCam)].rgb + reflectivity * outputColor;
-    }
+	if (IsReflection)
+	{
+		reflectivity =
+            normals[int3(DispatchRaysIndex().xy, g_dynamic.curCam)].w;
+		outputColor = g_screenOutput[int3(DispatchRaysIndex().xy, g_dynamic.curCam)].rgb + reflectivity * outputColor;
+	}
+    else
+	{
+		reflectivity =
+            specularMask * pow(1.0 - saturate(dot(viewDir, normal)), 5.0);   
+	}
     
-    if (payload.Bounces > 0)
-    {
-        outputColor = g_screenOutput[int3(DispatchRaysIndex().xy, g_dynamic.curCam)].rgb + payload.Reflectivity * outputColor;
-    }
-
-
+	if (payload.Bounces > 0)
+	{
+		outputColor = g_screenOutput[int3(DispatchRaysIndex().xy, g_dynamic.curCam)].rgb + payload.Reflectivity * outputColor;
+	}
+    
 	g_screenOutput[int3(DispatchRaysIndex().xy, g_dynamic.curCam)] = float4(outputColor, 1);
 
-    if (Reflective)
-    {
-        float3 primaryRayDirection = WorldRayDirection();
-        float3 reflectionDirection = reflect(primaryRayDirection, normal);
+	if (Reflective && payload.Bounces < 2.0f)
+	{
+		float3 primaryRayDirection = WorldRayDirection();
+		float3 reflectionDirection = reflect(primaryRayDirection, normal);
             /*normalize(-primaryRayDirection - 2 * 
-                dot(-primaryRayDirection, normal) * normal);*/ // This was copied from ModelViewerPS but doesn't work? :thinking:
-        float3 reflectionOrigin = worldPosition + reflectionDirection * 0.1f;
-        RayDesc rayDesc = { 
-            reflectionOrigin,
+                dot(-primaryRayDirection, normal) * normal);*/ // This was copied from RayGenerationShaderSSRLib but doesn't work? :thinking:
+            //normalize(primaryRayDirection - 2 *
+            //    dot(primaryRayDirection, normal) * normal);
+		float3 reflectionOrigin = worldPosition + reflectionDirection * 0.1f;
+		RayDesc rayDesc =
+		{
+			reflectionOrigin,
             0.0f,
             reflectionDirection,
-            FLT_MAX };
-        RayPayload reflectionPayload;
-        reflectionPayload.SkipShading = false;
-        reflectionPayload.RayHitT = FLT_MAX;
-        reflectionPayload.Bounces = payload.Bounces + 1;
-        reflectionPayload.Reflectivity = reflectivity;
-        TraceRay(g_accel, RAY_FLAG_CULL_BACK_FACING_TRIANGLES, ~0, 0, 1, 0, rayDesc, reflectionPayload);
-    }
+            FLT_MAX
+		};
+		RayPayload reflectionPayload;
+		reflectionPayload.SkipShading = false;
+		reflectionPayload.RayHitT = FLT_MAX;
+		reflectionPayload.Bounces = payload.Bounces + 1;
+		reflectionPayload.Reflectivity = reflectivity;
+		TraceRay(g_accel, RAY_FLAG_CULL_BACK_FACING_TRIANGLES, ~0, 0, 1, 0, rayDesc, reflectionPayload);
+	}
 }

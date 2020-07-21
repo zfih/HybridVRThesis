@@ -375,6 +375,7 @@ MRT main(VSOutput vsOutput)
     if (AreNormalsNeeded)
     {
         float reflection = specularMask * pow(1.0 - saturate(dot(-viewDir, normal)), 5.0);
+		//float reflection = normal.x;
         mrt.Normal = float4(normal, reflection);
     }
 

@@ -15,7 +15,7 @@
 [shader("miss")]
 void Miss(inout RayPayload payload)
 {
-    if (!payload.SkipShading && !IsReflection)
+	if (!payload.SkipShading && !IsReflection && payload.Bounces < 0)
     {
         g_screenOutput[int3(DispatchRaysIndex().xy, 0)] = float4(0, 0, 0, 1);
         g_screenOutput[int3(DispatchRaysIndex().xy, 1)] = float4(0, 0, 0, 1);// TODO: Do second view differently
