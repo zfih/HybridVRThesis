@@ -347,7 +347,7 @@ MRT main(VSOutput vsOutput)
     float3 colorSum = 0;
     {
         // TODO: Check if this works after SSAO has been fixed
-        float ao = texSSAO.SampleLevel(sampler0, pixelPos, mip);
+        float ao = texSSAO[pixelPos];
         colorSum += ApplyAmbientLight(diffuseAlbedo, ao, AmbientColor);
     }
 
