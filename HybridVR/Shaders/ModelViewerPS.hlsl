@@ -62,6 +62,7 @@ cbuffer PSConstants : register(b0)
     uint4 TileCount;
     uint4 FirstLightIndex;
     uint FrameIndexMod2;
+    float2 InvResolution;
 }
 
 cbuffer MaterialInfo : register(b1)
@@ -346,8 +347,17 @@ MRT main(VSOutput vsOutput)
     float3 diffuseAlbedo = SAMPLE_TEX(texDiffuse);
     float3 colorSum = 0;
     {
-        // TODO: Check if this works after SSAO has been fixed
-        float ao = texSSAO[pixelPos];
+        float texWidth;
+        float texHeight;
+
+        texSSAO.GetDimensions(texWidth, texHeight);
+        
+        float ratio = texWidth * InvResolution.x;
+        
+        float2 uv = ratio * pixelPos;
+        
+        float ao = texSSAO[uv];
+
         colorSum += ApplyAmbientLight(diffuseAlbedo, ao, AmbientColor);
     }
 

@@ -111,6 +111,7 @@ __declspec(align(16)) struct PSConstants
 	uint32_t TileCount[4];
 	uint32_t FirstLightIndex[4];
 	uint32_t FrameIndexMod2;
+	float InvResolution[2];
 };
 
 ByteAddressBuffer g_hitConstantBuffer;
@@ -1873,6 +1874,8 @@ void D3D12RaytracingMiniEngineSample::RenderScene()
 	psConstants.FirstLightIndex[0] = Lighting::m_FirstConeLight;
 	psConstants.FirstLightIndex[1] = Lighting::m_FirstConeShadowedLight;
 	psConstants.FrameIndexMod2 = TemporalEffects::GetFrameIndexMod2();
+	psConstants.InvResolution[0] = 1. / g_SceneColorBuffer.GetMipWidth(g_CurrentMip);
+	psConstants.InvResolution[1] = 1. / g_SceneColorBuffer.GetMipHeight(g_CurrentMip);
 
 	if(!skipShadowMap)
 	{

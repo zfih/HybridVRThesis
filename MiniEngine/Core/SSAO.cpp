@@ -135,8 +135,8 @@ namespace SSAO
 {
     void ComputeAO(ComputeContext& Context, ColorBuffer& Destination, ColorBuffer& DepthBuffer, const float TanHalfFovH)
     {
-        size_t BufferWidth = DepthBuffer.GetMipWidth(g_CurrentMip);
-        size_t BufferHeight = DepthBuffer.GetMipHeight(g_CurrentMip);
+        size_t BufferWidth = DepthBuffer.GetWidth();
+        size_t BufferHeight = DepthBuffer.GetHeight();
         size_t ArrayCount = DepthBuffer.GetDepth();
 
         // Here we compute multipliers that convert the center depth value into (the reciprocal of)
@@ -238,10 +238,10 @@ namespace SSAO
         ColorBuffer* InterleavedAO, ColorBuffer* HighQualityAO, ColorBuffer* HiResAO
     )
     {
-        size_t LoWidth  = LoResDepth.GetMipWidth (g_CurrentMip);
-        size_t LoHeight = LoResDepth.GetMipHeight(g_CurrentMip);
-        size_t HiWidth  = HiResDepth.GetMipWidth (g_CurrentMip);
-        size_t HiHeight = HiResDepth.GetMipHeight(g_CurrentMip);
+        size_t LoWidth  = LoResDepth.GetWidth ();
+        size_t LoHeight = LoResDepth.GetHeight();
+        size_t HiWidth  = HiResDepth.GetWidth ();
+        size_t HiHeight = HiResDepth.GetHeight();
 
         ComputePSO* shader = nullptr;
         if (HiResAO == nullptr)
@@ -254,14 +254,14 @@ namespace SSAO
         }
         Context.SetPipelineState(*shader);
 
-        float kBlurTolerance = 1.0f - powf(10.0f, Settings::BlurTolerance) * 1920.0f / (float)LoWidth;
+        float kBlurTolerance = 1.0f - powf(10.0f, Settings::BlurTolerance) * g_SceneColorBuffer.GetWidth() / (float)LoWidth;
         kBlurTolerance *= kBlurTolerance;
         float kUpsampleTolerance = powf(10.0f, Settings::UpsampleTolerance);
         float kNoiseFilterWeight = 1.0f / (powf(10.0f, Settings::NoiseFilterTolerance) + kUpsampleTolerance);
 
         __declspec(align(16)) float cbData[] = {
             1.0f / LoWidth, 1.0f / LoHeight, 1.0f / HiWidth, 1.0f / HiHeight,
-            kNoiseFilterWeight, 1920.0f / (float)LoWidth, kBlurTolerance, kUpsampleTolerance
+            kNoiseFilterWeight, g_SceneColorBuffer.GetWidth() / (float)LoWidth, kBlurTolerance, kUpsampleTolerance
         };
         Context.SetDynamicConstantBufferView(1, sizeof(cbData), cbData);
 
