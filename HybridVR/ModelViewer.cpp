@@ -505,32 +505,16 @@ void InitializeViews(const Model& model)
 
 	UINT unused;
 	{
-		// TODO: THESE FIXES MIGHT NEED MORE INTERVENTION BECAUSE THEY ARE SRVs WHICH CANNOT BE BOUND BY MIP
-		// INSTEAD MIPS MUST BE ACCESSED IN THE SHADER CODE
 		D3D12_CPU_DESCRIPTOR_HANDLE srvHandle;
 		UINT srvDescriptorIndex;
 		g_pRaytracingDescriptorHeap->AllocateDescriptor(srvHandle, srvDescriptorIndex);
-		// TODO: TMP REWORK: HANDLE LOW RES
-		Graphics::g_Device->CopyDescriptorsSimple(1, srvHandle, g_SceneDepthBuffer.GetDepthSRV(), // HIGH RES
+		Graphics::g_Device->CopyDescriptorsSimple(1, srvHandle, g_SceneDepthBuffer.GetDepthSRV(),
 		                                          D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 		g_DepthAndNormalsTableFullRes = g_pRaytracingDescriptorHeap->GetGpuHandle(srvDescriptorIndex);
 
 		g_pRaytracingDescriptorHeap->AllocateDescriptor(srvHandle, unused);
-		// TODO: TMP REWORK: HANDLE LOW RES
-		Graphics::g_Device->CopyDescriptorsSimple(1, srvHandle, g_SceneNormalBuffer.GetSRV(), // HIGH RES
+		Graphics::g_Device->CopyDescriptorsSimple(1, srvHandle, g_SceneNormalBuffer.GetSRV(),
 		                                          D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
-
-		//g_pRaytracingDescriptorHeap->AllocateDescriptor(srvHandle, srvDescriptorIndex);
-		//// TODO: TMP REWORK: HANDLE LOW RES
-		//Graphics::g_Device->CopyDescriptorsSimple(1, srvHandle, g_SceneDepthBuffer.GetDepthSRV(), // LOW RES
-		//	D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
-		//g_DepthAndNormalsTableLowRes = g_pRaytracingDescriptorHeap->GetGpuHandle(srvDescriptorIndex);
-
-		//g_pRaytracingDescriptorHeap->AllocateDescriptor(srvHandle, unused);
-		//Graphics::g_Device->CopyDescriptorsSimple(1, srvHandle,
-		//	// TODO: TMP REWORK: HANDLE LOW RES
-		//	g_SceneNormalBuffer.GetSRV(), // LOW RES
-		//	D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 	}
 
 	{
@@ -552,34 +536,9 @@ void InitializeViews(const Model& model)
 		                                          D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 
 		g_pRaytracingDescriptorHeap->AllocateDescriptor(srvHandle, unused);
-		// TODO: THESE FIXES MIGHT NEED MORE INTERVENTION BECAUSE THEY ARE SRVs WHICH CANNOT BE BOUND BY MIP
-		// INSTEAD MIPS MUST BE ACCESSED IN THE SHADER CODE
-		// TODO: TMP REWORK: HANDLE LOW RES
-		Graphics::g_Device->CopyDescriptorsSimple(1, srvHandle, g_SSAOFullScreen.GetSRV(), // HIGH RES
+		Graphics::g_Device->CopyDescriptorsSimple(1, srvHandle, g_SSAOFullScreen.GetSRV(),
 		                                          D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
-
-		g_pRaytracingDescriptorHeap->AllocateDescriptor(srvHandle, srvDescriptorIndex);
-		Graphics::g_Device->CopyDescriptorsSimple(1, srvHandle, g_SceneMeshInfo,
-			D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
-		g_SceneSrvsLowRes = g_pRaytracingDescriptorHeap->GetGpuHandle(srvDescriptorIndex);
-
-		g_pRaytracingDescriptorHeap->AllocateDescriptor(srvHandle, unused);
-		Graphics::g_Device->CopyDescriptorsSimple(1, srvHandle, g_SceneIndices, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
-
-		g_pRaytracingDescriptorHeap->
-			AllocateBufferSrv(*const_cast<ID3D12Resource*>(model.m_VertexBuffer.GetResource()));
-
-		g_pRaytracingDescriptorHeap->AllocateDescriptor(srvHandle, unused);
-		Graphics::g_Device->CopyDescriptorsSimple(1, srvHandle, g_ShadowBuffer.GetSRV(),
-			D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
-
-		g_pRaytracingDescriptorHeap->AllocateDescriptor(srvHandle, unused);
-		// TODO: THESE FIXES MIGHT NEED MORE INTERVENTION BECAUSE THEY ARE SRVs WHICH CANNOT BE BOUND BY MIP
-		// INSTEAD MIPS MUST BE ACCESSED IN THE SHADER CODE
-		// TODO: TMP REWORK: HANDLE LOW RES
-		Graphics::g_Device->CopyDescriptorsSimple(1, srvHandle, g_SSAOFullScreen.GetSRV(), // LOW RES
-			D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
-
+		
 		for (UINT i = 0; i < model.m_Header.materialCount; i++)
 		{
 			UINT slot;
@@ -2256,29 +2215,24 @@ void D3D12RaytracingMiniEngineSample::Raytrace(class GraphicsContext& gfxContext
 	switch (Settings::RayTracingMode)
 	{
 	case Settings::RTM_TRAVERSAL:
-		// TODO: TMP REWORK: HANDLE LOW RES (No idea how this is affected)
 		Raytracebarycentrics(gfxContext, g_SceneColorBuffer);
 		break;
 
 	case Settings::RTM_SSR:
-		// TODO: TMP REWORK: HANDLE LOW RES (No idea how this is affected)
 		RaytracebarycentricsSSR(gfxContext, g_SceneColorBuffer, g_SceneDepthBuffer,
 		                        g_SceneNormalBuffer);
 		break;
 
 	case Settings::RTM_SHADOWS:
-		// TODO: TMP REWORK: HANDLE LOW RES (No idea how this is affected)
 		RaytraceShadows(gfxContext, g_SceneColorBuffer, g_SceneDepthBuffer);
 		break;
 
 	case Settings::RTM_DIFFUSE_WITH_SHADOWMAPS:
 	case Settings::RTM_DIFFUSE_WITH_SHADOWRAYS:
-		// TODO: TMP REWORK: HANDLE LOW RES (No idea how this is affected)
 		RaytraceDiffuse(gfxContext, g_SceneColorBuffer);
 		break;
 
 	case Settings::RTM_REFLECTIONS:
-		// TODO: TMP REWORK: HANDLE LOW RES (No idea how this is affected)
 		RaytraceReflections(gfxContext, g_SceneColorBuffer, g_SceneDepthBuffer, g_SceneNormalBuffer);
 		break;
 	}
