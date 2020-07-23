@@ -18,6 +18,7 @@
 cbuffer Material : register(b3)
 {
     uint MaterialID;
+    uint Reflective;
 }
 
 StructuredBuffer<RayTraceMeshInfo> g_meshInfo : register(t1);
@@ -30,6 +31,7 @@ SamplerComparisonState shadowSampler : register(s1);
 
 Texture2D<float4> g_localTexture : register(t6);
 Texture2D<float4> g_localNormal : register(t7);
+Texture2D<float4> g_localSpecular : register(t8);
 
 Texture2DArray<float4>   normals  : register(t13);
 
@@ -189,7 +191,7 @@ dU    =   ( dpdu.x, dpdv.x)^-1  (pX.x - p.x)
 dV    =   ( dpdu.y, dpdv.y)     (pX.y - p.y)
 */
 
-void CalculateUVDerivatives(float3 normal, float3 dpdu, float3 dpdv, float3 p, float3 pX, float3 pY, out float2 ddX, out float2 ddY)
+void CalculateUVDerivatives(float3 normal, float3 dpdu, float3 dpdv, float3 p, float3 pX, float3 pY, float bounces, out float2 ddX, out float2 ddY)
 {
     int2 indices;
     float3 absNormal = abs(normal);
@@ -210,13 +212,15 @@ void CalculateUVDerivatives(float3 normal, float3 dpdu, float3 dpdv, float3 p, f
     linearEquation[0] = float2(dpdu[indices.x], dpdv[indices.x]);
     linearEquation[1] = float2(dpdu[indices.y], dpdv[indices.y]);
 
+	float dampen = (IsReflection || bounces == 1) ? 50.0f : 2.0f;
+    
     float2x2 inverse;
     Inverse2x2(linearEquation, inverse);
     float2 pointOffset = float2(pX[indices.x] - p[indices.x], pX[indices.y] - p[indices.y]);
-    ddX = abs(mul(inverse, pointOffset));
+	ddX = abs(mul(inverse, pointOffset)) / dampen;
 
     pointOffset = float2(pY[indices.x] - p[indices.x], pY[indices.y] - p[indices.y]);
-    ddY = abs(mul(inverse, pointOffset));
+	ddY = abs(mul(inverse, pointOffset)) / dampen;
 }
 
 float3 ApplySRGBCurve(float3 x)
@@ -228,107 +232,109 @@ float3 ApplySRGBCurve(float3 x)
 [shader("closesthit")]
 void Hit(inout RayPayload payload, in BuiltInTriangleIntersectionAttributes attr)
 {
-    payload.RayHitT = RayTCurrent();
-    if (payload.SkipShading)
-    {
-        return;
-    }
+	payload.RayHitT = RayTCurrent();
+	if (payload.SkipShading)
+	{
+		return;
+	}
 
-    uint materialID = MaterialID;
-    uint triangleID = PrimitiveIndex();
+	uint materialID = MaterialID;
+	uint triangleID = PrimitiveIndex();
 
-    RayTraceMeshInfo info = g_meshInfo[materialID];
+	RayTraceMeshInfo info = g_meshInfo[materialID];
 
-    const uint3 ii = Load3x16BitIndices(info.m_indexOffsetBytes + PrimitiveIndex() * 3 * 2);
-    const float2 uv0 = GetUVAttribute(info.m_uvAttributeOffsetBytes + ii.x * info.m_attributeStrideBytes);
-    const float2 uv1 = GetUVAttribute(info.m_uvAttributeOffsetBytes + ii.y * info.m_attributeStrideBytes);
-    const float2 uv2 = GetUVAttribute(info.m_uvAttributeOffsetBytes + ii.z * info.m_attributeStrideBytes);
+	const uint3 ii = Load3x16BitIndices(info.m_indexOffsetBytes + PrimitiveIndex() * 3 * 2);
+	const float2 uv0 = GetUVAttribute(info.m_uvAttributeOffsetBytes + ii.x * info.m_attributeStrideBytes);
+	const float2 uv1 = GetUVAttribute(info.m_uvAttributeOffsetBytes + ii.y * info.m_attributeStrideBytes);
+	const float2 uv2 = GetUVAttribute(info.m_uvAttributeOffsetBytes + ii.z * info.m_attributeStrideBytes);
 
-    float3 bary = float3(1.0 - attr.barycentrics.x - attr.barycentrics.y, attr.barycentrics.x, attr.barycentrics.y);
-    float2 uv = bary.x * uv0 + bary.y * uv1 + bary.z * uv2;
+	float3 bary = float3(1.0 - attr.barycentrics.x - attr.barycentrics.y, attr.barycentrics.x, attr.barycentrics.y);
+	float2 uv = bary.x * uv0 + bary.y * uv1 + bary.z * uv2;
 
-    const float3 normal0 = asfloat(g_attributes.Load3(info.m_normalAttributeOffsetBytes + ii.x * info.m_attributeStrideBytes));
-    const float3 normal1 = asfloat(g_attributes.Load3(info.m_normalAttributeOffsetBytes + ii.y * info.m_attributeStrideBytes));
-    const float3 normal2 = asfloat(g_attributes.Load3(info.m_normalAttributeOffsetBytes + ii.z * info.m_attributeStrideBytes));
-    float3 vsNormal = normalize(normal0 * bary.x + normal1 * bary.y + normal2 * bary.z);
+	const float3 normal0 = asfloat(g_attributes.Load3(info.m_normalAttributeOffsetBytes + ii.x * info.m_attributeStrideBytes));
+	const float3 normal1 = asfloat(g_attributes.Load3(info.m_normalAttributeOffsetBytes + ii.y * info.m_attributeStrideBytes));
+	const float3 normal2 = asfloat(g_attributes.Load3(info.m_normalAttributeOffsetBytes + ii.z * info.m_attributeStrideBytes));
+	float3 vsNormal = normalize(normal0 * bary.x + normal1 * bary.y + normal2 * bary.z);
     
-    const float3 tangent0 = asfloat(g_attributes.Load3(info.m_tangentAttributeOffsetBytes + ii.x * info.m_attributeStrideBytes));
-    const float3 tangent1 = asfloat(g_attributes.Load3(info.m_tangentAttributeOffsetBytes + ii.y * info.m_attributeStrideBytes));
-    const float3 tangent2 = asfloat(g_attributes.Load3(info.m_tangentAttributeOffsetBytes + ii.z * info.m_attributeStrideBytes));
-    float3 vsTangent = normalize(tangent0 * bary.x + tangent1 * bary.y + tangent2 * bary.z);
+	const float3 tangent0 = asfloat(g_attributes.Load3(info.m_tangentAttributeOffsetBytes + ii.x * info.m_attributeStrideBytes));
+	const float3 tangent1 = asfloat(g_attributes.Load3(info.m_tangentAttributeOffsetBytes + ii.y * info.m_attributeStrideBytes));
+	const float3 tangent2 = asfloat(g_attributes.Load3(info.m_tangentAttributeOffsetBytes + ii.z * info.m_attributeStrideBytes));
+	float3 vsTangent = normalize(tangent0 * bary.x + tangent1 * bary.y + tangent2 * bary.z);
 
     // Reintroduced the bitangent because we aren't storing the handedness of the tangent frame anywhere.  Assuming the space
     // is right-handed causes normal maps to invert for some surfaces.  The Sponza mesh has all three axes of the tangent frame.
     //float3 vsBitangent = normalize(cross(vsNormal, vsTangent)) * (isRightHanded ? 1.0 : -1.0);
-    const float3 bitangent0 = asfloat(g_attributes.Load3(info.m_bitangentAttributeOffsetBytes + ii.x * info.m_attributeStrideBytes));
-    const float3 bitangent1 = asfloat(g_attributes.Load3(info.m_bitangentAttributeOffsetBytes + ii.y * info.m_attributeStrideBytes));
-    const float3 bitangent2 = asfloat(g_attributes.Load3(info.m_bitangentAttributeOffsetBytes + ii.z * info.m_attributeStrideBytes));
-    float3 vsBitangent = normalize(bitangent0 * bary.x + bitangent1 * bary.y + bitangent2 * bary.z);
+	const float3 bitangent0 = asfloat(g_attributes.Load3(info.m_bitangentAttributeOffsetBytes + ii.x * info.m_attributeStrideBytes));
+	const float3 bitangent1 = asfloat(g_attributes.Load3(info.m_bitangentAttributeOffsetBytes + ii.y * info.m_attributeStrideBytes));
+	const float3 bitangent2 = asfloat(g_attributes.Load3(info.m_bitangentAttributeOffsetBytes + ii.z * info.m_attributeStrideBytes));
+	float3 vsBitangent = normalize(bitangent0 * bary.x + bitangent1 * bary.y + bitangent2 * bary.z);
 
     // TODO: Should just store uv partial derivatives in here rather than loading position and caculating it per pixel
-    const float3 p0 = asfloat(g_attributes.Load3(info.m_positionAttributeOffsetBytes + ii.x * info.m_attributeStrideBytes));
-    const float3 p1 = asfloat(g_attributes.Load3(info.m_positionAttributeOffsetBytes + ii.y * info.m_attributeStrideBytes));
-    const float3 p2 = asfloat(g_attributes.Load3(info.m_positionAttributeOffsetBytes + ii.z * info.m_attributeStrideBytes));
+	const float3 p0 = asfloat(g_attributes.Load3(info.m_positionAttributeOffsetBytes + ii.x * info.m_attributeStrideBytes));
+	const float3 p1 = asfloat(g_attributes.Load3(info.m_positionAttributeOffsetBytes + ii.y * info.m_attributeStrideBytes));
+	const float3 p2 = asfloat(g_attributes.Load3(info.m_positionAttributeOffsetBytes + ii.z * info.m_attributeStrideBytes));
 
-    float3 worldPosition = WorldRayOrigin() + WorldRayDirection() * RayTCurrent();
+	float3 worldPosition = WorldRayOrigin() + WorldRayDirection() * RayTCurrent();
 
-    uint2 threadID = DispatchRaysIndex().xy;
-    float3 ddxOrigin, ddxDir, ddyOrigin, ddyDir;
-    GenerateCameraRay(uint2(threadID.x + 1, threadID.y), ddxOrigin, ddxDir);
-    GenerateCameraRay(uint2(threadID.x, threadID.y + 1), ddyOrigin, ddyDir);
+	uint2 threadID = DispatchRaysIndex().xy;
+	float3 ddxOrigin, ddxDir, ddyOrigin, ddyDir;
+	GenerateCameraRay(uint2(threadID.x + 1, threadID.y), ddxOrigin, ddxDir);
+	GenerateCameraRay(uint2(threadID.x, threadID.y + 1), ddyOrigin, ddyDir);
 
-    float3 triangleNormal = normalize(cross(p2 - p0, p1 - p0));
-    float3 xOffsetPoint = RayPlaneIntersection(worldPosition, triangleNormal, ddxOrigin, ddxDir);
-    float3 yOffsetPoint = RayPlaneIntersection(worldPosition, triangleNormal, ddyOrigin, ddyDir);
+	float3 triangleNormal = normalize(cross(p2 - p0, p1 - p0));
+	float3 xOffsetPoint = RayPlaneIntersection(worldPosition, triangleNormal, ddxOrigin, ddxDir);
+	float3 yOffsetPoint = RayPlaneIntersection(worldPosition, triangleNormal, ddyOrigin, ddyDir);
 
-    float3 dpdu, dpdv;
-    CalculateTrianglePartialDerivatives(uv0, uv1, uv2, p0, p1, p2, dpdu, dpdv);
-    float2 ddx, ddy;
-    CalculateUVDerivatives(triangleNormal, dpdu, dpdv, worldPosition, xOffsetPoint, yOffsetPoint, ddx, ddy);
-    
-    const float3 viewDir = normalize(-WorldRayDirection());
-    uint materialInstanceId = info.m_materialInstanceId;
+	float3 dpdu, dpdv;
+	CalculateTrianglePartialDerivatives(uv0, uv1, uv2, p0, p1, p2, dpdu, dpdv);
+	float2 ddx, ddy;
+	CalculateUVDerivatives(triangleNormal, dpdu, dpdv, worldPosition, xOffsetPoint, yOffsetPoint, payload.Bounces, ddx, ddy);
 
-    const float3 diffuseColor = g_localTexture.SampleGrad(g_s0, uv, ddx, ddy).rgb;
-    float3 normal;
-    float3 specularAlbedo = float3(0.56, 0.56, 0.56);
-    float specularMask = 0;     // TODO: read the texture
-    float gloss = 128.0;
+	const float3 diffuseColor = g_localTexture.SampleGrad(g_s0, uv, ddx, ddy).rgb; //g_localTexture.SampleLevel(g_s0, uv, 0).rgb;
+	float3 normal;
+	float3 specularAlbedo = float3(0.56, 0.56, 0.56);
+	float specularMask = g_localSpecular.SampleGrad(g_s0, uv, ddx, ddy).g; //g_localSpecular.SampleLevel(g_s0, uv, 0).g;
+	float gloss = 128.0;
     {
-        normal = g_localNormal.SampleGrad(g_s0, uv, ddx, ddy).rgb * 2.0 - 1.0;
-        AntiAliasSpecular(normal, gloss);
-        float3x3 tbn = float3x3(vsTangent, vsBitangent, vsNormal);
-        normal = normalize(mul(normal, tbn));
-    }
+		normal = g_localNormal.SampleGrad(g_s0, uv, ddx, ddy).rgb * 2.0 - 1.0; //g_localNormal.SampleLevel(g_s0, uv, 0).rgb * 2.0 - 1.0;
+		AntiAliasSpecular(normal, gloss);
+		float3x3 tbn = float3x3(vsTangent, vsBitangent, vsNormal);
+		normal = normalize(mul(normal, tbn));
+	}
     
-    float3 outputColor = AmbientColor * diffuseColor * texSSAO[DispatchRaysIndex().xy];
+	float3 outputColor = AmbientColor * diffuseColor * texSSAO[DispatchRaysIndex().xy];
 
-    float shadow = 1.0;
-    if (UseShadowRays)
-    {
-        float3 shadowDirection = SunDirection;
-        float3 shadowOrigin = worldPosition;
-        RayDesc rayDesc = { shadowOrigin,
+	float shadow = 1.0;
+	if (UseShadowRays)
+	{
+		float3 shadowDirection = SunDirection;
+		float3 shadowOrigin = worldPosition;
+		RayDesc rayDesc =
+		{
+			shadowOrigin,
             0.1f,
             shadowDirection,
-            FLT_MAX };
-        RayPayload shadowPayload;
-        shadowPayload.SkipShading = true;
-        shadowPayload.RayHitT = FLT_MAX;
-        TraceRay(g_accel, RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH,~0,0,1,0,rayDesc,shadowPayload);
-        if (shadowPayload.RayHitT < FLT_MAX)
-        {
-            shadow = 0.0;
-        }
-    }
-    else
-    {
+            FLT_MAX
+		};
+		RayPayload shadowPayload;
+		shadowPayload.SkipShading = true;
+		shadowPayload.RayHitT = FLT_MAX;
+		shadowPayload.Bounces = payload.Bounces + 1;
+		TraceRay(g_accel, RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH, ~0, 0, 1, 0, rayDesc, shadowPayload);
+		if (shadowPayload.RayHitT < FLT_MAX)
+		{
+			shadow = 0.0;
+		}
+	}
+	else
+	{
         // TODO: This could be pre-calculated once per vertex if this mul per pixel was a concern
-        float4 shadowCoord = mul(ModelToShadow, float4(worldPosition, 1.0f));
-        shadow = GetShadow(shadowCoord.xyz);
-    }
+		float4 shadowCoord = mul(ModelToShadow, float4(worldPosition, 1.0f));
+		shadow = GetShadow(shadowCoord.xyz);
+	}
     
-    outputColor +=  shadow * ApplyLightCommon(
+	const float3 viewDir = WorldRayDirection();
+	outputColor += shadow * ApplyLightCommon(
         diffuseColor,
         specularAlbedo,
         specularMask,
@@ -338,29 +344,34 @@ void Hit(inout RayPayload payload, in BuiltInTriangleIntersectionAttributes attr
         SunDirection,
         SunColor);
 
-    outputColor = ApplySRGBCurve(outputColor);
-
-    // TODO: Should be passed in via material info
-    if (IsReflection)
-    {
-		float reflectivity = 
-            normals[int3(DispatchRaysIndex().xy, g_dynamic.curCam)].w;
-		/*if(g_dynamic.curCam == 1)
-		{
-            outputColor = float4(1, 0, 0, 0);
-		}
-        else if(g_dynamic.curCam ==0)
-        {
-            outputColor = float4(0, 1, 0, 0);
-        }
-        else
-        {
-            outputColor = float4(0, 0, 1, 0);
-
-        }*/
-        outputColor = g_screenOutput[int3(DispatchRaysIndex().xy, g_dynamic.curCam)].rgb + reflectivity * outputColor;
-    }
-
-
+	outputColor = ApplySRGBCurve(outputColor);
+    
+	if (payload.Bounces > 0)
+	{
+		outputColor = g_screenOutput[int3(DispatchRaysIndex().xy, g_dynamic.curCam)].rgb * (1 - payload.Reflectivity) + payload.Reflectivity * outputColor;
+	}
+    
 	g_screenOutput[int3(DispatchRaysIndex().xy, g_dynamic.curCam)] = float4(outputColor, 1);
+
+	float reflectivity =
+        specularMask * pow(1.0 - saturate(dot(-viewDir, normal)), 5.0);
+    
+	if (Reflective && payload.Bounces < 3)
+	{
+		float3 reflectionDirection = reflect(viewDir, normal);
+		float3 reflectionOrigin = worldPosition + reflectionDirection * 0.1f;
+		RayDesc rayDesc =
+		{
+			reflectionOrigin,
+            0.0f,
+            reflectionDirection,
+            FLT_MAX
+		};
+		RayPayload reflectionPayload;
+		reflectionPayload.SkipShading = false;
+		reflectionPayload.RayHitT = FLT_MAX;
+		reflectionPayload.Bounces = payload.Bounces + 1;
+		reflectionPayload.Reflectivity = reflectivity * payload.Reflectivity;
+		TraceRay(g_accel, RAY_FLAG_CULL_BACK_FACING_TRIANGLES, ~0, 0, 1, 0, rayDesc, reflectionPayload);
+	}
 }
