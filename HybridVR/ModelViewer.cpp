@@ -137,7 +137,7 @@ enum RaytracingTypes
 	NumTypes
 };
 
-const static UINT MaxRayRecursion = 3;
+const static UINT MaxRayRecursion = 5;
 
 const static UINT c_NumCameraPositions = 5;
 
@@ -993,7 +993,7 @@ void D3D12RaytracingMiniEngineSample::Startup(void)
 	                           DXGI_FORMAT_R16G16B16A16_FLOAT);
 #else
 	g_SceneNormalBuffer.CreateArray(L"Main Normal Buffer", g_SceneColorBuffer.GetWidth(), g_SceneColorBuffer.GetHeight(), 2,
-	                           DXGI_FORMAT_R8G8B8A8_UNORM);
+	                           DXGI_FORMAT_R8G8B8A8_SNORM);
 #endif
 
 	g_pRaytracingDescriptorHeap = std::unique_ptr<DescriptorHeapStack>(
@@ -1076,7 +1076,7 @@ void D3D12RaytracingMiniEngineSample::Startup(void)
 	m_ModelPSO[0] = m_DepthPSO[0];
 	m_ModelPSO[0].SetBlendState(BlendDisable);
 	m_ModelPSO[0].SetDepthStencilState(DepthStateTestEqual);
-	DXGI_FORMAT formats[]{ColorFormat, ColorFormat, NormalFormat};
+	DXGI_FORMAT formats[]{ColorFormat, NormalFormat};
 	m_ModelPSO[0].SetRenderTargetFormats(_countof(formats), formats, DepthFormat);
 	m_ModelPSO[0].SetVertexShader(g_pModelViewerVS, sizeof(g_pModelViewerVS));
 	m_ModelPSO[0].SetPixelShader(g_pModelViewerPS, sizeof(g_pModelViewerPS));
