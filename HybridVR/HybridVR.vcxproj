@@ -281,7 +281,9 @@
     <FxCompile Include="Shaders\DepthViewerVS.hlsl">
       <ShaderType>Vertex</ShaderType>
     </FxCompile>
-    <FxCompile Include="Shaders\DownsampleCS.hlsl" />
+    <FxCompile Include="Shaders\DownsampleCS.hlsl">
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">5.0</ShaderModel>
+    </FxCompile>
     <FxCompile Include="Shaders\FillLightGridCS_16.hlsl" />
     <FxCompile Include="Shaders\FillLightGridCS_24.hlsl" />
     <FxCompile Include="Shaders\FillLightGridCS_32.hlsl" />

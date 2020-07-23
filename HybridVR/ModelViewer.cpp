@@ -1904,6 +1904,8 @@ void D3D12RaytracingMiniEngineSample::FrameIntegration()
 			cmpContext.TransitionResource(g_SceneColorBuffer, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 			cmpContext.TransitionResource(g_SceneColorBufferLowPassed, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, true);
 
+			cmpContext.ClearUAV(g_SceneColorBufferLowPassed);
+			
 			// No need to handle mip here. We need the high res no matter what
 			cmpContext.SetDynamicDescriptor(0, 0, g_SceneColorBuffer.GetSRV());
 			cmpContext.SetDynamicDescriptor(1, 0, g_SceneColorBufferLowPassed.GetUAV());
@@ -1918,7 +1920,7 @@ void D3D12RaytracingMiniEngineSample::FrameIntegration()
 
 			cmpContext.SetDynamicDescriptor(0, 0, g_SceneColorBuffer.GetMipUAV(0, 2));
 			cmpContext.SetDynamicDescriptor(1, 0, g_SceneColorBuffer.GetMipUAV(1, 2));
-			cmpContext.SetDynamicDescriptor(0, 0, g_SceneColorBufferLowPassed.GetSRV());
+			cmpContext.SetDynamicDescriptor(2, 0, g_SceneColorBufferLowPassed.GetSRV());
 
 			cmpContext.Dispatch2D(
 				g_SceneColorBuffer.GetMipWidth(g_CurrentMip),

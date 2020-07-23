@@ -12,9 +12,9 @@ void main(uint3 DTid : SV_DispatchThreadID)
 	float elements;
 	LowPassImage.GetDimensions(nTextureWidth, nTextureHeight, elements);
 	
-	float3 uv = float3(DTid.x / nTextureWidth, DTid.y / nTextureHeight, 0);
-	LeftMip[uint2(DTid.xy)] = LowPassImage.SampleLevel(Sampler, uv, 0);
+	float3 uv = float3(DTid.x / nTextureWidth, DTid.y / nTextureHeight, 1);
+    LeftMip[uint2(DTid.xy)] = LowPassImage.SampleLevel(Sampler, uv, 0);
 
 	uv.z = 1;
-	RightMip[uint2(DTid.xy)] = LowPassImage.SampleLevel(Sampler, uv, 0);
+    RightMip[uint2(DTid.xy)] = LowPassImage.SampleLevel(Sampler, uv, 0);
 }

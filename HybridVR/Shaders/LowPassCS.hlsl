@@ -26,7 +26,7 @@ void filter(uint3 DTid, int cam)
 		{
 			float weight = weights[x + 2][y + 2];
 			colorSum += weight * 
-						 HighResImage[float3(DTid.x + x, DTid.y + y, cam)];
+						 HighResImage[uint3(DTid.x + x, DTid.y + y, cam)];
 		}
 	}
 
