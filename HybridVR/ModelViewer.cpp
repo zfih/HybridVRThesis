@@ -536,9 +536,28 @@ void InitializeViews(const Model& model)
 		                                          D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 
 		g_pRaytracingDescriptorHeap->AllocateDescriptor(srvHandle, unused);
-		Graphics::g_Device->CopyDescriptorsSimple(1, srvHandle, g_SSAOFullScreen.GetSRV(),
+		Graphics::g_Device->CopyDescriptorsSimple(1, srvHandle, g_SSAOFullScreen.GetSRV(), // HIGH RES
 		                                          D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
-		
+
+		g_pRaytracingDescriptorHeap->AllocateDescriptor(srvHandle, srvDescriptorIndex);
+		Graphics::g_Device->CopyDescriptorsSimple(1, srvHandle, g_SceneMeshInfo,
+			D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+		g_SceneSrvsLowRes = g_pRaytracingDescriptorHeap->GetGpuHandle(srvDescriptorIndex);
+
+		g_pRaytracingDescriptorHeap->AllocateDescriptor(srvHandle, unused);
+		Graphics::g_Device->CopyDescriptorsSimple(1, srvHandle, g_SceneIndices, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+
+		g_pRaytracingDescriptorHeap->
+			AllocateBufferSrv(*const_cast<ID3D12Resource*>(model.m_VertexBuffer.GetResource()));
+
+		g_pRaytracingDescriptorHeap->AllocateDescriptor(srvHandle, unused);
+		Graphics::g_Device->CopyDescriptorsSimple(1, srvHandle, g_ShadowBuffer.GetSRV(),
+			D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+
+		g_pRaytracingDescriptorHeap->AllocateDescriptor(srvHandle, unused);
+		Graphics::g_Device->CopyDescriptorsSimple(1, srvHandle, g_SSAOFullScreen.GetSRV(),
+			D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+
 		for (UINT i = 0; i < model.m_Header.materialCount; i++)
 		{
 			UINT slot;
