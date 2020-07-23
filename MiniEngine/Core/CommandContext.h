@@ -198,10 +198,12 @@ public:
     void ClearUAV( GpuBuffer& Target );
     void ClearUAV( ColorBuffer& Target );
     void ClearColor( ColorBuffer& Target );
-	void ClearColor(ColorBuffer& Target, int subRTV);
+	void ClearColor(ColorBuffer& Target, uint32_t ArrayIndex);
+	void ClearColor(ColorBuffer& Target, uint32_t ArrayIndex, uint32_t MipLevel);
     void ClearDepth( DepthBuffer& Target );
     void ClearStencil( DepthBuffer& Target );
     void ClearDepthAndStencil( DepthBuffer& Target );
+    void ClearDepthAndStencil( DepthBuffer& Target, uint32_t sub, uint32_t mip );
 
     void BeginQuery(ID3D12QueryHeap* QueryHeap, D3D12_QUERY_TYPE Type, UINT HeapIndex);
     void EndQuery(ID3D12QueryHeap* QueryHeap, D3D12_QUERY_TYPE Type, UINT HeapIndex);

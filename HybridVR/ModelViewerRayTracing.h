@@ -20,6 +20,7 @@ struct DynamicCB
     uint     padding;
     float2   resolution;
 	uint     curCam;
+    uint     mip;
 };
 #ifdef HLSL
 #ifndef SINGLE

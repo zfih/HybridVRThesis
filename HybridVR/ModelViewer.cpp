@@ -83,20 +83,6 @@ using namespace Graphics;
 
 
 extern ByteAddressBuffer g_bvh_bottomLevelAccelerationStructure;
-ColorBuffer g_SceneNormalBufferFullRes;
-ColorBuffer g_SceneNormalBufferLowRes;
-
-ColorBuffer& SceneNormalBuffer()
-{
-	if (Graphics::GetFrameCount() % 2 == 1)
-	{
-		return g_SceneNormalBufferLowRes;
-	}
-	else
-	{
-		return g_SceneNormalBufferFullRes;
-	}
-}
 
 Camera* LODGlobal::g_camera = nullptr;
 CameraController* LODGlobal::g_cameraController = nullptr;
@@ -125,6 +111,7 @@ __declspec(align(16)) struct PSConstants
 	uint32_t TileCount[4];
 	uint32_t FirstLightIndex[4];
 	uint32_t FrameIndexMod2;
+	float InvResolution[2];
 };
 
 ByteAddressBuffer g_hitConstantBuffer;
@@ -136,10 +123,8 @@ D3D12_CPU_DESCRIPTOR_HANDLE g_SceneIndices;
 
 D3D12_GPU_DESCRIPTOR_HANDLE g_OutputUAVFullRes;
 D3D12_GPU_DESCRIPTOR_HANDLE g_OutputUAVLowRes;
-D3D12_GPU_DESCRIPTOR_HANDLE g_DepthAndNormalsTableFullRes;
-D3D12_GPU_DESCRIPTOR_HANDLE g_DepthAndNormalsTableLowRes;
-D3D12_GPU_DESCRIPTOR_HANDLE g_SceneSrvsFullRes;
-D3D12_GPU_DESCRIPTOR_HANDLE g_SceneSrvsLowRes;
+D3D12_GPU_DESCRIPTOR_HANDLE g_DepthAndNormalsTable;
+D3D12_GPU_DESCRIPTOR_HANDLE g_SceneSrvs;
 
 namespace ResolutionMode
 {
@@ -173,8 +158,7 @@ Type& Name(ResolutionMode::ResolutionMode ResolutionMode) \
 }
 
 GetterFunc(D3D12_GPU_DESCRIPTOR_HANDLE, OutputUAV)
-GetterFunc(D3D12_GPU_DESCRIPTOR_HANDLE, DepthAndNormalsTable)
-GetterFunc(D3D12_GPU_DESCRIPTOR_HANDLE, SceneSrvs)
+
 #undef GetterFunc
 
 std::vector<CComPtr<ID3D12Resource>> g_bvh_bottomLevelAccelerationStructures;
@@ -346,6 +330,7 @@ private:
 	GraphicsPSO m_WaveTileCountPSO;
 
 	RootSignature m_LowPassSig;
+	RootSignature m_DownsampleSig;
 	ComputePSO m_LowPassPSO;
 	ComputePSO m_DownsamplePSO;
 	RootSignature m_FrameIntegrationSig;
@@ -506,12 +491,12 @@ void InitializeViews(const Model& model)
 	UINT uavDescriptorIndex;
 	g_GpuSceneMaterialSrvs = new D3D12_GPU_DESCRIPTOR_HANDLE[model.m_Header.materialCount];
 	g_pRaytracingDescriptorHeap->AllocateDescriptor(uavHandle, uavDescriptorIndex);
-	Graphics::g_Device->CopyDescriptorsSimple(1, uavHandle, SceneColorBuffer(0)->GetUAV(),
+	Graphics::g_Device->CopyDescriptorsSimple(1, uavHandle, g_SceneColorBuffer.GetMipUAV(0, 0),
 	                                          D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 	g_OutputUAVFullRes = g_pRaytracingDescriptorHeap->GetGpuHandle(uavDescriptorIndex);
 
 	g_pRaytracingDescriptorHeap->AllocateDescriptor(uavHandle, uavDescriptorIndex);
-	Graphics::g_Device->CopyDescriptorsSimple(1, uavHandle, SceneColorBuffer(1)->GetUAV(),
+	Graphics::g_Device->CopyDescriptorsSimple(1, uavHandle, g_SceneColorBuffer.GetMipUAV(0, 2),
 	                                          D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 	g_OutputUAVLowRes = g_pRaytracingDescriptorHeap->GetGpuHandle(uavDescriptorIndex);
 
@@ -520,23 +505,13 @@ void InitializeViews(const Model& model)
 		D3D12_CPU_DESCRIPTOR_HANDLE srvHandle;
 		UINT srvDescriptorIndex;
 		g_pRaytracingDescriptorHeap->AllocateDescriptor(srvHandle, srvDescriptorIndex);
-		Graphics::g_Device->CopyDescriptorsSimple(1, srvHandle, SceneDepthBuffer(0)->GetDepthSRV(),
+		Graphics::g_Device->CopyDescriptorsSimple(1, srvHandle, g_SceneDepthBuffer.GetDepthSRV(),
 		                                          D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
-		g_DepthAndNormalsTableFullRes = g_pRaytracingDescriptorHeap->GetGpuHandle(srvDescriptorIndex);
+		g_DepthAndNormalsTable = g_pRaytracingDescriptorHeap->GetGpuHandle(srvDescriptorIndex);
 
 		g_pRaytracingDescriptorHeap->AllocateDescriptor(srvHandle, unused);
-		Graphics::g_Device->CopyDescriptorsSimple(1, srvHandle, g_SceneNormalBufferFullRes.GetSRV(),
+		Graphics::g_Device->CopyDescriptorsSimple(1, srvHandle, g_SceneNormalBuffer.GetSRV(),
 		                                          D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
-
-		g_pRaytracingDescriptorHeap->AllocateDescriptor(srvHandle, srvDescriptorIndex);
-		Graphics::g_Device->CopyDescriptorsSimple(1, srvHandle, SceneDepthBuffer(1)->GetDepthSRV(), 
-			D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
-		g_DepthAndNormalsTableLowRes = g_pRaytracingDescriptorHeap->GetGpuHandle(srvDescriptorIndex);
-
-		g_pRaytracingDescriptorHeap->AllocateDescriptor(srvHandle, unused);
-		Graphics::g_Device->CopyDescriptorsSimple(1, srvHandle, 
-			g_SceneNormalBufferLowRes.GetSRV(),
-			D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 	}
 
 	{
@@ -545,7 +520,7 @@ void InitializeViews(const Model& model)
 		g_pRaytracingDescriptorHeap->AllocateDescriptor(srvHandle, srvDescriptorIndex);
 		Graphics::g_Device->CopyDescriptorsSimple(1, srvHandle, g_SceneMeshInfo,
 		                                          D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
-		g_SceneSrvsFullRes = g_pRaytracingDescriptorHeap->GetGpuHandle(srvDescriptorIndex);
+		g_SceneSrvs = g_pRaytracingDescriptorHeap->GetGpuHandle(srvDescriptorIndex);
 
 		g_pRaytracingDescriptorHeap->AllocateDescriptor(srvHandle, unused);
 		Graphics::g_Device->CopyDescriptorsSimple(1, srvHandle, g_SceneIndices, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
@@ -558,27 +533,8 @@ void InitializeViews(const Model& model)
 		                                          D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 
 		g_pRaytracingDescriptorHeap->AllocateDescriptor(srvHandle, unused);
-		Graphics::g_Device->CopyDescriptorsSimple(1, srvHandle, SSAOFullScreen(0)->GetSRV(),
+		Graphics::g_Device->CopyDescriptorsSimple(1, srvHandle, g_SSAOFullScreen.GetSRV(), // HIGH RES
 		                                          D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
-
-		g_pRaytracingDescriptorHeap->AllocateDescriptor(srvHandle, srvDescriptorIndex);
-		Graphics::g_Device->CopyDescriptorsSimple(1, srvHandle, g_SceneMeshInfo,
-			D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
-		g_SceneSrvsLowRes = g_pRaytracingDescriptorHeap->GetGpuHandle(srvDescriptorIndex);
-
-		g_pRaytracingDescriptorHeap->AllocateDescriptor(srvHandle, unused);
-		Graphics::g_Device->CopyDescriptorsSimple(1, srvHandle, g_SceneIndices, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
-
-		g_pRaytracingDescriptorHeap->
-			AllocateBufferSrv(*const_cast<ID3D12Resource*>(model.m_VertexBuffer.GetResource()));
-
-		g_pRaytracingDescriptorHeap->AllocateDescriptor(srvHandle, unused);
-		Graphics::g_Device->CopyDescriptorsSimple(1, srvHandle, g_ShadowBuffer.GetSRV(),
-			D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
-
-		g_pRaytracingDescriptorHeap->AllocateDescriptor(srvHandle, unused);
-		Graphics::g_Device->CopyDescriptorsSimple(1, srvHandle, SSAOFullScreen(1)->GetSRV(),
-			D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 
 		for (UINT i = 0; i < model.m_Header.materialCount; i++)
 		{
@@ -1065,9 +1021,6 @@ void D3D12RaytracingMiniEngineSample::Startup(void)
 	Settings::RayTracingMode = Settings::RTM_OFF;
 
     ThrowIfFailed(g_Device->QueryInterface(IID_PPV_ARGS(&g_pRaytracingDevice)), L"Couldn't get DirectX Raytracing interface for the device.\n");
-    g_SceneNormalBufferFullRes.CreateArray(L"Main Normal Buffer", SceneColorBuffer()->GetWidth(), SceneColorBuffer()->GetHeight(), 2, DXGI_FORMAT_R8G8B8A8_UNORM);
-    g_SceneNormalBufferLowRes.CreateArray(L"Main Normal Buffer", Graphics::divisionHelperFunc(SceneColorBuffer()->GetWidth()), 
-										  Graphics::divisionHelperFunc(SceneColorBuffer()->GetHeight()), 2, DXGI_FORMAT_R8G8B8A8_UNORM);
 
     g_pRaytracingDescriptorHeap = std::unique_ptr<DescriptorHeapStack>(
         new DescriptorHeapStack(*g_Device, MAX_RT_DESCRIPTORS, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, 0));
@@ -1090,9 +1043,9 @@ void D3D12RaytracingMiniEngineSample::Startup(void)
     m_RootSig.Finalize(L"D3D12RaytracingMiniEngineSample", 
 					   D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
 
-    DXGI_FORMAT ColorFormat = SceneColorBuffer()->GetFormat();
-    DXGI_FORMAT NormalFormat = g_SceneNormalBufferFullRes.GetFormat();
-    DXGI_FORMAT DepthFormat = SceneDepthBuffer()->GetFormat();
+	DXGI_FORMAT ColorFormat = g_SceneColorBuffer.GetFormat();
+	DXGI_FORMAT NormalFormat = g_SceneNormalBuffer.GetFormat();
+    DXGI_FORMAT DepthFormat = g_SceneDepthBuffer.GetFormat();
     DXGI_FORMAT ShadowFormat = g_ShadowBuffer.GetFormat();
 
 	auto makeVertexInputElement = [](const char* name, DXGI_FORMAT format)
@@ -1180,15 +1133,22 @@ void D3D12RaytracingMiniEngineSample::Startup(void)
 	m_LowPassPSO.SetComputeShader(g_pLowPassCS, sizeof(g_pLowPassCS));
 	m_LowPassPSO.Finalize();
 
-	m_DownsamplePSO.SetRootSignature(m_LowPassSig);
+	m_DownsampleSig.Reset(3, 1);
+	m_DownsampleSig[0].InitAsDescriptorRange(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 0, 1);
+	m_DownsampleSig[1].InitAsDescriptorRange(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 1, 1);
+	m_DownsampleSig[2].InitAsDescriptorRange(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 0, 1);
+	m_DownsampleSig.InitStaticSampler(0, SamplerLinearWrapDesc);
+	m_DownsampleSig.Finalize(L"DownsampleSignature", D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
+	
+	m_DownsamplePSO.SetRootSignature(m_DownsampleSig);
 	m_DownsamplePSO.SetComputeShader(g_pDownsampleCS, sizeof(g_pDownsampleCS));
 	m_DownsamplePSO.Finalize();
 
 	m_FrameIntegrationSig.Reset(4, 1);
 	m_FrameIntegrationSig[0].InitAsConstants(0, 1);
-	m_FrameIntegrationSig[1].InitAsDescriptorRange(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 0, 1);
-	m_FrameIntegrationSig[2].InitAsDescriptorRange(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 0, 1);
-	m_FrameIntegrationSig[3].InitAsDescriptorRange(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 1, 1);
+	m_FrameIntegrationSig[1].InitAsDescriptorRange(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 0, 1);
+	m_FrameIntegrationSig[2].InitAsDescriptorRange(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 1, 1);
+	m_FrameIntegrationSig[3].InitAsDescriptorRange(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 0, 1);
 	m_FrameIntegrationSig.InitStaticSampler(0, SamplerLinearWrapDesc);
 	m_FrameIntegrationSig.Finalize(L"FrameIntegrationSignature", D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
 
@@ -1364,15 +1324,15 @@ void D3D12RaytracingMiniEngineSample::Update(float deltaT)
 	// temporal AA.
 	TemporalEffects::GetJitterOffset(m_MainViewport.TopLeftX, m_MainViewport.TopLeftY);
 
-	m_MainViewport.Width = (float)SceneColorBuffer()->GetWidth();
-	m_MainViewport.Height = (float)SceneColorBuffer()->GetHeight();
+	m_MainViewport.Width = static_cast<float>(g_SceneColorBuffer.GetMipWidth(g_CurrentMip));
+	m_MainViewport.Height = static_cast<float>(g_SceneColorBuffer.GetMipHeight(g_CurrentMip));
 	m_MainViewport.MinDepth = 0.0f;
 	m_MainViewport.MaxDepth = 1.0f;
 
 	m_MainScissor.left = 0;
 	m_MainScissor.top = 0;
-	m_MainScissor.right = (LONG)SceneColorBuffer()->GetWidth();
-	m_MainScissor.bottom = (LONG)SceneColorBuffer()->GetHeight();
+	m_MainScissor.right = static_cast<LONG>(g_SceneColorBuffer.GetMipWidth(g_CurrentMip));
+	m_MainScissor.bottom = static_cast<LONG>(g_SceneColorBuffer.GetMipHeight(g_CurrentMip));
 }
 
 void D3D12RaytracingMiniEngineSample::RenderObjects(GraphicsContext& gfxContext, UINT curCam, const Matrix4& ViewProjMat,
@@ -1591,10 +1551,11 @@ void D3D12RaytracingMiniEngineSample::RenderColor(GraphicsContext& Ctx, Camera& 
 {
 	ScopedTimer _prof(L"Render Color", Ctx);
 
-	Ctx.TransitionResource(*SSAOFullScreen(), D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+	Ctx.TransitionResource(g_SSAOFullScreen, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 
 	// Update what ExtraTextures[0] is pointing to
-	m_ExtraTextures[0] = SSAOFullScreen()->GetSRV();
+	// Mip Indexing is handled in shader
+	m_ExtraTextures[0] = g_SSAOFullScreen.GetSRV();
 	
 	Ctx.SetDynamicDescriptors(3, 0, ARRAYSIZE(m_ExtraTextures), m_ExtraTextures);
 	Ctx.SetDynamicConstantBufferView(1, sizeof(Constants), &Constants);
@@ -1603,17 +1564,18 @@ void D3D12RaytracingMiniEngineSample::RenderColor(GraphicsContext& Ctx, Camera& 
 
 	{
 		Ctx.SetPipelineState(Settings::ShowWaveTileCounts ? m_WaveTileCountPSO : m_ModelPSO[0]);
-
-		Ctx.TransitionResource(*SceneDepthBuffer(),
+		Ctx.TransitionResource(g_SceneDepthBuffer,
 			D3D12_RESOURCE_STATE_DEPTH_READ);
+		Ctx.TransitionResource(g_SceneColorBuffer,
+			D3D12_RESOURCE_STATE_RENDER_TARGET);
 
 		D3D12_CPU_DESCRIPTOR_HANDLE rtvs[2]{
-			SceneColorBuffer()->GetSubRTV(CameraType),
-			SceneNormalBuffer().GetSubRTV(CameraType),
+			g_SceneColorBuffer.GetMipRTV(CameraType, Graphics::g_CurrentMip),
+			g_SceneNormalBuffer.GetMipRTV(CameraType, Graphics::g_CurrentMip),
 		};
-
-		Ctx.SetRenderTargets(2, rtvs,
-			SceneDepthBuffer()->GetSubDSV(CameraType));
+		
+		Ctx.SetRenderTargets(ARRAYSIZE(rtvs), rtvs,
+			g_SceneDepthBuffer.GetMipDSV(CameraType, Graphics::g_CurrentMip));
 
 		Ctx.SetViewportAndScissor(
 			m_MainViewport, m_MainScissor);
@@ -1676,16 +1638,17 @@ void D3D12RaytracingMiniEngineSample::RenderPrepass(GraphicsContext& Ctx, Cam::C
 		{
 			ScopedTimer _prof(L"Opaque", Ctx);
 			{
-				Ctx.TransitionResource(*SceneDepthBuffer(), D3D12_RESOURCE_STATE_DEPTH_WRITE, true);
+				Ctx.TransitionResource(g_SceneDepthBuffer, D3D12_RESOURCE_STATE_DEPTH_WRITE, true);
 				// note: we no longer clear because we need the stencil from engine
 				// prepass
 				if (!Settings::VRDepthStencil)
 				{
-					Ctx.ClearDepthAndStencil(*SceneDepthBuffer());
+					Ctx.ClearDepthAndStencil(g_SceneDepthBuffer, CameraType, g_CurrentMip);
 				}
 
 				Ctx.SetPipelineState(m_DepthPSO[0]);
-				Ctx.SetDepthStencilTarget(SceneDepthBuffer()->GetSubDSV(CameraType));
+				
+				Ctx.SetDepthStencilTarget(g_SceneDepthBuffer.GetMipDSV(CameraType, g_CurrentMip));
 
 				Ctx.SetViewportAndScissor(m_MainViewport, m_MainScissor);
 			}
@@ -1721,9 +1684,9 @@ void D3D12RaytracingMiniEngineSample::MainRender(GraphicsContext& Ctx, Cam::Came
 
 		if (!Settings::SSAO_DebugDraw)
 		{
-			Ctx.TransitionResource(*SceneColorBuffer(), D3D12_RESOURCE_STATE_RENDER_TARGET, true);
-			Ctx.TransitionResource(SceneNormalBuffer(), D3D12_RESOURCE_STATE_RENDER_TARGET, true);
-			Ctx.ClearColor(*SceneColorBuffer(), CameraType);
+			Ctx.TransitionResource(g_SceneColorBuffer, D3D12_RESOURCE_STATE_RENDER_TARGET, true);
+			Ctx.TransitionResource(g_SceneNormalBuffer, D3D12_RESOURCE_STATE_RENDER_TARGET, true);
+			Ctx.ClearColor(g_SceneColorBuffer, CameraType, g_CurrentMip);
 
 			if (Settings::AsyncCompute)
 			{
@@ -1734,7 +1697,8 @@ void D3D12RaytracingMiniEngineSample::MainRender(GraphicsContext& Ctx, Cam::Came
                 g_CommandManager.GetGraphicsQueue().StallForProducer(g_CommandManager.GetComputeQueue());
             }
 			
-			RenderColor(Ctx, Camera, CameraType, *SceneDepthBuffer(), Constants);
+			// Mip is handled inside function
+			RenderColor(Ctx, Camera, CameraType, g_SceneDepthBuffer, Constants);
 		}
 
 		// Some systems generate a per-pixel velocity buffer to better track dynamic and skinned meshes.  Everything
@@ -1743,9 +1707,11 @@ void D3D12RaytracingMiniEngineSample::MainRender(GraphicsContext& Ctx, Cam::Came
 		MotionBlur::GenerateCameraVelocityBuffer(Ctx, *m_Camera[CameraType], true);
 
 		TemporalEffects::ResolveImage(Ctx, CameraType);
-		
-		ParticleEffects::Render(Ctx, *m_Camera[CameraType], *SceneColorBuffer(), *SceneDepthBuffer(),
-			*LinearDepth(TemporalEffects::GetFrameIndexMod2()));
+
+		// TODO: TMP REWORK: HANDLE LOW RES
+		// TODO: Only handle this if we actually do particle effects. Try remove and check if that breaks anything
+		ParticleEffects::Render(Ctx, *m_Camera[CameraType], g_SceneColorBuffer, g_SceneDepthBuffer,
+			Graphics::g_LinearDepth[TemporalEffects::GetFrameIndexMod2()]);
 
 		// Until I work out how to couple these two, it's "either-or".
 		if (Settings::DOF_Enable)
@@ -1824,7 +1790,7 @@ void D3D12RaytracingMiniEngineSample::RenderShadowMap()
 }
 
 void D3D12RaytracingMiniEngineSample::RenderScene()
-{
+{	
 	const bool skipDiffusePass =
 		Settings::RayTracingMode == Settings::RTM_DIFFUSE_WITH_SHADOWMAPS ||
 		Settings::RayTracingMode == Settings::RTM_DIFFUSE_WITH_SHADOWRAYS ||
@@ -1859,11 +1825,13 @@ void D3D12RaytracingMiniEngineSample::RenderScene()
 	psConstants.ShadowTexelSize[0] = 1.0f / g_ShadowBuffer.GetWidth();
 	psConstants.InvTileDim[0] = 1.0f / Settings::LightGridDim;
 	psConstants.InvTileDim[1] = 1.0f / Settings::LightGridDim;
-	psConstants.TileCount[0] = Math::DivideByMultiple(SceneColorBuffer()->GetWidth(), Settings::LightGridDim);
-	psConstants.TileCount[1] = Math::DivideByMultiple(SceneColorBuffer()->GetHeight(), Settings::LightGridDim);
+	psConstants.TileCount[0] = Math::DivideByMultiple(g_SceneColorBuffer.GetMipWidth(g_CurrentMip), Settings::LightGridDim);
+	psConstants.TileCount[1] = Math::DivideByMultiple(g_SceneColorBuffer.GetMipHeight(g_CurrentMip), Settings::LightGridDim);
 	psConstants.FirstLightIndex[0] = Lighting::m_FirstConeLight;
 	psConstants.FirstLightIndex[1] = Lighting::m_FirstConeShadowedLight;
 	psConstants.FrameIndexMod2 = TemporalEffects::GetFrameIndexMod2();
+	psConstants.InvResolution[0] = 1. / g_SceneColorBuffer.GetMipWidth(g_CurrentMip);
+	psConstants.InvResolution[1] = 1. / g_SceneColorBuffer.GetMipHeight(g_CurrentMip);
 
 	if(!skipShadowMap)
 	{
@@ -1889,24 +1857,30 @@ void D3D12RaytracingMiniEngineSample::FrameIntegration()
 			cmpContext.SetRootSignature(m_LowPassSig);
 			cmpContext.SetPipelineState(m_LowPassPSO);
 
-			cmpContext.TransitionResource(g_SceneColorBufferFullRes, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, true);
+			cmpContext.TransitionResource(g_SceneColorBuffer, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 			cmpContext.TransitionResource(g_SceneColorBufferLowPassed, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, true);
 
-			cmpContext.SetDynamicDescriptor(0, 0, g_SceneColorBufferFullRes.GetSRV());
+			cmpContext.ClearUAV(g_SceneColorBufferLowPassed);
+			
+			// No need to handle mip here. We need the high res no matter what
+			cmpContext.SetDynamicDescriptor(0, 0, g_SceneColorBuffer.GetSRV());
 			cmpContext.SetDynamicDescriptor(1, 0, g_SceneColorBufferLowPassed.GetUAV());
 
 			cmpContext.Dispatch2D(g_SceneColorBufferLowPassed.GetWidth(), g_SceneColorBufferLowPassed.GetHeight());
 
-			// Reuses root signature m_LowPassSig
+			cmpContext.SetRootSignature(m_DownsampleSig);
 			cmpContext.SetPipelineState(m_DownsamplePSO);
 
+			cmpContext.TransitionResource(g_SceneColorBuffer, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 			cmpContext.TransitionResource(g_SceneColorBufferLowPassed, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, true);
-			cmpContext.TransitionResource(g_SceneColorBufferLowRes, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, true);
 
-			cmpContext.SetDynamicDescriptor(0, 0, g_SceneColorBufferLowPassed.GetSRV());
-			cmpContext.SetDynamicDescriptor(1, 0, g_SceneColorBufferLowRes.GetUAV());
+			cmpContext.SetDynamicDescriptor(0, 0, g_SceneColorBuffer.GetMipUAV(0, 2));
+			cmpContext.SetDynamicDescriptor(1, 0, g_SceneColorBuffer.GetMipUAV(1, 2));
+			cmpContext.SetDynamicDescriptor(2, 0, g_SceneColorBufferLowPassed.GetSRV());
 
-			cmpContext.Dispatch2D(g_SceneColorBufferLowRes.GetWidth(), g_SceneColorBufferLowRes.GetHeight());
+			cmpContext.Dispatch2D(
+				g_SceneColorBuffer.GetMipWidth(2),
+				g_SceneColorBuffer.GetMipHeight(2));
 
 			cmpContext.TransitionResource(g_SceneColorBufferResidules, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, true);
 			cmpContext.ClearUAV(g_SceneColorBufferResidules);
@@ -1915,15 +1889,15 @@ void D3D12RaytracingMiniEngineSample::FrameIntegration()
 		cmpContext.SetRootSignature(m_FrameIntegrationSig);
 		cmpContext.SetPipelineState(m_FrameIntegrationPSO);
 
-		cmpContext.TransitionResource(g_SceneColorBufferLowRes, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, true);
-		cmpContext.TransitionResource(g_SceneColorBufferFullRes, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, true);
+		cmpContext.TransitionResource(g_SceneColorBuffer, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, true);
 
 		cmpContext.SetConstant(0, Graphics::GetFrameCount() % 2 == 0);
-		cmpContext.SetDynamicDescriptor(1, 0, g_SceneColorBufferLowRes.GetSRV());
-		cmpContext.SetDynamicDescriptor(2, 0, g_SceneColorBufferFullRes.GetUAV());
-		cmpContext.SetDynamicDescriptor(3, 0, g_SceneColorBufferResidules.GetUAV());
+		// Mip level handled in shader
+		cmpContext.SetDynamicDescriptor(1, 0, g_SceneColorBuffer.GetUAV());
+		cmpContext.SetDynamicDescriptor(2, 0, g_SceneColorBufferResidules.GetUAV());
+		cmpContext.SetDynamicDescriptor(3, 0, g_SceneColorBuffer.GetSRV());
 
-		cmpContext.Dispatch2D(g_SceneColorBufferFullRes.GetWidth(), g_SceneColorBufferFullRes.GetHeight());
+		cmpContext.Dispatch2D(g_SceneColorBuffer.GetWidth(), g_SceneColorBuffer.GetHeight());
 	}
 
 	cmpContext.Finish();
@@ -1943,6 +1917,7 @@ void g_initialize_dynamicCb(
 	DynamicCB inputs = {};
 
 	inputs.curCam = CurCam;
+	inputs.mip = g_CurrentMip;
 
 	const Matrix4 mvp = Camera[CurCam]->GetViewProjMatrix();
 	const Matrix4 transInvMvp = Transpose(Invert(mvp));
@@ -1950,9 +1925,9 @@ void g_initialize_dynamicCb(
 
 	Vector3 position = Camera[CurCam]->GetPosition();
 	memcpy(&inputs.worldCameraPosition, &position, sizeof(inputs.worldCameraPosition));
-	
-	inputs.resolution.x = (float)ColorTarget.GetWidth();
-	inputs.resolution.y = (float)ColorTarget.GetHeight();
+
+	inputs.resolution.x = (float)ColorTarget.GetMipWidth(g_CurrentMip);
+	inputs.resolution.y = (float)ColorTarget.GetMipHeight(g_CurrentMip);
 
 	Context.WriteBuffer(Buffer, 0, &inputs, sizeof(inputs));
 }
@@ -1987,7 +1962,7 @@ void Raytracebarycentrics(
 	// 0,1,2,3,4,7 
 	pCmdList->SetComputeRootSignature(g_GlobalRaytracingRootSignature);
 	pCmdList->SetComputeRootDescriptorTable(
-		0, SceneSrvs(ResolutionMode::kAuto));
+		0, g_SceneSrvs);
 	pCmdList->SetComputeRootConstantBufferView(1, g_hitConstantBuffer.GetGpuVirtualAddress());
 	pCmdList->SetComputeRootConstantBufferView(2, g_dynamicConstantBuffer.GetGpuVirtualAddress());
 	pCmdList->SetComputeRootDescriptorTable(
@@ -1996,7 +1971,7 @@ void Raytracebarycentrics(
 		7, g_bvh_topLevelAccelerationStructure->GetGPUVirtualAddress());
 
 	D3D12_DISPATCH_RAYS_DESC dispatchRaysDesc = g_RaytracingInputs[Primarybarycentric].GetDispatchRayDesc(
-		colorTarget.GetWidth(), colorTarget.GetHeight());
+		colorTarget.GetMipHeight(Graphics::g_CurrentMip), colorTarget.GetMipHeight(Graphics::g_CurrentMip));
 	pCmdList->SetPipelineState1(g_RaytracingInputs[Primarybarycentric].m_pPSO);
 	pCmdList->DispatchRays(&dispatchRaysDesc);
 }
@@ -2034,14 +2009,14 @@ void RaytracebarycentricsSSR(
 	pCmdList->SetComputeRootConstantBufferView(1, g_hitConstantBuffer.GetGpuVirtualAddress());
 	pCmdList->SetComputeRootConstantBufferView(2, g_dynamicConstantBuffer.GetGpuVirtualAddress());
 	pCmdList->SetComputeRootDescriptorTable(
-		3, DepthAndNormalsTable(ResolutionMode::kAuto));
+		3, g_DepthAndNormalsTable);
 	pCmdList->SetComputeRootDescriptorTable(
 		4, OutputUAV(ResolutionMode::kAuto));
 	pCmdList->SetComputeRootShaderResourceView(
 		7, g_bvh_topLevelAccelerationStructure->GetGPUVirtualAddress());
 
 	D3D12_DISPATCH_RAYS_DESC dispatchRaysDesc = g_RaytracingInputs[Reflectionbarycentric].GetDispatchRayDesc(
-		colorTarget.GetWidth(), colorTarget.GetHeight());
+		colorTarget.GetMipWidth(g_CurrentMip), colorTarget.GetMipHeight(g_CurrentMip));
 	pCmdList->SetPipelineState1(g_RaytracingInputs[Reflectionbarycentric].m_pPSO);
 	pCmdList->DispatchRays(&dispatchRaysDesc);
 }
@@ -2068,8 +2043,8 @@ void D3D12RaytracingMiniEngineSample::RaytraceShadows(
 	ID3D12GraphicsCommandList* pCommandList = context.GetCommandList();
 
 	ctx.TransitionResource(g_dynamicConstantBuffer, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER);
-	ctx.TransitionResource(SceneNormalBuffer(), D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-	ctx.TransitionResource(*SSAOFullScreen(), D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+	ctx.TransitionResource(g_SceneNormalBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+	ctx.TransitionResource(g_SSAOFullScreen, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 	ctx.TransitionResource(g_hitConstantBuffer, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER);
 	ctx.TransitionResource(depth, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 	ctx.TransitionResource(g_ShadowBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
@@ -2086,14 +2061,14 @@ void D3D12RaytracingMiniEngineSample::RaytraceShadows(
 	pCmdList->SetComputeRootConstantBufferView(1, g_hitConstantBuffer.GetGpuVirtualAddress());
 	pCmdList->SetComputeRootConstantBufferView(2, g_dynamicConstantBuffer->GetGPUVirtualAddress());
 	pCmdList->SetComputeRootDescriptorTable(
-		3, DepthAndNormalsTable(ResolutionMode::kAuto));
+		3, g_DepthAndNormalsTable);
 	pCmdList->SetComputeRootDescriptorTable(
 		4, OutputUAV(ResolutionMode::kAuto));
 	pCmdList->SetComputeRootShaderResourceView(
 		7, g_bvh_topLevelAccelerationStructure->GetGPUVirtualAddress());
 
 	D3D12_DISPATCH_RAYS_DESC dispatchRaysDesc = g_RaytracingInputs[Shadows].GetDispatchRayDesc(
-		colorTarget.GetWidth(), colorTarget.GetHeight());
+		colorTarget.GetMipWidth(g_CurrentMip), colorTarget.GetMipHeight(g_CurrentMip));
 	pCmdList->SetPipelineState1(g_RaytracingInputs[Shadows].m_pPSO);
 	pCmdList->DispatchRays(&dispatchRaysDesc);
 }
@@ -2116,7 +2091,7 @@ void D3D12RaytracingMiniEngineSample::RaytraceDiffuse(
 	context.WriteBuffer(g_hitConstantBuffer, 0, &hitShaderConstants, sizeof(hitShaderConstants));
 
 	context.TransitionResource(g_dynamicConstantBuffer, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER);
-	context.TransitionResource(*SSAOFullScreen(), D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+	context.TransitionResource(g_SSAOFullScreen, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 	context.TransitionResource(g_hitConstantBuffer, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER);
 	context.TransitionResource(g_ShadowBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 	context.TransitionResource(colorTarget, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
@@ -2132,7 +2107,7 @@ void D3D12RaytracingMiniEngineSample::RaytraceDiffuse(
 
 	pCommandList->SetComputeRootSignature(g_GlobalRaytracingRootSignature);
 	pCommandList->SetComputeRootDescriptorTable(
-		0, SceneSrvs(ResolutionMode::kAuto));
+		0, g_SceneSrvs);
 	pCommandList->SetComputeRootConstantBufferView(1, g_hitConstantBuffer.GetGpuVirtualAddress());
 	pCommandList->SetComputeRootConstantBufferView(2, g_dynamicConstantBuffer.GetGpuVirtualAddress());
 	pCommandList->SetComputeRootDescriptorTable(
@@ -2141,7 +2116,7 @@ void D3D12RaytracingMiniEngineSample::RaytraceDiffuse(
 		7, g_bvh_topLevelAccelerationStructure->GetGPUVirtualAddress());
 
 	D3D12_DISPATCH_RAYS_DESC dispatchRaysDesc = g_RaytracingInputs[DiffuseHitShader].GetDispatchRayDesc(
-		colorTarget.GetWidth(), colorTarget.GetHeight());
+		colorTarget.GetMipWidth(g_CurrentMip), colorTarget.GetMipHeight(g_CurrentMip));
 	pRaytracingCommandList->SetPipelineState1(g_RaytracingInputs[DiffuseHitShader].m_pPSO);
 	pRaytracingCommandList->DispatchRays(&dispatchRaysDesc);
 }
@@ -2166,7 +2141,7 @@ void D3D12RaytracingMiniEngineSample::RaytraceReflections(
 	context.WriteBuffer(g_hitConstantBuffer, 0, &hitShaderConstants, sizeof(hitShaderConstants));
 
 	context.TransitionResource(g_dynamicConstantBuffer, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER);
-	context.TransitionResource(*SSAOFullScreen(), D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+	context.TransitionResource(g_SSAOFullScreen, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 	context.TransitionResource(depth, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 	context.TransitionResource(g_ShadowBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 	context.TransitionResource(normals, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
@@ -2184,18 +2159,18 @@ void D3D12RaytracingMiniEngineSample::RaytraceReflections(
 
 	pCommandList->SetComputeRootSignature(g_GlobalRaytracingRootSignature);
 	pCommandList->SetComputeRootDescriptorTable(
-		0, SceneSrvs(ResolutionMode::kAuto));
+		0, g_SceneSrvs);
 	pCommandList->SetComputeRootConstantBufferView(1, g_hitConstantBuffer.GetGpuVirtualAddress());
 	pCommandList->SetComputeRootConstantBufferView(2, g_dynamicConstantBuffer.GetGpuVirtualAddress());
 	pCommandList->SetComputeRootDescriptorTable(
-		3, DepthAndNormalsTable(ResolutionMode::kAuto));
+		3, g_DepthAndNormalsTable);
 	pCommandList->SetComputeRootDescriptorTable(
 		4, OutputUAV(ResolutionMode::kAuto));
 	pRaytracingCommandList->SetComputeRootShaderResourceView(
 		7, g_bvh_topLevelAccelerationStructure->GetGPUVirtualAddress());
 
 	D3D12_DISPATCH_RAYS_DESC dispatchRaysDesc = g_RaytracingInputs[Reflection].GetDispatchRayDesc(
-		colorTarget.GetWidth(), colorTarget.GetHeight());
+		colorTarget.GetMipWidth(g_CurrentMip), colorTarget.GetMipHeight(g_CurrentMip));
 	pRaytracingCommandList->SetPipelineState1(g_RaytracingInputs[Reflection].m_pPSO);
 	pRaytracingCommandList->DispatchRays(&dispatchRaysDesc);
 }
@@ -2211,7 +2186,7 @@ void D3D12RaytracingMiniEngineSample::RenderUI(class GraphicsContext& gfxContext
 		rollingAverageFrameRate += frameRate / framesToAverage;
 	}
 
-	float primaryRaysPerSec = SceneColorBuffer()->GetWidth() * SceneColorBuffer()->GetHeight() * rollingAverageFrameRate /
+	float primaryRaysPerSec = g_SceneColorBuffer.GetMipWidth(g_CurrentMip) * g_SceneColorBuffer.GetMipHeight(g_CurrentMip) * rollingAverageFrameRate /
 		(1000000.0f);
 	TextContext text(gfxContext);
 	text.Begin();
@@ -2230,32 +2205,32 @@ void D3D12RaytracingMiniEngineSample::Raytrace(class GraphicsContext& gfxContext
 {
 	ScopedTimer _prof(L"Raytrace", gfxContext);
 
-	gfxContext.TransitionResource(*SSAOFullScreen(), D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+	gfxContext.TransitionResource(g_SSAOFullScreen, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 
-	g_initialize_dynamicCb(gfxContext, m_Camera, CurCam, *SceneColorBuffer(), g_dynamicConstantBuffer);
+	g_initialize_dynamicCb(gfxContext, m_Camera, CurCam, g_SceneColorBuffer, g_dynamicConstantBuffer);
 
 	switch (Settings::RayTracingMode)
 	{
 	case Settings::RTM_TRAVERSAL:
-		Raytracebarycentrics(gfxContext, *SceneColorBuffer());
+		Raytracebarycentrics(gfxContext, g_SceneColorBuffer);
 		break;
 
 	case Settings::RTM_SSR:
-		RaytracebarycentricsSSR(gfxContext, *SceneColorBuffer(), *SceneDepthBuffer(),
-		                        SceneNormalBuffer());
+		RaytracebarycentricsSSR(gfxContext, g_SceneColorBuffer, g_SceneDepthBuffer,
+		                        g_SceneNormalBuffer);
 		break;
 
 	case Settings::RTM_SHADOWS:
-		RaytraceShadows(gfxContext, *SceneColorBuffer(), *SceneDepthBuffer());
+		RaytraceShadows(gfxContext, g_SceneColorBuffer, g_SceneDepthBuffer);
 		break;
 
 	case Settings::RTM_DIFFUSE_WITH_SHADOWMAPS:
 	case Settings::RTM_DIFFUSE_WITH_SHADOWRAYS:
-		RaytraceDiffuse(gfxContext, *SceneColorBuffer());
+		RaytraceDiffuse(gfxContext, g_SceneColorBuffer);
 		break;
 
 	case Settings::RTM_REFLECTIONS:
-		RaytraceReflections(gfxContext, *SceneColorBuffer(), *SceneDepthBuffer(), SceneNormalBuffer());
+		RaytraceReflections(gfxContext, g_SceneColorBuffer, g_SceneDepthBuffer, g_SceneNormalBuffer);
 		break;
 	}
 

@@ -26,6 +26,7 @@ namespace Graphics
     extern SamplerDesc SamplerPointClampDesc;
     extern SamplerDesc SamplerPointBorderDesc;
     extern SamplerDesc SamplerLinearBorderDesc;
+    extern SamplerDesc SamplerLinearBorderLowResDesc;
 
     extern D3D12_CPU_DESCRIPTOR_HANDLE SamplerLinearWrap;
     extern D3D12_CPU_DESCRIPTOR_HANDLE SamplerAnisoWrap;
@@ -35,6 +36,7 @@ namespace Graphics
     extern D3D12_CPU_DESCRIPTOR_HANDLE SamplerPointClamp;
     extern D3D12_CPU_DESCRIPTOR_HANDLE SamplerPointBorder;
     extern D3D12_CPU_DESCRIPTOR_HANDLE SamplerLinearBorder;
+    extern D3D12_CPU_DESCRIPTOR_HANDLE SamplerLinearBorderLowRes;
 
     extern D3D12_RASTERIZER_DESC RasterizerDefault;
     extern D3D12_RASTERIZER_DESC RasterizerDefaultMsaa;

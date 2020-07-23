@@ -27,6 +27,7 @@ namespace Graphics
     SamplerDesc SamplerPointClampDesc;
     SamplerDesc SamplerPointBorderDesc;
     SamplerDesc SamplerLinearBorderDesc;
+    SamplerDesc SamplerLinearBorderLowResDesc;
 
     D3D12_CPU_DESCRIPTOR_HANDLE SamplerLinearWrap;
     D3D12_CPU_DESCRIPTOR_HANDLE SamplerAnisoWrap;
@@ -36,6 +37,7 @@ namespace Graphics
     D3D12_CPU_DESCRIPTOR_HANDLE SamplerPointClamp;
     D3D12_CPU_DESCRIPTOR_HANDLE SamplerPointBorder;
     D3D12_CPU_DESCRIPTOR_HANDLE SamplerLinearBorder;
+    D3D12_CPU_DESCRIPTOR_HANDLE SamplerLinearBorderLowRes;
 
     D3D12_RASTERIZER_DESC RasterizerDefault;    // Counter-clockwise
     D3D12_RASTERIZER_DESC RasterizerDefaultMsaa;
@@ -100,6 +102,12 @@ void Graphics::InitializeCommonState(void)
     SamplerLinearBorderDesc.SetTextureAddressMode(D3D12_TEXTURE_ADDRESS_MODE_BORDER);
     SamplerLinearBorderDesc.SetBorderColor(Color(0.0f, 0.0f, 0.0f, 0.0f));
     SamplerLinearBorder = SamplerLinearBorderDesc.CreateDescriptor();
+
+	SamplerLinearBorderLowResDesc.Filter = D3D12_FILTER_MIN_MAG_MIP_LINEAR;
+    SamplerLinearBorderLowResDesc.SetTextureAddressMode(D3D12_TEXTURE_ADDRESS_MODE_BORDER);
+    SamplerLinearBorderLowResDesc.SetBorderColor(Color(0.0f, 0.0f, 0.0f, 0.0f));
+    SamplerLinearBorderLowResDesc.MinLOD = 2;
+    SamplerLinearBorderLowRes = SamplerLinearBorderLowResDesc.CreateDescriptor();
 
     SamplerPointBorderDesc.Filter = D3D12_FILTER_MIN_MAG_MIP_POINT;
     SamplerPointBorderDesc.SetTextureAddressMode(D3D12_TEXTURE_ADDRESS_MODE_BORDER);

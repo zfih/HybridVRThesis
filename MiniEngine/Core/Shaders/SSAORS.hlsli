@@ -27,4 +27,10 @@
         "addressV = TEXTURE_ADDRESS_BORDER," \
         "addressW = TEXTURE_ADDRESS_BORDER," \
         "borderColor = STATIC_BORDER_COLOR_TRANSPARENT_BLACK," \
+        "filter = FILTER_MIN_MAG_MIP_LINEAR)," \
+    "StaticSampler(s2," \
+        "addressU = TEXTURE_ADDRESS_BORDER," \
+        "addressV = TEXTURE_ADDRESS_BORDER," \
+        "addressW = TEXTURE_ADDRESS_BORDER," \
+        "borderColor = STATIC_BORDER_COLOR_TRANSPARENT_BLACK," \
         "filter = FILTER_MIN_MAG_MIP_LINEAR)"

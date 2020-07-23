@@ -62,6 +62,7 @@ cbuffer PSConstants : register(b0)
     uint4 TileCount;
     uint4 FirstLightIndex;
     uint FrameIndexMod2;
+    float2 InvResolution;
 }
 
 cbuffer MaterialInfo : register(b1)
@@ -333,6 +334,9 @@ struct MRT
 [RootSignature(ModelViewer_RootSig)]
 MRT main(VSOutput vsOutput)
 {
+    // same as g_CurrentMip in Cpp code
+    uint mip = FrameIndexMod2 * 2;
+
     MRT mrt;
 	mrt.Color = 0.0;
     mrt.Normal = 0.0;
@@ -343,7 +347,17 @@ MRT main(VSOutput vsOutput)
     float3 diffuseAlbedo = SAMPLE_TEX(texDiffuse);
     float3 colorSum = 0;
     {
-        float ao = texSSAO[pixelPos];
+        float texWidth;
+        float texHeight;
+
+        texSSAO.GetDimensions(texWidth, texHeight);
+        
+        float ratio = texWidth * InvResolution.x;
+        
+        float2 uv = ratio * pixelPos;
+        
+        float ao = texSSAO[uv];
+
         colorSum += ApplyAmbientLight(diffuseAlbedo, ao, AmbientColor);
     }
 

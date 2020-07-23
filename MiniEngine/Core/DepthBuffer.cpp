@@ -22,31 +22,36 @@ using namespace Graphics;
 void DepthBuffer::Create(const std::wstring& Name, uint32_t Width, uint32_t Height, DXGI_FORMAT Format,
                          D3D12_GPU_VIRTUAL_ADDRESS VidMemPtr)
 {
-	D3D12_RESOURCE_DESC ResourceDesc = DescribeTex2D(Width, Height, 1, 1, Format,
-	                                                 D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL);
+	Create(Name, Width, Height, Format, 1, VidMemPtr);
+}
+
+void DepthBuffer::Create(const std::wstring& Name, uint32_t Width, uint32_t Height, DXGI_FORMAT Format,
+	uint32_t NumMips, D3D12_GPU_VIRTUAL_ADDRESS VidMemPtr)
+{
+	D3D12_RESOURCE_DESC ResourceDesc = DescribeTex2D(Width, Height, 1, NumMips, Format,
+		D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL);
 
 	D3D12_CLEAR_VALUE ClearValue = {};
 	ClearValue.Format = Format;
 	CreateTextureResource(Graphics::g_Device, Name, ResourceDesc, ClearValue, VidMemPtr);
-	CreateDerivedViews(Graphics::g_Device, Format);
+	CreateDerivedViews(Graphics::g_Device, Format, 1, NumMips);
 }
 
 void DepthBuffer::Create(const std::wstring& Name, uint32_t Width, uint32_t Height, uint32_t Samples,
                          DXGI_FORMAT Format, D3D12_GPU_VIRTUAL_ADDRESS VidMemPtr)
 {
-	D3D12_RESOURCE_DESC ResourceDesc = DescribeTex2D(Width, Height, 1, 1, Format,
-	                                                 D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL);
-	ResourceDesc.SampleDesc.Count = Samples;
-
-	D3D12_CLEAR_VALUE ClearValue = {};
-	ClearValue.Format = Format;
-	CreateTextureResource(Graphics::g_Device, Name, ResourceDesc, ClearValue, VidMemPtr);
-	CreateDerivedViews(Graphics::g_Device, Format);
+	Create(Name, Width, Height, Samples, Format, 1, VidMemPtr);
 }
 
 void DepthBuffer::Create(const std::wstring& Name, uint32_t Width, uint32_t Height, DXGI_FORMAT Format, EsramAllocator&)
 {
 	Create(Name, Width, Height, Format);
+}
+
+void DepthBuffer::Create(const std::wstring& Name, uint32_t Width, uint32_t Height, DXGI_FORMAT Format,
+	uint32_t NumMips, EsramAllocator&)
+{
+	Create(Name, Width, Height, Format, NumMips);
 }
 
 void DepthBuffer::Create(const std::wstring& Name, uint32_t Width, uint32_t Height, uint32_t Samples,
@@ -55,12 +60,37 @@ void DepthBuffer::Create(const std::wstring& Name, uint32_t Width, uint32_t Heig
 	Create(Name, Width, Height, Samples, Format);
 }
 
+void DepthBuffer::Create(const std::wstring& Name, uint32_t Width, uint32_t Height, uint32_t NumSamples,
+	DXGI_FORMAT Format, uint32_t NumMips, D3D12_GPU_VIRTUAL_ADDRESS VidMemPtr)
+{
+	D3D12_RESOURCE_DESC ResourceDesc = DescribeTex2D(Width, Height, 1, NumMips, Format,
+		D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL);
+	ResourceDesc.SampleDesc.Count = NumSamples;
+
+	D3D12_CLEAR_VALUE ClearValue = {};
+	ClearValue.Format = Format;
+	CreateTextureResource(Graphics::g_Device, Name, ResourceDesc, ClearValue, VidMemPtr);
+	CreateDerivedViews(Graphics::g_Device, Format, 1, NumMips);
+}
+
+void DepthBuffer::Create(const std::wstring& Name, uint32_t Width, uint32_t Height, uint32_t NumSamples,
+	DXGI_FORMAT Format, uint32_t NumMips, EsramAllocator& )
+{
+	Create(Name, Width, Height, NumSamples, Format, NumMips);
+}
+
 
 void DepthBuffer::CreateArray(const std::wstring& Name, uint32_t Width, uint32_t Height, uint32_t ArrayCount,
                               DXGI_FORMAT Format, D3D12_GPU_VIRTUAL_ADDRESS VidMemPtr)
 {
-	D3D12_RESOURCE_DESC ResourceDesc = DescribeTex2D(Width, Height, ArrayCount, 1, Format,
-	                                                 D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL);
+	CreateArray(Name, Width, Height, ArrayCount, 1, Format, VidMemPtr);
+}
+
+void DepthBuffer::CreateArray(const std::wstring& Name, uint32_t Width, uint32_t Height, uint32_t ArrayCount,
+	uint32_t NumMips, DXGI_FORMAT Format, D3D12_GPU_VIRTUAL_ADDRESS VidMemPtr)
+{
+	D3D12_RESOURCE_DESC ResourceDesc = DescribeTex2D(Width, Height, ArrayCount, NumMips, Format,
+		D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL);
 
 	D3D12_CLEAR_VALUE ClearValue = {};
 	ClearValue.Format = Format;
@@ -70,10 +100,10 @@ void DepthBuffer::CreateArray(const std::wstring& Name, uint32_t Width, uint32_t
 	m_ClearStencil = ClearValue.DepthStencil.Stencil;
 
 	CreateTextureResource(Graphics::g_Device, Name, ResourceDesc, ClearValue);
-	CreateDerivedViews(Graphics::g_Device, Format, ArrayCount);
+	CreateDerivedViews(Graphics::g_Device, Format, ArrayCount, NumMips);
 }
 
-void DepthBuffer::CreateDerivedViews(ID3D12Device* Device, DXGI_FORMAT Format, uint32_t ArraySize)
+void DepthBuffer::CreateDerivedViews(ID3D12Device* Device, DXGI_FORMAT Format, uint32_t ArraySize, uint32_t NumMips)
 {
 	ID3D12Resource* Resource = m_pResource.Get();
 
@@ -91,7 +121,7 @@ void DepthBuffer::CreateDerivedViews(ID3D12Device* Device, DXGI_FORMAT Format, u
 		DSVDesc.Texture2DArray.ArraySize = ArraySize;
 
 		SRVDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2DARRAY;
-		SRVDesc.Texture2DArray.MipLevels = 1;
+		SRVDesc.Texture2DArray.MipLevels = NumMips;
 		SRVDesc.Texture1DArray.MostDetailedMip = 0;
 		SRVDesc.Texture2DArray.FirstArraySlice = 0;
 		SRVDesc.Texture2DArray.ArraySize = ArraySize;
@@ -102,7 +132,7 @@ void DepthBuffer::CreateDerivedViews(ID3D12Device* Device, DXGI_FORMAT Format, u
 		DSVDesc.Texture2D.MipSlice = 0;
 
 		SRVDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
-		SRVDesc.Texture2D.MipLevels = 1;
+		SRVDesc.Texture2D.MipLevels = NumMips;
 	}
 	else
 	{
@@ -165,6 +195,20 @@ void DepthBuffer::CreateDerivedViews(ID3D12Device* Device, DXGI_FORMAT Format, u
 		handle = Graphics::AllocateDescriptor(D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
 		Device->CreateDepthStencilView(Resource, &dsvDesc, handle);
 		m_DSVSubHandles.push_back(handle);
+
+		std::vector<D3D12_CPU_DESCRIPTOR_HANDLE> handles(NumMips);
+
+		// Create the DSVs for each mip level (RWTexture2D)
+		for (uint32_t i = 0; i < NumMips; ++i)
+		{
+			handles[i] = Graphics::AllocateDescriptor(D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
+
+			Device->CreateDepthStencilView(Resource, &dsvDesc, handles[i]);
+
+			dsvDesc.Texture2DArray.MipSlice++;
+		}
+
+		m_MipDSVHandles.push_back(handles);
 	}
 
 	m_DSVReadOnlySubHandles.reserve(ArraySize);
@@ -174,6 +218,7 @@ void DepthBuffer::CreateDerivedViews(ID3D12Device* Device, DXGI_FORMAT Format, u
 		dsvDesc.Format = Format;
 		dsvDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2DARRAY;
 		dsvDesc.Texture2DArray.MipSlice = 0;
+		dsvDesc.Texture2D.MipSlice = 0;
 		dsvDesc.Texture2DArray.FirstArraySlice = i;
 		dsvDesc.Texture2DArray.ArraySize = ArraySize - i;
 		dsvDesc.Flags = D3D12_DSV_FLAG_READ_ONLY_DEPTH;
@@ -182,6 +227,20 @@ void DepthBuffer::CreateDerivedViews(ID3D12Device* Device, DXGI_FORMAT Format, u
 		handle = Graphics::AllocateDescriptor(D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
 		Device->CreateDepthStencilView(Resource, &dsvDesc, handle);
 		m_DSVReadOnlySubHandles.push_back(handle);
+
+		std::vector<D3D12_CPU_DESCRIPTOR_HANDLE> handles(NumMips);
+
+		// Create the DSVs for each mip level (RWTexture2D)
+		for (uint32_t i = 0; i < NumMips; ++i)
+		{
+			handles[i] = Graphics::AllocateDescriptor(D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
+
+			Device->CreateDepthStencilView(Resource, &dsvDesc, handles[i]);
+
+			dsvDesc.Texture2DArray.MipSlice++;
+		}
+
+		m_MipDSVReadOnlyHandles.push_back(handles);
 	}
 
 	m_SRVSubHandles.reserve(ArraySize);

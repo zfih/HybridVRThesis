@@ -289,9 +289,14 @@ void GraphicsContext::ClearColor( ColorBuffer& Target )
     m_CommandList->ClearRenderTargetView(Target.GetRTV(), Target.GetClearColor().GetPtr(), 0, nullptr);
 }
 
-void GraphicsContext::ClearColor(ColorBuffer& Target, int subRTV)
+void GraphicsContext::ClearColor(ColorBuffer& Target, uint32_t ArrayIndex)
 {
-	m_CommandList->ClearRenderTargetView(Target.GetSubRTV(subRTV), Target.GetClearColor().GetPtr(), 0, nullptr);
+	m_CommandList->ClearRenderTargetView(Target.GetSubRTV(ArrayIndex), Target.GetClearColor().GetPtr(), 0, nullptr);
+}
+
+void GraphicsContext::ClearColor(ColorBuffer& Target, uint32_t ArrayIndex, uint32_t MipLevel)
+{
+    m_CommandList->ClearRenderTargetView(Target.GetMipRTV(ArrayIndex, MipLevel), Target.GetClearColor().GetPtr(), 0, nullptr);
 }
 
 void GraphicsContext::ClearDepth( DepthBuffer& Target )
@@ -307,6 +312,11 @@ void GraphicsContext::ClearStencil( DepthBuffer& Target )
 void GraphicsContext::ClearDepthAndStencil( DepthBuffer& Target )
 {
     m_CommandList->ClearDepthStencilView(Target.GetDSV(), D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, Target.GetClearDepth(), Target.GetClearStencil(), 0, nullptr);
+}
+
+void GraphicsContext::ClearDepthAndStencil( DepthBuffer& Target, uint32_t sub, uint32_t mip )
+{
+    m_CommandList->ClearDepthStencilView(Target.GetMipDSV(sub, mip), D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, Target.GetClearDepth(), Target.GetClearStencil(), 0, nullptr);
 }
 
 void GraphicsContext::SetViewportAndScissor( const D3D12_VIEWPORT& vp, const D3D12_RECT& rect )

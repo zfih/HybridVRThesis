@@ -22,13 +22,16 @@ RWTexture2DArray<float> DS16xAtlas : register(u3);
 cbuffer CB0 : register(b0)
 {
     float2 InvSourceDimension;
+    uint mip;
 }
+
+SamplerState Sampler : register(s0);
 
 [RootSignature(SSAO_RootSig)]
 [numthreads( 8, 8, 1 )]
 void main( uint3 Gid : SV_GroupID, uint GI : SV_GroupIndex, uint3 GTid : SV_GroupThreadID, uint3 DTid : SV_DispatchThreadID )
 {
-    float m1 = DS4x[DTid.xy << 1];
+    float m1 = DS4x.SampleLevel(Sampler, DTid.xy << 1, mip);
 
     uint2 st = DTid.xy;
     uint2 stAtlas = st >> 2;

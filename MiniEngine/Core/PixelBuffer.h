@@ -23,7 +23,9 @@ public:
     PixelBuffer() : m_Width(0), m_Height(0), m_ArraySize(0), m_Format(DXGI_FORMAT_UNKNOWN), m_BankRotation(0) {}
 
     uint32_t GetWidth(void) const { return m_Width; }
+    uint32_t GetMipWidth(uint32_t i) const { return i > 0 ? (m_Width + pow(i, 2) - 1) / pow(i, 2) : m_Width; }
     uint32_t GetHeight(void) const { return m_Height; }
+    uint32_t GetMipHeight(uint32_t i) const { return i > 0 ? (m_Height + pow(i, 2) - 1) / pow(i, 2) : m_Height; }
     uint32_t GetDepth(void) const { return m_ArraySize; }
     const DXGI_FORMAT& GetFormat(void) const { return m_Format; }
 
