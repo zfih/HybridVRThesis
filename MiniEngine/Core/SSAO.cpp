@@ -133,7 +133,7 @@ void SSAO::Shutdown(void)
 
 namespace SSAO
 {
-    void ComputeAO(ComputeContext& Context, ColorBuffer& Destination, ColorBuffer& DepthBuffer, const float TanHalfFovH)
+    void ComputeAO(ComputeContext& Context, ColorBuffer& Destination, ColorBuffer& DepthBuffer, const float TanHalfFovH, UINT mip)
     {
         size_t BufferWidth = DepthBuffer.GetWidth();
         size_t BufferHeight = DepthBuffer.GetHeight();
@@ -222,7 +222,7 @@ namespace SSAO
         SsaoCB[26] = 1.0f / -Settings::RejectionFalloff;
         SsaoCB[27] = 1.0f / (1.0f + Settings::Accentuation);
 
-        Context.SetConstants(0, g_CurrentMip);
+        Context.SetConstants(0, mip);
         Context.SetDynamicConstantBufferView(1, sizeof(SsaoCB), SsaoCB);
         Context.SetDynamicDescriptor(2, 0, Destination.GetUAV());
         Context.SetDynamicDescriptor(3, 0, DepthBuffer.GetSRV());
@@ -235,7 +235,8 @@ namespace SSAO
 
     void BlurAndUpsample(ComputeContext& Context,
         ColorBuffer& Destination, ColorBuffer& HiResDepth, ColorBuffer& LoResDepth,
-        ColorBuffer* InterleavedAO, ColorBuffer* HighQualityAO, ColorBuffer* HiResAO
+        ColorBuffer* InterleavedAO, ColorBuffer* HighQualityAO, ColorBuffer* HiResAO,
+        UINT mip
     )
     {
         size_t LoWidth  = LoResDepth.GetWidth ();
@@ -265,7 +266,7 @@ namespace SSAO
         };
         Context.SetDynamicConstantBufferView(1, sizeof(cbData), cbData);
 
-        Context.SetConstants(0, g_CurrentMip);
+        Context.SetConstants(0, mip);
     	
         Context.TransitionResource(Destination, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
         Context.TransitionResource(LoResDepth, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
@@ -305,6 +306,7 @@ void SSAO::Render(GraphicsContext& GfxContext, const float* ProjMat, float NearC
 
     ColorBuffer& LinearDepth = Graphics::g_LinearDepth[FrameIndex];
 
+    const uint32_t mip = GetMipLevel(static_cast<Cam::CameraType>(CurCam));
     const float zMagic = (FarClipDist - NearClipDist) / NearClipDist;
 
     if (!Settings::SSAO_Enable)
@@ -322,7 +324,7 @@ void SSAO::Render(GraphicsContext& GfxContext, const float* ProjMat, float NearC
         Context.SetRootSignature(s_RootSignature);
 
         Context.TransitionResource(g_SceneDepthBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-        Context.SetConstants(0, zMagic, g_CurrentMip, CurCam);
+        Context.SetConstants(0, zMagic, mip, CurCam);
         Context.SetDynamicDescriptor(3, 0, g_SceneDepthBuffer.GetDepthSRV());
 
         Context.TransitionResource(LinearDepth, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
@@ -334,10 +336,10 @@ void SSAO::Render(GraphicsContext& GfxContext, const float* ProjMat, float NearC
         {
             Context.TransitionResource(g_SceneColorBuffer, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
             Context.TransitionResource(LinearDepth, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-            Context.SetDynamicDescriptors(2, 0, 1, &g_SceneColorBuffer.GetMipUAV(CurCam, g_CurrentMip));
+            Context.SetDynamicDescriptors(2, 0, 1, &g_SceneColorBuffer.GetMipUAV(CurCam, mip));
             Context.SetDynamicDescriptors(3, 0, 1, &LinearDepth.GetSRV());
             Context.SetPipelineState(s_DebugSSAOCS);
-            Context.Dispatch2D(g_SSAOFullScreen.GetMipWidth(g_CurrentMip), g_SSAOFullScreen.GetMipHeight(g_CurrentMip));
+            Context.Dispatch2D(g_SSAOFullScreen.GetMipWidth(mip), g_SSAOFullScreen.GetMipHeight(mip));
         }
 
         return;
@@ -362,7 +364,7 @@ void SSAO::Render(GraphicsContext& GfxContext, const float* ProjMat, float NearC
     { ScopedTimer _prof(L"Decompress and downsample", Context);
 
     // Phase 1:  Decompress, linearize, downsample, and deinterleave the depth buffer
-    Context.SetConstants(0, zMagic, g_CurrentMip, CurCam);
+    Context.SetConstants(0, zMagic, mip, CurCam);
     Context.SetDynamicDescriptor(3, 0, g_SceneDepthBuffer.GetDepthSRV());
 
     Context.TransitionResource(LinearDepth, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
@@ -424,40 +426,40 @@ void SSAO::Render(GraphicsContext& GfxContext, const float* ProjMat, float NearC
     if (Settings::HierarchyDepth > 3)
     {
         Context.SetPipelineState(s_Render1CS);
-        ComputeAO(Context, g_AOMerged4, g_DepthTiled4, FovTangent);
+        ComputeAO(Context, g_AOMerged4, g_DepthTiled4, FovTangent, mip);
         if (Settings::SSAO_QualityLevel >= Settings::kSsaoQualityLow)
         {
             Context.SetPipelineState(s_Render2CS);
-            ComputeAO(Context, g_AOHighQuality4, g_DepthDownsize4, FovTangent);
+            ComputeAO(Context, g_AOHighQuality4, g_DepthDownsize4, FovTangent, mip);
         }
     }
     if (Settings::HierarchyDepth > 2)
     {
         Context.SetPipelineState(s_Render1CS);
-        ComputeAO(Context, g_AOMerged3, g_DepthTiled3, FovTangent);
+        ComputeAO(Context, g_AOMerged3, g_DepthTiled3, FovTangent, mip);
         if (Settings::SSAO_QualityLevel >= Settings::kSsaoQualityMedium)
         {
             Context.SetPipelineState(s_Render2CS);
-            ComputeAO(Context, g_AOHighQuality3, g_DepthDownsize3, FovTangent);
+            ComputeAO(Context, g_AOHighQuality3, g_DepthDownsize3, FovTangent, mip);
         }
     }
     if (Settings::HierarchyDepth > 1)
     {
         Context.SetPipelineState(s_Render1CS);
-        ComputeAO(Context, g_AOMerged2, g_DepthTiled2, FovTangent);
+        ComputeAO(Context, g_AOMerged2, g_DepthTiled2, FovTangent, mip);
         if (Settings::SSAO_QualityLevel >= Settings::kSsaoQualityHigh)
         {
             Context.SetPipelineState(s_Render2CS);
-            ComputeAO(Context, g_AOHighQuality2, g_DepthDownsize2, FovTangent);
+            ComputeAO(Context, g_AOHighQuality2, g_DepthDownsize2, FovTangent, mip);
         }
     }
     {
         Context.SetPipelineState(s_Render1CS);
-        ComputeAO(Context, g_AOMerged1, g_DepthTiled1, FovTangent);
+        ComputeAO(Context, g_AOMerged1, g_DepthTiled1, FovTangent, mip);
         if (Settings::SSAO_QualityLevel >= Settings::kSsaoQualityVeryHigh)
         {
             Context.SetPipelineState(s_Render2CS);
-            ComputeAO(Context, g_AOHighQuality1, g_DepthDownsize1, FovTangent);
+            ComputeAO(Context, g_AOHighQuality1, g_DepthDownsize1, FovTangent, mip);
         }
     }
 
@@ -473,7 +475,7 @@ void SSAO::Render(GraphicsContext& GfxContext, const float* ProjMat, float NearC
     if (Settings::HierarchyDepth > 3)
     {
         BlurAndUpsample(Context, g_AOSmooth3, g_DepthDownsize3, g_DepthDownsize4, NextSRV,
-            Settings::SSAO_QualityLevel >= Settings::kSsaoQualityLow ? &g_AOHighQuality4 : nullptr, &g_AOMerged3);
+            Settings::SSAO_QualityLevel >= Settings::kSsaoQualityLow ? &g_AOHighQuality4 : nullptr, &g_AOMerged3, mip);
 
         NextSRV = &g_AOSmooth3;
     }
@@ -485,7 +487,7 @@ void SSAO::Render(GraphicsContext& GfxContext, const float* ProjMat, float NearC
     if (Settings::HierarchyDepth > 2)
     {
         BlurAndUpsample(Context, g_AOSmooth2, g_DepthDownsize2, g_DepthDownsize3, NextSRV,
-            Settings::SSAO_QualityLevel >= Settings::kSsaoQualityMedium ? &g_AOHighQuality3 : nullptr, &g_AOMerged2);
+            Settings::SSAO_QualityLevel >= Settings::kSsaoQualityMedium ? &g_AOHighQuality3 : nullptr, &g_AOMerged2, mip);
 
         NextSRV = &g_AOSmooth2;
     }
@@ -496,7 +498,7 @@ void SSAO::Render(GraphicsContext& GfxContext, const float* ProjMat, float NearC
     if (Settings::HierarchyDepth > 1)
     {
         BlurAndUpsample(Context, g_AOSmooth1, g_DepthDownsize1, g_DepthDownsize2, NextSRV,
-            Settings::SSAO_QualityLevel >= Settings::kSsaoQualityHigh ? &g_AOHighQuality2 : nullptr, &g_AOMerged1);
+            Settings::SSAO_QualityLevel >= Settings::kSsaoQualityHigh ? &g_AOHighQuality2 : nullptr, &g_AOMerged1, mip);
 
         NextSRV = &g_AOSmooth1;
     }
@@ -505,7 +507,7 @@ void SSAO::Render(GraphicsContext& GfxContext, const float* ProjMat, float NearC
 
     // 960 x 540 -> 1920 x 1080
     BlurAndUpsample(Context, g_SSAOFullScreen, LinearDepth, g_DepthDownsize1, NextSRV,
-        Settings::SSAO_QualityLevel >= Settings::kSsaoQualityVeryHigh ? &g_AOHighQuality1 : nullptr, nullptr);
+        Settings::SSAO_QualityLevel >= Settings::kSsaoQualityVeryHigh ? &g_AOHighQuality1 : nullptr, nullptr, mip);
 
     } // End blur and upsample
 
@@ -527,7 +529,7 @@ void SSAO::Render(GraphicsContext& GfxContext, const float* ProjMat, float NearC
         CC.TransitionResource(g_SSAOFullScreen, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
         CC.SetRootSignature(s_RootSignature);
         CC.SetPipelineState(s_DebugSSAOCS);
-        CC.SetDynamicDescriptors(2, 0, 1, &g_SceneColorBuffer.GetMipUAV(CurCam, g_CurrentMip));
+        CC.SetDynamicDescriptors(2, 0, 1, &g_SceneColorBuffer.GetMipUAV(CurCam, mip));
         CC.SetDynamicDescriptors(3, 0, 1, &g_SSAOFullScreen.GetSRV());
         CC.Dispatch2D(g_SSAOFullScreen.GetWidth(), g_SSAOFullScreen.GetHeight());
     }

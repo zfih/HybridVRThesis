@@ -197,6 +197,7 @@ public:
 
     void ClearUAV( GpuBuffer& Target );
     void ClearUAV( ColorBuffer& Target );
+    void ClearUAV( ColorBuffer& Target, uint32_t sub);
     void ClearColor( ColorBuffer& Target );
 	void ClearColor(ColorBuffer& Target, uint32_t ArrayIndex);
 	void ClearColor(ColorBuffer& Target, uint32_t ArrayIndex, uint32_t MipLevel);
@@ -272,6 +273,7 @@ public:
 
     void ClearUAV( GpuBuffer& Target );
     void ClearUAV( ColorBuffer& Target );
+    void ClearUAV( ColorBuffer& Target, uint32_t sub );
 
     void SetRootSignature( const RootSignature& RootSig );
 

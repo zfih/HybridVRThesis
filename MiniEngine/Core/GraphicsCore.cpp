@@ -1019,3 +1019,8 @@ float Graphics::GetFrameRate(void)
 {
     return s_FrameTime == 0.0f ? 0.0f : 1.0f / s_FrameTime;
 }
+
+uint32_t Graphics::GetMipLevel(Cam::CameraType CamType)
+{
+    return (Graphics::GetFrameCount() + CamType) % 2 * 2;
+}

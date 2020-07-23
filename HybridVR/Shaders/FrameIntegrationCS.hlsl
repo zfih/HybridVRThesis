@@ -1,6 +1,6 @@
 cbuffer consts : register(b0)
 {
-    uint FullRes;
+    uint cam;
 };
 
 Texture2DArray<float3> ImageSRV : register(t0);
@@ -83,14 +83,6 @@ void LowResPass(uint3 DTid, uint cam)
 [numthreads(8, 8, 1)]
 void main(uint3 DTid : SV_DispatchThreadID)
 {
-    if (FullRes)
-    {
-        FullResPass(DTid, 0);
-        FullResPass(DTid, 1);
-    }
-    else
-    {
-        LowResPass(DTid, 0);
-        LowResPass(DTid, 1);
-    }
+    FullResPass(DTid, cam);
+    LowResPass(DTid, !cam);
 }
