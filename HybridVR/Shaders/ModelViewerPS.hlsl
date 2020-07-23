@@ -342,7 +342,7 @@ MRT main(VSOutput vsOutput)
     mrt.Normal = 0.0;
 
     uint2 pixelPos = uint2(vsOutput.position.xy);
-# define SAMPLE_TEX(texName) texName.SampleLevel(sampler0, vsOutput.uv, mip)
+# define SAMPLE_TEX(texName) texName.Sample(sampler0, vsOutput.uv)
 
     float3 diffuseAlbedo = SAMPLE_TEX(texDiffuse);
     float3 colorSum = 0;

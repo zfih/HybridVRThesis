@@ -1923,8 +1923,8 @@ void D3D12RaytracingMiniEngineSample::FrameIntegration()
 			cmpContext.SetDynamicDescriptor(2, 0, g_SceneColorBufferLowPassed.GetSRV());
 
 			cmpContext.Dispatch2D(
-				g_SceneColorBuffer.GetMipWidth(g_CurrentMip),
-				g_SceneColorBuffer.GetMipHeight(g_CurrentMip));
+				g_SceneColorBuffer.GetMipWidth(2),
+				g_SceneColorBuffer.GetMipHeight(2));
 
 			cmpContext.TransitionResource(g_SceneColorBufferResidules, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, true);
 			cmpContext.ClearUAV(g_SceneColorBufferResidules);
