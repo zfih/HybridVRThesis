@@ -141,11 +141,11 @@ Type& Name(ResolutionMode::ResolutionMode ResolutionMode) \
 { \
     switch (ResolutionMode) \
     { \
-    case 0: \
+    case ResolutionMode::kFullRes: \
         return g_##Name##FullRes; \
-    case 1: \
+    case ResolutionMode::kLowRes: \
         return g_##Name##LowRes; \
-    case 2: \
+    case ResolutionMode::kAuto: \
         if (Graphics::GetFrameCount() % 2 == 1) \
         { \
             return g_##Name##LowRes; \
@@ -306,11 +306,14 @@ private:
 
 	enum eObjectFilter { kOpaque = 0x1, kCutout = 0x2, kTransparent = 0x4, kAll = 0xF, kNone = 0x0 };
 	void RenderObjects(GraphicsContext& Context, UINT CurCam, const Matrix4& ViewProjMat, eObjectFilter Filter = kAll);
-	void RaytraceDiffuse(GraphicsContext& context,  ColorBuffer& colorTarget, UINT mip);
+	void RaytraceDiffuse(GraphicsContext& context,  ColorBuffer& colorTarget,
+						 UINT mip, ResolutionMode::ResolutionMode lowOrHighRes);
 	void RaytraceShadows(GraphicsContext& context, ColorBuffer& colorTarget,
-	                     DepthBuffer& depth, UINT mip);
+	                     DepthBuffer& depth, UINT mip,
+						 ResolutionMode::ResolutionMode lowOrHighRes);
 	void RaytraceReflections(GraphicsContext& context, ColorBuffer& colorTarget,
-	                         DepthBuffer& depth, ColorBuffer& normals, UINT mip);
+	                         DepthBuffer& depth, ColorBuffer& normals, UINT mip,
+							 ResolutionMode::ResolutionMode lowOrHighRes);
 
 	void SaveCamPos();
 	void LoadCamPos();
@@ -1869,7 +1872,7 @@ void D3D12RaytracingMiniEngineSample::FrameIntegration()
 
 		//cmpContext.ClearUAV(g_SceneColorBufferLowPassed);
 
-		cmpContext.SetConstants(0, cam);
+		cmpContext.SetConstant(2, cam);
 		
 		// No need to handle mip here. We need the high res no matter what
 		cmpContext.SetDynamicDescriptor(0, 0, g_SceneColorBuffer.GetSRV());
@@ -1942,7 +1945,8 @@ void g_initialize_dynamicCb(
 void Raytracebarycentrics(
 	CommandContext& context,
 	ColorBuffer& colorTarget,
-	UINT mip)
+	UINT mip,
+	ResolutionMode::ResolutionMode lowOrHighRes)
 {
 	ScopedTimer _p0(L"Raytracing barycentrics", context);
 
@@ -1974,7 +1978,7 @@ void Raytracebarycentrics(
 	pCmdList->SetComputeRootConstantBufferView(1, g_hitConstantBuffer.GetGpuVirtualAddress());
 	pCmdList->SetComputeRootConstantBufferView(2, g_dynamicConstantBuffer.GetGpuVirtualAddress());
 	pCmdList->SetComputeRootDescriptorTable(
-		4, OutputUAV(ResolutionMode::kAuto));
+		4, OutputUAV(lowOrHighRes));
 	pCmdList->SetComputeRootShaderResourceView(
 		7, g_bvh_topLevelAccelerationStructure->GetGPUVirtualAddress());
 
@@ -1989,7 +1993,8 @@ void RaytracebarycentricsSSR(
 	ColorBuffer& colorTarget,
 	DepthBuffer& depth,
 	ColorBuffer& normals,
-	UINT mip)
+	UINT mip,
+	ResolutionMode::ResolutionMode lowOrHighRes)
 {
 	ScopedTimer _p0(L"Raytracing SSR barycentrics", context);
 
@@ -2020,7 +2025,7 @@ void RaytracebarycentricsSSR(
 	pCmdList->SetComputeRootDescriptorTable(
 		3, g_DepthAndNormalsTable);
 	pCmdList->SetComputeRootDescriptorTable(
-		4, OutputUAV(ResolutionMode::kAuto));
+		4, OutputUAV(lowOrHighRes));
 	pCmdList->SetComputeRootShaderResourceView(
 		7, g_bvh_topLevelAccelerationStructure->GetGPUVirtualAddress());
 
@@ -2035,7 +2040,8 @@ void D3D12RaytracingMiniEngineSample::RaytraceShadows(
 	GraphicsContext& context,
 	ColorBuffer& colorTarget,
 	DepthBuffer& depth,
-	UINT mip)
+	UINT mip,
+	ResolutionMode::ResolutionMode lowOrHighRes)
 {
 	ScopedTimer _p0(L"Raytracing Shadows", context);
 
@@ -2073,7 +2079,7 @@ void D3D12RaytracingMiniEngineSample::RaytraceShadows(
 	pCmdList->SetComputeRootDescriptorTable(
 		3, g_DepthAndNormalsTable);
 	pCmdList->SetComputeRootDescriptorTable(
-		4, OutputUAV(ResolutionMode::kAuto));
+		4, OutputUAV(lowOrHighRes));
 	pCmdList->SetComputeRootShaderResourceView(
 		7, g_bvh_topLevelAccelerationStructure->GetGPUVirtualAddress());
 
@@ -2086,7 +2092,8 @@ void D3D12RaytracingMiniEngineSample::RaytraceShadows(
 void D3D12RaytracingMiniEngineSample::RaytraceDiffuse(
 	GraphicsContext& context,
 	ColorBuffer& colorTarget,
-	UINT mip)
+	UINT mip,
+	ResolutionMode::ResolutionMode lowOrHighRes)
 {
 	ScopedTimer _p0(L"RaytracingWithHitShader", context);
 
@@ -2122,7 +2129,7 @@ void D3D12RaytracingMiniEngineSample::RaytraceDiffuse(
 	pCommandList->SetComputeRootConstantBufferView(1, g_hitConstantBuffer.GetGpuVirtualAddress());
 	pCommandList->SetComputeRootConstantBufferView(2, g_dynamicConstantBuffer.GetGpuVirtualAddress());
 	pCommandList->SetComputeRootDescriptorTable(
-		4, OutputUAV(ResolutionMode::kAuto));
+		4, OutputUAV(lowOrHighRes));
 	pRaytracingCommandList->SetComputeRootShaderResourceView(
 		7, g_bvh_topLevelAccelerationStructure->GetGPUVirtualAddress());
 
@@ -2137,7 +2144,8 @@ void D3D12RaytracingMiniEngineSample::RaytraceReflections(
 	ColorBuffer& colorTarget,
 	DepthBuffer& depth,
 	ColorBuffer& normals,
-	UINT mip)
+	UINT mip,
+	ResolutionMode::ResolutionMode lowOrHighRes)
 {
 	ScopedTimer _p0(L"RaytracingWithHitShader", context);
 
@@ -2177,7 +2185,7 @@ void D3D12RaytracingMiniEngineSample::RaytraceReflections(
 	pCommandList->SetComputeRootDescriptorTable(
 		3, g_DepthAndNormalsTable);
 	pCommandList->SetComputeRootDescriptorTable(
-		4, OutputUAV(ResolutionMode::kAuto));
+		4, OutputUAV(lowOrHighRes));
 	pRaytracingCommandList->SetComputeRootShaderResourceView(
 		7, g_bvh_topLevelAccelerationStructure->GetGPUVirtualAddress());
 
@@ -2221,29 +2229,34 @@ void D3D12RaytracingMiniEngineSample::Raytrace(class GraphicsContext& gfxContext
 
 	g_initialize_dynamicCb(gfxContext, m_Camera, CurCam, g_SceneColorBuffer, g_dynamicConstantBuffer);
 	UINT mip = GetMipLevel(static_cast<Cam::CameraType>(CurCam));
+	UINT lowResMip = GetMipLevel(Cam::kLeft) ?
+		GetMipLevel(Cam::kLeft) : GetMipLevel(Cam::kRight);
+	auto lowOrHighRes = (ResolutionMode::ResolutionMode)(mip / lowResMip);
 
 	switch (Settings::RayTracingMode)
 	{
 	case Settings::RTM_TRAVERSAL:
-		Raytracebarycentrics(gfxContext, g_SceneColorBuffer, mip);
+		Raytracebarycentrics(gfxContext, g_SceneColorBuffer, mip, lowOrHighRes);
 		break;
 
 	case Settings::RTM_SSR:
 		RaytracebarycentricsSSR(gfxContext, g_SceneColorBuffer, g_SceneDepthBuffer,
-		                        g_SceneNormalBuffer, mip);
+		                        g_SceneNormalBuffer, mip, lowOrHighRes);
 		break;
 
 	case Settings::RTM_SHADOWS:
-		RaytraceShadows(gfxContext, g_SceneColorBuffer, g_SceneDepthBuffer, mip);
+		RaytraceShadows(gfxContext, g_SceneColorBuffer, g_SceneDepthBuffer, mip, 
+						lowOrHighRes);
 		break;
 
 	case Settings::RTM_DIFFUSE_WITH_SHADOWMAPS:
 	case Settings::RTM_DIFFUSE_WITH_SHADOWRAYS:
-		RaytraceDiffuse(gfxContext, g_SceneColorBuffer, mip);
+		RaytraceDiffuse(gfxContext, g_SceneColorBuffer, mip, lowOrHighRes);
 		break;
 
 	case Settings::RTM_REFLECTIONS:
-		RaytraceReflections(gfxContext, g_SceneColorBuffer, g_SceneDepthBuffer, g_SceneNormalBuffer, mip);
+		RaytraceReflections(gfxContext, g_SceneColorBuffer, g_SceneDepthBuffer, 
+							g_SceneNormalBuffer, mip, lowOrHighRes);
 		break;
 	}
 

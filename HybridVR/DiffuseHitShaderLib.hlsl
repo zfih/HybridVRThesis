@@ -301,7 +301,16 @@ void Hit(inout RayPayload payload, in BuiltInTriangleIntersectionAttributes attr
         normal = normalize(mul(normal, tbn));
     }
     
-    float3 outputColor = AmbientColor * diffuseColor * texSSAO[DispatchRaysIndex().xy];
+	float outputTextureWidth;
+	float outputTextureHeight;
+	float elements;
+	g_screenOutput.GetDimensions(
+        outputTextureWidth, outputTextureHeight, elements);
+	float2 outputuv = float2(DispatchRaysIndex().x / outputTextureWidth,
+                       DispatchRaysIndex().y / outputTextureHeight);
+    
+	float3 outputColor = 
+        AmbientColor * diffuseColor * texSSAO.SampleLevel(g_s0, outputuv, 0);
 
     float shadow = 1.0;
     if (UseShadowRays)
@@ -339,11 +348,6 @@ void Hit(inout RayPayload payload, in BuiltInTriangleIntersectionAttributes attr
         SunColor);
 
     outputColor = ApplySRGBCurve(outputColor);
-
-	float nTextureWidth;
-	float nTextureHeight;
-	float elements;
-	g_screenOutput.GetDimensions(nTextureWidth, nTextureHeight, elements);
     
     // TODO: Should be passed in via material info
     if (IsReflection)
