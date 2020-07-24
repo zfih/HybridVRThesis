@@ -12,8 +12,8 @@
 #define HLSL
 #include "ModelViewerRaytracing.h"
 
-Texture2DArray<float>    depth    : register(t12);
-Texture2DArray<float4>   normals  : register(t13);
+Texture2D<float>    depth    : register(t12);
+Texture2D<float4>   normals  : register(t13);
 
 [shader("raygeneration")]
 void RayGen()
@@ -30,8 +30,8 @@ void RayGen()
     float2 readGBufferAt = xy;
 
     // Read depth and normal
-    float sceneDepth = depth.Load(int4(readGBufferAt, g_dynamic.curCam, g_dynamic.mip));
-    float4 normalData = normals.Load(int4(readGBufferAt, g_dynamic.curCam, g_dynamic.mip));
+    float sceneDepth = depth.Load(int3(readGBufferAt, g_dynamic.mip));
+    float4 normalData = normals.Load(int3(readGBufferAt, g_dynamic.mip));
     if (normalData.w == 0.0)
         return;
 

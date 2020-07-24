@@ -808,7 +808,6 @@ void Graphics::PreparePresentLDR(void)
 
     Context.SetRootSignature(s_PresentRS);
     Context.SetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-    Context.SetConstants(0, g_CurrentMip);
 
     // Copy (and convert) the LDR buffer to the back buffer
 	if (Settings::TMPMode == 5)

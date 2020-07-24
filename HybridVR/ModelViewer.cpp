@@ -1542,7 +1542,7 @@ void D3D12RaytracingMiniEngineSample::CreateRayTraceAccelerationStructures(UINT 
 }
 
 void D3D12RaytracingMiniEngineSample::RenderColor(GraphicsContext& Ctx, Camera& Camera, Cam::CameraType CameraType,
-	DepthBuffer& DepthBuffer, PSConstants& Constants)
+	DepthBuffer& gbnla, PSConstants& Constants)
 {
 	ScopedTimer _prof(L"Render Color", Ctx);
 
@@ -1566,11 +1566,11 @@ void D3D12RaytracingMiniEngineSample::RenderColor(GraphicsContext& Ctx, Camera& 
 
 		D3D12_CPU_DESCRIPTOR_HANDLE rtvs[2]{
 			g_SceneColorBuffer.GetMipRTV(CameraType, Graphics::GetMipLevel(CameraType)),
-			g_SceneNormalBuffer.GetMipRTV(CameraType, Graphics::GetMipLevel(CameraType)),
+			g_SceneNormalBuffer.GetMipRTV(0, Graphics::GetMipLevel(CameraType)),
 		};
 		
 		Ctx.SetRenderTargets(ARRAYSIZE(rtvs), rtvs,
-			g_SceneDepthBuffer.GetMipDSV(CameraType, Graphics::GetMipLevel(CameraType)));
+			g_SceneDepthBuffer.GetMipDSV(0, Graphics::GetMipLevel(CameraType)));
 
 		Ctx.SetViewportAndScissor(
 			m_MainViewport, m_MainScissor);
@@ -1667,12 +1667,12 @@ void D3D12RaytracingMiniEngineSample::RenderPrepass(GraphicsContext& Ctx, Cam::C
 				// prepass
 				if (!Settings::VRDepthStencil)
 				{
-					Ctx.ClearDepthAndStencil(g_SceneDepthBuffer, CameraType, GetMipLevel(CameraType));
+					Ctx.ClearDepthAndStencil(g_SceneDepthBuffer, 0, GetMipLevel(CameraType));
 				}
 
 				Ctx.SetPipelineState(m_DepthPSO[0]);
 				
-				Ctx.SetDepthStencilTarget(g_SceneDepthBuffer.GetMipDSV(CameraType, GetMipLevel(CameraType)));
+				Ctx.SetDepthStencilTarget(g_SceneDepthBuffer.GetMipDSV(0, GetMipLevel(CameraType)));
 
 				Ctx.SetViewportAndScissor(m_MainViewport, m_MainScissor);
 			}
@@ -1869,8 +1869,6 @@ void D3D12RaytracingMiniEngineSample::FrameIntegration()
 
 		cmpContext.TransitionResource(g_SceneColorBuffer, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 		cmpContext.TransitionResource(g_SceneColorBufferLowPassed, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, true);
-
-		//cmpContext.ClearUAV(g_SceneColorBufferLowPassed);
 
 		cmpContext.SetConstant(2, cam);
 		

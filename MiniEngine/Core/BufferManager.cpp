@@ -135,12 +135,12 @@ void Graphics::InitializeRenderingBuffers( uint32_t bufferWidth, uint32_t buffer
     esram.PushStack();
 
         g_SceneColorBuffer.CreateArray( L"Main Color Buffers", bufferWidth, bufferHeight, arrayCount, mipCount, DefaultHdrColorFormat, esram );
-        g_SceneColorBufferLowPassed.CreateArray( L"Low Passed Main Color Buffers", bufferWidth, bufferHeight, arrayCount, DefaultHdrColorFormat, esram );
+        g_SceneColorBufferLowPassed.Create( L"Low Passed Main Color Buffers", bufferWidth, bufferHeight, 1, DefaultHdrColorFormat, esram );
         g_SceneColorBufferResidules.CreateArray( L"Residules of Main Color Buffers", bufferWidth, bufferHeight, arrayCount, DefaultHdrColorFormat, esram );
         g_VelocityBuffer.Create( L"Motion Vectors", bufferWidth, bufferHeight, 1, DXGI_FORMAT_R32_UINT );
         g_PostEffectsBuffer.Create( L"Post Effects Buffer", bufferWidth, bufferHeight, 1, DXGI_FORMAT_R32_UINT );
 
-        g_SceneNormalBuffer.CreateArray(L"Main Normal Buffer", g_SceneColorBuffer.GetWidth(), g_SceneColorBuffer.GetHeight(), arrayCount, mipCount, DXGI_FORMAT_R8G8B8A8_UNORM);
+        g_SceneNormalBuffer.Create(L"Main Normal Buffer", g_SceneColorBuffer.GetWidth(), g_SceneColorBuffer.GetHeight(), mipCount, DXGI_FORMAT_R8G8B8A8_UNORM);
 
         esram.PushStack();    // Render HDR image
 
@@ -150,7 +150,7 @@ void Graphics::InitializeRenderingBuffers( uint32_t bufferWidth, uint32_t buffer
             g_MinMaxDepth16.Create(L"MinMaxDepth 16x16", bufferWidth4, bufferHeight4, 1, DXGI_FORMAT_R32_UINT, esram );
             g_MinMaxDepth32.Create(L"MinMaxDepth 32x32", bufferWidth5, bufferHeight5, 1, DXGI_FORMAT_R32_UINT, esram );
 
-            g_SceneDepthBuffer.CreateArray( L"Scene Depth Buffer", bufferWidth, bufferHeight, arrayCount, mipCount, DSV_FORMAT);
+            g_SceneDepthBuffer.Create( L"Scene Depth Buffer", bufferWidth, bufferHeight, 1, DSV_FORMAT, mipCount);
 
             esram.PushStack(); // Begin opaque geometry
 
