@@ -1,6 +1,6 @@
 
 Texture2DArray<float3> HighResImage : register(t0);
-RWTexture2DArray<float3> LowPassed : register(u0);
+RWTexture2DArray<float3> LowPassedImage : register(u0);
 cbuffer consts : register(b0)
 {
     uint cam;
@@ -60,6 +60,6 @@ void main(uint3 DTid : SV_DispatchThreadID)
     }
     
     // TODO : FIX Cam 0 for now
-    LowPassed[uint3(DTid.x, DTid.y, 0)] = colorSum;
+    LowPassedImage[uint3(DTid.x, DTid.y, cam)] = colorSum;
 
 }

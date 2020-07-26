@@ -335,7 +335,6 @@ private:
 	GraphicsPSO m_WaveTileCountPSO;
 
 	RootSignature m_LowPassSig;
-	RootSignature m_DownsampleSig;
 	ComputePSO m_LowPassPSO;
 	ComputePSO m_DownsamplePSO;
 	RootSignature m_FrameIntegrationSig;
@@ -1138,14 +1137,9 @@ void D3D12RaytracingMiniEngineSample::Startup(void)
 	m_LowPassPSO.SetRootSignature(m_LowPassSig);
 	m_LowPassPSO.SetComputeShader(g_pLowPassCS, sizeof(g_pLowPassCS));
 	m_LowPassPSO.Finalize();
-
-	m_DownsampleSig.Reset(2, 1);
-	m_DownsampleSig[0].InitAsDescriptorRange(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 0, 1);
-	m_DownsampleSig[1].InitAsDescriptorRange(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 0, 1);
-	m_DownsampleSig.InitStaticSampler(0, SamplerLinearWrapDesc);
-	m_DownsampleSig.Finalize(L"DownsampleSignature", D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
 	
-	m_DownsamplePSO.SetRootSignature(m_DownsampleSig);
+	// Reuses 
+	m_DownsamplePSO.SetRootSignature(m_LowPassSig);
 	m_DownsamplePSO.SetComputeShader(g_pDownsampleCS, sizeof(g_pDownsampleCS));
 	m_DownsamplePSO.Finalize();
 
@@ -1153,7 +1147,7 @@ void D3D12RaytracingMiniEngineSample::Startup(void)
 	m_FrameIntegrationSig[0].InitAsConstants(0, 1);
 	m_FrameIntegrationSig[1].InitAsDescriptorRange(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 0, 1);
 	m_FrameIntegrationSig[2].InitAsDescriptorRange(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 1, 1);
-	m_FrameIntegrationSig[3].InitAsDescriptorRange(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 0, 1);
+	m_FrameIntegrationSig[3].InitAsDescriptorRange(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 0, 2);
 	m_FrameIntegrationSig.InitStaticSampler(0, SamplerLinearWrapDesc);
 	m_FrameIntegrationSig.Finalize(L"FrameIntegrationSignature", D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
 
@@ -1870,15 +1864,14 @@ void D3D12RaytracingMiniEngineSample::FrameIntegration()
 		cmpContext.TransitionResource(g_SceneColorBuffer, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 		cmpContext.TransitionResource(g_SceneColorBufferLowPassed, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, true);
 
-		cmpContext.SetConstant(2, cam);
-		
 		// No need to handle mip here. We need the high res no matter what
 		cmpContext.SetDynamicDescriptor(0, 0, g_SceneColorBuffer.GetSRV());
 		cmpContext.SetDynamicDescriptor(1, 0, g_SceneColorBufferLowPassed.GetUAV());
+		cmpContext.SetConstant(2, cam);
 
 		cmpContext.Dispatch2D(g_SceneColorBufferLowPassed.GetWidth(), g_SceneColorBufferLowPassed.GetHeight());
 
-		cmpContext.SetRootSignature(m_DownsampleSig);
+		// Reuses m_LowPassSig
 		cmpContext.SetPipelineState(m_DownsamplePSO);
 
 		cmpContext.TransitionResource(g_SceneColorBuffer, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
@@ -1904,6 +1897,7 @@ void D3D12RaytracingMiniEngineSample::FrameIntegration()
 		cmpContext.SetDynamicDescriptor(1, 0, g_SceneColorBuffer.GetUAV());
 		cmpContext.SetDynamicDescriptor(2, 0, g_SceneColorBufferResidules.GetUAV());
 		cmpContext.SetDynamicDescriptor(3, 0, g_SceneColorBuffer.GetSRV());
+		cmpContext.SetDynamicDescriptor(3, 1, g_SceneColorBufferLowPassed.GetSRV());
 
 		cmpContext.Dispatch2D(g_SceneColorBuffer.GetWidth(), g_SceneColorBuffer.GetHeight());
 	}
