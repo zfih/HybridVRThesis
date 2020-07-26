@@ -1728,7 +1728,7 @@ void D3D12RaytracingMiniEngineSample::RenderScene()
 		Settings::RayTracingMode == Settings::RTM_TRAVERSAL;
 
 	const bool skipShadowMap =
-		Settings::RayTracingMode == Settings::RTM_DIFFUSE_WITH_SHADOWMAPS ||
+		Settings::RayTracingMode == Settings::RTM_DIFFUSE_WITH_SHADOWRAYS ||
 		Settings::RayTracingMode == Settings::RTM_TRAVERSAL ||
 		Settings::RayTracingMode == Settings::RTM_SSR;
 
