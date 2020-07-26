@@ -1736,7 +1736,8 @@ void D3D12RaytracingMiniEngineSample::MainRender(GraphicsContext& Ctx, Cam::Came
 			MotionBlur::RenderObjectBlur(Ctx, g_VelocityBuffer, CameraType);
 	}
 
-	if (g_RayTraceSupport/* && RayTracingMode != RTM_OFF*/)
+	if (g_RayTraceSupport && 
+		Settings::RayTracingMode != Settings::RaytracingMode::RTM_OFF)
 	{
 		Settings::g_RaytraceTimer[CameraType].Reset();
 		Settings::g_RaytraceTimer[CameraType].Start();
@@ -1813,7 +1814,7 @@ void D3D12RaytracingMiniEngineSample::RenderScene()
 		Settings::RayTracingMode == Settings::RTM_TRAVERSAL;
 
 	const bool skipShadowMap =
-		Settings::RayTracingMode == Settings::RTM_DIFFUSE_WITH_SHADOWMAPS ||
+		Settings::RayTracingMode == Settings::RTM_DIFFUSE_WITH_SHADOWRAYS ||
 		Settings::RayTracingMode == Settings::RTM_TRAVERSAL ||
 		Settings::RayTracingMode == Settings::RTM_SSR;
 
@@ -1833,8 +1834,6 @@ void D3D12RaytracingMiniEngineSample::RenderScene()
 		}
 		s_ShowLightCounts = Settings::ShowWaveTileCounts;
 	}
-
-	PSConstants psConstants;
 
 	if(!skipShadowMap)
 	{
