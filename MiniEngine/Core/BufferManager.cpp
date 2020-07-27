@@ -135,12 +135,12 @@ void Graphics::InitializeRenderingBuffers( uint32_t bufferWidth, uint32_t buffer
     esram.PushStack();
 
         g_SceneColorBuffer.CreateArray( L"Main Color Buffers", bufferWidth, bufferHeight, arrayCount, mipCount, DefaultHdrColorFormat, esram );
-        g_SceneColorBufferLowPassed.CreateArray( L"Low Passed Main Color Buffers", bufferWidth, bufferHeight, arrayCount, DefaultHdrColorFormat, esram );
+        g_SceneColorBufferLowPassed.CreateArray( L"Low Passed Main Color Buffers", bufferWidth, bufferHeight, 2, DefaultHdrColorFormat, esram );
         g_SceneColorBufferResidules.CreateArray( L"Residules of Main Color Buffers", bufferWidth, bufferHeight, arrayCount, DefaultHdrColorFormat, esram );
         g_VelocityBuffer.Create( L"Motion Vectors", bufferWidth, bufferHeight, 1, DXGI_FORMAT_R32_UINT );
         g_PostEffectsBuffer.Create( L"Post Effects Buffer", bufferWidth, bufferHeight, 1, DXGI_FORMAT_R32_UINT );
 
-        g_SceneNormalBuffer.CreateArray(L"Main Normal Buffer", g_SceneColorBuffer.GetWidth(), g_SceneColorBuffer.GetHeight(), arrayCount, mipCount, DXGI_FORMAT_R8G8B8A8_UNORM);
+        g_SceneNormalBuffer.Create(L"Main Normal Buffer", g_SceneColorBuffer.GetWidth(), g_SceneColorBuffer.GetHeight(), mipCount, DXGI_FORMAT_R8G8B8A8_UNORM);
 
         esram.PushStack();    // Render HDR image
 
@@ -150,7 +150,7 @@ void Graphics::InitializeRenderingBuffers( uint32_t bufferWidth, uint32_t buffer
             g_MinMaxDepth16.Create(L"MinMaxDepth 16x16", bufferWidth4, bufferHeight4, 1, DXGI_FORMAT_R32_UINT, esram );
             g_MinMaxDepth32.Create(L"MinMaxDepth 32x32", bufferWidth5, bufferHeight5, 1, DXGI_FORMAT_R32_UINT, esram );
 
-            g_SceneDepthBuffer.CreateArray( L"Scene Depth Buffer", bufferWidth, bufferHeight, arrayCount, mipCount, DSV_FORMAT);
+            g_SceneDepthBuffer.Create( L"Scene Depth Buffer", bufferWidth, bufferHeight, 1, DSV_FORMAT, mipCount);
 
             esram.PushStack(); // Begin opaque geometry
 
@@ -341,60 +341,3 @@ void Graphics::DestroyRenderingBuffers()
 
     g_GenMipsBuffer.Destroy();
 }
-
-
-// TODO: TMP REWORK: MAKE NEW GETTERFUNCS
-//#define GetterFunc(BufType, BufName) BufType* Graphics::BufName(int cam) \
-//{ \
-//    if (Graphics::GetFrameCount() % 2 == 1) \
-//    { \
-//        return &g_##BufName##LowRes; \
-//    } \
-//    else \
-//    { \
-//        return &g_##BufName##FullRes; \
-//    } \
-//}
-//
-//GetterFunc(DepthBuffer, SceneDepthBuffer)
-////GetterFunc(ColorBuffer, SceneColorBuffer)
-//GetterFunc(ColorBuffer, SSAOFullScreen)
-//GetterFunc(ColorBuffer, DepthDownsize1)
-//GetterFunc(ColorBuffer, DepthDownsize2)
-//GetterFunc(ColorBuffer, DepthDownsize3)
-//GetterFunc(ColorBuffer, DepthDownsize4)
-//GetterFunc(ColorBuffer, DepthTiled1)
-//GetterFunc(ColorBuffer, DepthTiled2)
-//GetterFunc(ColorBuffer, DepthTiled3)
-//GetterFunc(ColorBuffer, DepthTiled4)
-//GetterFunc(ColorBuffer, AOMerged1)
-//GetterFunc(ColorBuffer, AOMerged2)
-//GetterFunc(ColorBuffer, AOMerged3)
-//GetterFunc(ColorBuffer, AOMerged4)
-//GetterFunc(ColorBuffer, AOSmooth1)
-//GetterFunc(ColorBuffer, AOSmooth2)
-//GetterFunc(ColorBuffer, AOSmooth3)
-//GetterFunc(ColorBuffer, AOHighQuality1)
-//GetterFunc(ColorBuffer, AOHighQuality2)
-//GetterFunc(ColorBuffer, AOHighQuality3)
-//GetterFunc(ColorBuffer, AOHighQuality4)
-//
-//ColorBuffer* Graphics::LinearDepth(int index, int cam)
-//{
-//    switch (cam)
-//    {
-//    case 0:
-//        return &g_LinearDepthFullRes[index];
-//    case 1:
-//        return &g_LinearDepthLowRes[index];
-//    default:
-//        if (Graphics::GetFrameCount() % 2 == 1)
-//        {
-//            return &g_LinearDepthLowRes[index];
-//        }
-//        else
-//        {
-//            return &g_LinearDepthFullRes[index];
-//        }
-//    }
-//}

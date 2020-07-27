@@ -257,7 +257,7 @@ void Lighting::CreateRandomLights( const Vector3 minBound, const Vector3 maxBoun
 }
 
 
-void Lighting::FillLightGrid(GraphicsContext& gfxContext, const Camera& camera)
+void Lighting::FillLightGrid(GraphicsContext& gfxContext, const Camera& camera, uint32_t mip)
 {
     ScopedTimer _prof(L"FillLightGrid", gfxContext);
 
@@ -288,24 +288,12 @@ void Lighting::FillLightGrid(GraphicsContext& gfxContext, const Camera& camera)
     Context.SetDynamicDescriptor(2, 0, m_LightGrid.GetUAV());
     Context.SetDynamicDescriptor(2, 1, m_LightGridBitMask.GetUAV());
 
-    // todo: assumes 1920x1080 resolution
     uint32_t tileCountX;
     uint32_t tileCountY;
 	
-    if(Graphics::g_CurrentMip)
-    {
-        tileCountX = Math::DivideByMultiple(
-            Graphics::divisionHelperFunc(g_SceneColorBuffer.GetWidth()), 
-            Settings::LightGridDim);
-        tileCountY = Math::DivideByMultiple(
-            Graphics::divisionHelperFunc(g_SceneColorBuffer.GetHeight()),
-            Settings::LightGridDim);
-    }
-	else
-	{
-        tileCountX = Math::DivideByMultiple(g_SceneColorBuffer.GetWidth(), Settings::LightGridDim);
-        tileCountY = Math::DivideByMultiple(g_SceneColorBuffer.GetHeight(), Settings::LightGridDim);
-	}
+    tileCountX = Math::DivideByMultiple(g_SceneColorBuffer.GetMipWidth(mip), Settings::LightGridDim);
+    tileCountY = Math::DivideByMultiple(g_SceneColorBuffer.GetMipHeight(mip), Settings::LightGridDim);
+
 
     float FarClipDist = camera.GetFarClip();
     float NearClipDist = camera.GetNearClip();
@@ -320,9 +308,8 @@ void Lighting::FillLightGrid(GraphicsContext& gfxContext, const Camera& camera)
         Matrix4 ViewProjMatrix;
     } csConstants;
 	
-    // todo: assumes 1920x1080 resolution
-    csConstants.ViewportWidth = Graphics::g_CurrentMip ? Graphics::divisionHelperFunc(g_SceneColorBuffer.GetWidth()) : g_SceneColorBuffer.GetWidth();
-    csConstants.ViewportHeight = Graphics::g_CurrentMip ? Graphics::divisionHelperFunc(g_SceneColorBuffer.GetHeight()) : g_SceneColorBuffer.GetHeight();
+    csConstants.ViewportWidth = g_SceneColorBuffer.GetMipWidth(mip);
+    csConstants.ViewportHeight = g_SceneColorBuffer.GetMipHeight(mip);
     csConstants.InvTileDim = 1.0f / Settings::LightGridDim;
 
     csConstants.RcpZMagic = RcpZMagic;

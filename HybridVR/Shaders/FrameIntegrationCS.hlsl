@@ -1,11 +1,12 @@
 cbuffer consts : register(b0)
 {
-    uint FullRes;
+    uint cam;
 };
 
-Texture2DArray<float3> ImageSRV : register(t0);
-RWTexture2DArray<float3> ImageUAV : register(u0);
+Texture2DArray<float3> LowResImage : register(t0);
+RWTexture2DArray<float3> HighResImage : register(u0);
 RWTexture2DArray<float3> Residuals : register(u1);
+Texture2DArray<float3> LowPassedImage : register(t1);
 
 SamplerState Sampler : register(s0);
 
@@ -26,11 +27,11 @@ void FullResPass(uint3 DTid, uint cam)
     float nTextureWidth;
     float nTextureHeight;
     float elements;
-    ImageUAV.GetDimensions(nTextureWidth, nTextureHeight, elements);
+    HighResImage.GetDimensions(nTextureWidth, nTextureHeight, elements);
     float3 uv = float3(DTid.x / nTextureWidth, DTid.y / nTextureHeight, cam);
 
-    float3 colour = (2 * RemoveSRGBCurve(ImageUAV[uint3(DTid.xy, cam)]))
-		- RemoveSRGBCurve(ImageSRV.SampleLevel(Sampler, uv, 2)); // Mip level 2
+    float3 colour = (2 * RemoveSRGBCurve(HighResImage[uint3(DTid.xy, cam)]))
+		- RemoveSRGBCurve(LowResImage.SampleLevel(Sampler, uv, 2)); // Mip level 2
     if (colour.x > 1.0f)
     {
         Residuals[uint3(DTid.xy, cam)] = float3(
@@ -58,7 +59,7 @@ void FullResPass(uint3 DTid, uint cam)
         colour.z = 1.0f;
     }
 
-    ImageUAV[uint3(DTid.xy, cam)] = ApplySRGBCurve(colour);
+    HighResImage[uint3(DTid.xy, cam)] = ApplySRGBCurve(colour);
 }
 
 void LowResPass(uint3 DTid, uint cam)
@@ -66,31 +67,23 @@ void LowResPass(uint3 DTid, uint cam)
     float nTextureWidth;
     float nTextureHeight;
     float elements;
-    ImageUAV.GetDimensions(nTextureWidth, nTextureHeight, elements);
+    HighResImage.GetDimensions(nTextureWidth, nTextureHeight, elements);
     float3 uv = float3(DTid.x / nTextureWidth, DTid.y / nTextureHeight, cam);
 
     float3 sampledColour =
-		RemoveSRGBCurve(ImageSRV.SampleLevel(Sampler, uv, 2)); // Mip level 2
-    float3 contrast = abs(ImageUAV[uint3(DTid.xy, cam)] - sampledColour)
-		/ (ImageUAV[uint3(DTid.xy, cam)] + sampledColour);
+		RemoveSRGBCurve(LowResImage.SampleLevel(Sampler, uv, 2)); // Mip level 2
+    float3 contrast = abs(LowPassedImage[uint3(DTid.xy, cam)] - sampledColour)
+		/ (LowPassedImage[uint3(DTid.xy, cam)] + sampledColour);
     float3 s = float3(5, 5, 5); // TODO: Test if this is scene or HMD dependent
     float3 weight = exp(-s * contrast);
 
-    ImageUAV[uint3(DTid.xy, cam)] =
+    HighResImage[uint3(DTid.xy, cam)] =
 		ApplySRGBCurve(sampledColour + weight * Residuals[uint3(DTid.xy, cam)]);
 }
 
 [numthreads(8, 8, 1)]
 void main(uint3 DTid : SV_DispatchThreadID)
 {
-    if (FullRes)
-    {
-        FullResPass(DTid, 0);
-        FullResPass(DTid, 1);
-    }
-    else
-    {
-        LowResPass(DTid, 0);
-        LowResPass(DTid, 1);
-    }
+    FullResPass(DTid, cam);
+    LowResPass(DTid, !cam);
 }

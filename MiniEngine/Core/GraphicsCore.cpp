@@ -216,9 +216,6 @@ namespace Graphics
 
     StructuredBuffer &ScreenQuadVB = StructuredBuffer();
     StructuredBuffer &ScreenQuadIB = StructuredBuffer();
-
-    // if uneven frame we use mip 2 else mip 0
-    uint32_t g_CurrentMip = 0;
 }
 
 void Graphics::Resize(uint32_t width, uint32_t height)
@@ -808,7 +805,6 @@ void Graphics::PreparePresentLDR(void)
 
     Context.SetRootSignature(s_PresentRS);
     Context.SetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-    Context.SetConstants(0, g_CurrentMip);
 
     // Copy (and convert) the LDR buffer to the back buffer
 	if (Settings::TMPMode == 5)
@@ -933,18 +929,24 @@ void Graphics::HiddenMeshDepthPrepass()
     context.SetRootSignature(HiddenMeshDepthRS);
     context.SetPipelineState(HiddenMeshDepthPSO);
     context.SetStencilRef(0x0);
+    uint32_t currentMip = GetMipLevel(Cam::kLeft);
     context.SetViewportAndScissor(0, 0, 
-        g_SceneDepthBuffer.GetMipWidth(g_CurrentMip), 
-        g_SceneDepthBuffer.GetMipHeight(g_CurrentMip));
+        g_SceneDepthBuffer.GetMipWidth(currentMip),
+        g_SceneDepthBuffer.GetMipHeight(currentMip));
 
 	// set vertex buffer and depth stencil then draw
     context.SetVertexBuffer(0, BufferLeft.VertexBufferView());
-	context.SetDepthStencilTarget(g_SceneDepthBuffer.GetMipDSV(vr::Eye_Left, g_CurrentMip));
+	context.SetDepthStencilTarget(g_SceneDepthBuffer.GetMipDSV(vr::Eye_Left, currentMip));
     context.Draw(BufferLeft.GetElementCount());
 
 	// repeat for right eye
+    currentMip = GetMipLevel(Cam::kLeft);
+    context.SetViewportAndScissor(0, 0,
+        g_SceneDepthBuffer.GetMipWidth(currentMip),
+        g_SceneDepthBuffer.GetMipHeight(currentMip));
+
     context.SetVertexBuffer(0, BufferRight.VertexBufferView());
-	context.SetDepthStencilTarget(g_SceneDepthBuffer.GetMipDSV(vr::Eye_Right, g_CurrentMip));
+	context.SetDepthStencilTarget(g_SceneDepthBuffer.GetMipDSV(vr::Eye_Right, currentMip));
     context.Draw(BufferRight.GetElementCount());
 
     context.Finish();
@@ -1018,4 +1020,9 @@ float Graphics::GetFrameTime(void)
 float Graphics::GetFrameRate(void)
 {
     return s_FrameTime == 0.0f ? 0.0f : 1.0f / s_FrameTime;
+}
+
+uint32_t Graphics::GetMipLevel(Cam::CameraType CamType)
+{
+    return (Graphics::GetFrameCount() + CamType) % 2 * 2;
 }

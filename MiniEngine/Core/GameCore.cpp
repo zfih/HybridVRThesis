@@ -77,8 +77,6 @@ namespace GameCore
 
     bool UpdateApplication( IGameApp& game )
     {
-        // if uneven frame we use mip 2 else mip 0
-        Graphics::g_CurrentMip = (Graphics::GetFrameCount() % 2) * 2;
         if (!Settings::UseImGui)
         {
             GraphicsContext& UiContext = GraphicsContext::Begin(L"Render UI");

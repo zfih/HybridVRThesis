@@ -97,7 +97,7 @@ void ColorBuffer::CreateDerivedViews(ID3D12Device* Device, DXGI_FORMAT Format, u
 			RTVDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2DARRAY;
 			RTVDesc.Texture2DArray.MipSlice = 0;
 			RTVDesc.Texture2DArray.FirstArraySlice = i; //D3D12CalcSubresource(0, i, 0, 0, ArraySize);
-			RTVDesc.Texture2DArray.ArraySize = (UINT)(ArraySize - i);
+			RTVDesc.Texture2DArray.ArraySize = 1;
 			RTVDesc.Format = Format;
 			D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle{};
 			rtvHandle = 

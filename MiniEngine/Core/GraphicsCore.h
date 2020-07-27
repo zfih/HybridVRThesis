@@ -13,6 +13,7 @@
 
 #pragma once
 
+#include "CameraType.h"
 #include "PipelineState.h"
 #include "DescriptorHeap.h"
 #include "RootSignature.h"
@@ -60,6 +61,8 @@ namespace Graphics
     // The total number of frames per second
     float GetFrameRate(void);
 
+    uint32_t GetMipLevel(Cam::CameraType CamType);
+
     extern ID3D12Device* g_Device;
     extern CommandListManager g_CommandManager;
     extern ContextManager g_ContextManager;
@@ -85,6 +88,4 @@ namespace Graphics
 
     extern StructuredBuffer &ScreenQuadVB;
     extern StructuredBuffer &ScreenQuadIB;
-
-    extern uint32_t g_CurrentMip;
 }

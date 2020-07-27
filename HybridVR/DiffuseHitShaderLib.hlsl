@@ -31,7 +31,7 @@ SamplerComparisonState shadowSampler : register(s1);
 Texture2D<float4> g_localTexture : register(t6);
 Texture2D<float4> g_localNormal : register(t7);
 
-Texture2DArray<float4>   normals  : register(t13);
+Texture2D<float4>   normals  : register(t13);
 
 uint3 Load3x16BitIndices(
     uint offsetBytes)
@@ -301,7 +301,16 @@ void Hit(inout RayPayload payload, in BuiltInTriangleIntersectionAttributes attr
         normal = normalize(mul(normal, tbn));
     }
     
-    float3 outputColor = AmbientColor * diffuseColor * texSSAO[DispatchRaysIndex().xy];
+	float outputTextureWidth;
+	float outputTextureHeight;
+	float elements;
+	g_screenOutput.GetDimensions(
+        outputTextureWidth, outputTextureHeight, elements);
+	float2 outputuv = float2(DispatchRaysIndex().x / outputTextureWidth,
+                       DispatchRaysIndex().y / outputTextureHeight);
+    
+	float3 outputColor = 
+        AmbientColor * diffuseColor * texSSAO.SampleLevel(g_s0, outputuv, 0);
 
     float shadow = 1.0;
     if (UseShadowRays)
@@ -339,17 +348,12 @@ void Hit(inout RayPayload payload, in BuiltInTriangleIntersectionAttributes attr
         SunColor);
 
     outputColor = ApplySRGBCurve(outputColor);
-
-	float nTextureWidth;
-	float nTextureHeight;
-	float elements;
-	g_screenOutput.GetDimensions(nTextureWidth, nTextureHeight, elements);
     
     // TODO: Should be passed in via material info
     if (IsReflection)
     {
 		float reflectivity = 
-            normals.mips[g_dynamic.mip][int3(DispatchRaysIndex().xy, g_dynamic.curCam)].w;
+            normals.mips[g_dynamic.mip][int2(DispatchRaysIndex().xy)].w;
 		/*if(g_dynamic.curCam == 1)
 		{
             outputColor = float4(1, 0, 0, 0);
