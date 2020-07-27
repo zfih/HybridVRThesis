@@ -7,6 +7,8 @@ struct RayPayload
 {
     bool SkipShading;
     float RayHitT;
+    float Bounces;
+    float Reflectivity;
 };
 
 #endif

@@ -177,7 +177,7 @@ enum RaytracingTypes
 	NumTypes
 };
 
-const static UINT MaxRayRecursion = 2;
+const static UINT MaxRayRecursion = 5;
 
 const static UINT c_NumCameraPositions = 5;
 
@@ -185,7 +185,8 @@ const static UINT c_NumCameraPositions = 5;
 
 enum class Scene
 {
-	kBistro = 0,
+	kBistroInterior = 0,
+	kBistroExterior,
 	kSponza,
 	
 	kCount,
@@ -210,9 +211,16 @@ void g_CreateScene(Scene Scene)
 
 	switch (Scene)
 	{
-	case Scene::kBistro: {
+	case Scene::kBistroInterior: {
 		g_Scene.Matrix = Matrix4::MakeRotationX(-XM_PIDIV2);
-		g_Scene.ModelPath = ASSET_DIRECTORY "Models/Bistro/bistro.h3d";
+		g_Scene.ModelPath = ASSET_DIRECTORY "Models/Bistro/BistroInterior.h3d";
+		g_Scene.TextureFolderPath = ASSET_DIRECTORY L"Models/Bistro/";
+		g_Scene.Reflective = { "floor", "glass", "metal" };
+		g_Scene.CutOuts = {  };
+	} break;
+	case Scene::kBistroExterior: {
+		g_Scene.Matrix = Matrix4::MakeRotationX(-XM_PIDIV2);
+		g_Scene.ModelPath = ASSET_DIRECTORY "Models/Bistro/BistroExterior.h3d";
 		g_Scene.TextureFolderPath = ASSET_DIRECTORY L"Models/Bistro/";
 		g_Scene.Reflective = { "floor", "glass", "metal" };
 		g_Scene.CutOuts = {  };
@@ -234,11 +242,12 @@ void g_CreateScene(Scene Scene)
 
 // SCENE END
 
-static const int MAX_RT_DESCRIPTORS = 200;
+static const int MAX_RT_DESCRIPTORS = 1000;
 
 struct MaterialRootConstant
 {
 	UINT MaterialID;
+	UINT Reflective;
 };
 
 RaytracingDispatchRayInputs g_RaytracingInputs[RaytracingTypes::NumTypes];
@@ -314,6 +323,9 @@ private:
 	void RaytraceReflections(GraphicsContext& context, ColorBuffer& colorTarget,
 	                         DepthBuffer& depth, ColorBuffer& normals, UINT mip,
 							 ResolutionMode::ResolutionMode lowOrHighRes);
+
+	void InitializeStateObjects(const Model& model, UINT numMeshes);
+	void InitializeRaytracingStateObjects(const Model& model, UINT numMeshes);
 
 	void SaveCamPos();
 	void LoadCamPos();
@@ -549,6 +561,9 @@ void InitializeViews(const Model& model)
 			g_pRaytracingDescriptorHeap->AllocateDescriptor(srvHandle, unused);
 			Graphics::g_Device->CopyDescriptorsSimple(1, srvHandle, model.GetSRVs(i)[3],
 			                                          D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+			g_pRaytracingDescriptorHeap->AllocateDescriptor(srvHandle, unused);
+			Graphics::g_Device->CopyDescriptorsSimple(1, srvHandle, model.GetSRVs(i)[1],
+			                                          D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 
 			g_GpuSceneMaterialSRVs[i] = g_pRaytracingDescriptorHeap->GetGpuHandle(slot);
 		}
@@ -592,7 +607,8 @@ void SetPipelineStateStackSize(
 	stateObjectProperties->SetPipelineStackSize(totalStackSize);
 }
 
-void InitializeRaytracingStateObjects(const Model& model, UINT numMeshes)
+void D3D12RaytracingMiniEngineSample::InitializeRaytracingStateObjects(
+	const Model& model, UINT numMeshes)
 {
 	// Initialize subobject list
 	// ----------------------------------------------------------------//
@@ -706,7 +722,7 @@ void InitializeRaytracingStateObjects(const Model& model, UINT numMeshes)
 
 	D3D12_RAYTRACING_SHADER_CONFIG shaderConfig;
 	shaderConfig.MaxAttributeSizeInBytes = 8;
-	shaderConfig.MaxPayloadSizeInBytes = 8;
+	shaderConfig.MaxPayloadSizeInBytes = 16;
 	shaderConfigStateObject.pDesc = &shaderConfig;
 	shaderConfigStateObject.Type =
 		D3D12_STATE_SUBOBJECT_TYPE_RAYTRACING_SHADER_CONFIG;
@@ -768,6 +784,8 @@ void InitializeRaytracingStateObjects(const Model& model, UINT numMeshes)
 
 			MaterialRootConstant material;
 			material.MaterialID = i;
+			const Model::Mesh & mesh = m_Model.m_pMesh[i];
+			material.Reflective = m_pMaterialIsReflective[mesh.materialIndex];
 			memcpy(pShaderRecord + offsetToMaterialConstants,
 			       &material,
 			       sizeof(material));
@@ -780,7 +798,7 @@ void InitializeRaytracingStateObjects(const Model& model, UINT numMeshes)
 	// Baricentric
 	{
 		CComPtr<ID3D12StateObject> pbarycentricPSO;
-		g_pRaytracingDevice->CreateStateObject(&stateObject,
+		auto hres = g_pRaytracingDevice->CreateStateObject(&stateObject,
 		                                       IID_PPV_ARGS(&pbarycentricPSO));
 		GetShaderTable(model, pbarycentricPSO, pHitShaderTable.data());
 		g_RaytracingInputs[Primarybarycentric] = RaytracingDispatchRayInputs(
@@ -892,7 +910,8 @@ void InitializeRaytracingStateObjects(const Model& model, UINT numMeshes)
 	}
 }
 
-void InitializeStateObjects(const Model& model, UINT numMeshes)
+void D3D12RaytracingMiniEngineSample::InitializeStateObjects(
+	const Model& model, UINT numMeshes)
 {
 	D3D12_STATIC_SAMPLER_DESC staticSamplerDescs[2] = {};
 	D3D12_STATIC_SAMPLER_DESC& defaultSampler = staticSamplerDescs[0];
@@ -962,7 +981,7 @@ void InitializeStateObjects(const Model& model, UINT numMeshes)
 
 	D3D12_DESCRIPTOR_RANGE1 localTextureDescriptorRange = {};
 	localTextureDescriptorRange.BaseShaderRegister = 6;
-	localTextureDescriptorRange.NumDescriptors = 2;
+	localTextureDescriptorRange.NumDescriptors = 3;
 	localTextureDescriptorRange.RegisterSpace = 0;
 	localTextureDescriptorRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
 	localTextureDescriptorRange.Flags = D3D12_DESCRIPTOR_RANGE_FLAG_NONE;
@@ -1022,9 +1041,10 @@ void D3D12RaytracingMiniEngineSample::Startup(void)
 {
 	//m_Camera = m_VRCamera[VRCamera::CENTER];
 
-	Settings::RayTracingMode = Settings::RTM_OFF;
+	//Settings::RayTracingMode = Settings::RTM_OFF;
 
-    ThrowIfFailed(g_Device->QueryInterface(IID_PPV_ARGS(&g_pRaytracingDevice)), L"Couldn't get DirectX Raytracing interface for the device.\n");
+	ThrowIfFailed(g_Device->QueryInterface(IID_PPV_ARGS(&g_pRaytracingDevice)),
+	              L"Couldn't get DirectX Raytracing interface for the device.\n");
 
     g_pRaytracingDescriptorHeap = std::unique_ptr<DescriptorHeapStack>(
         new DescriptorHeapStack(*g_Device, MAX_RT_DESCRIPTORS, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, 0));
@@ -1069,63 +1089,62 @@ void D3D12RaytracingMiniEngineSample::Startup(void)
 		makeVertexInputElement("BITANGENT", DXGI_FORMAT_R32G32B32_FLOAT)
 	};
 
-    // Depth-only (2x rate)
-    m_DepthPSO[0].SetRootSignature(m_RootSig);
-    m_DepthPSO[0].SetRasterizerState(RasterizerDefault);
-    m_DepthPSO[0].SetBlendState(BlendNoColorWrite);
-    m_DepthPSO[0].SetDepthStencilState(DepthReadWriteStencilReadState);
-    m_DepthPSO[0].SetInputLayout(_countof(vertElem), vertElem);
-    m_DepthPSO[0].SetPrimitiveTopologyType(D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE);
-    m_DepthPSO[0].SetRenderTargetFormats(0, nullptr, DepthFormat);
-    m_DepthPSO[0].SetVertexShader(g_pDepthViewerVS, sizeof(g_pDepthViewerVS));
+	// Depth-only (2x rate)
+	m_DepthPSO[0].SetRootSignature(m_RootSig);
+	m_DepthPSO[0].SetRasterizerState(RasterizerDefault);
+	m_DepthPSO[0].SetBlendState(BlendNoColorWrite);
+	m_DepthPSO[0].SetDepthStencilState(DepthReadWriteStencilReadState);
+	m_DepthPSO[0].SetInputLayout(_countof(vertElem), vertElem);
+	m_DepthPSO[0].SetPrimitiveTopologyType(D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE);
+	m_DepthPSO[0].SetRenderTargetFormats(0, nullptr, DepthFormat);
+	m_DepthPSO[0].SetVertexShader(g_pDepthViewerVS, sizeof(g_pDepthViewerVS));
 
-    // Make a copy of the desc before we mess with it
-    m_CutoutDepthPSO[0] = m_DepthPSO[0];
-    m_ShadowPSO = m_DepthPSO[0];
+	// Make a copy of the desc before we mess with it
+	m_CutoutDepthPSO[0] = m_DepthPSO[0];
+	m_ShadowPSO = m_DepthPSO[0];
 
-    m_DepthPSO[0].Finalize();
+	m_DepthPSO[0].Finalize();
 
-    // Depth-only shading but with alpha testing
+	// Depth-only shading but with alpha testing
 
-    m_CutoutDepthPSO[0].SetPixelShader(g_pDepthViewerPS, sizeof(g_pDepthViewerPS));
-    m_CutoutDepthPSO[0].SetRasterizerState(RasterizerTwoSided);
-    m_CutoutDepthPSO[0].Finalize();
+	m_CutoutDepthPSO[0].SetPixelShader(g_pDepthViewerPS, sizeof(g_pDepthViewerPS));
+	m_CutoutDepthPSO[0].SetRasterizerState(RasterizerTwoSided);
+	m_CutoutDepthPSO[0].Finalize();
 
-    // Depth-only but with a depth bias and/or render only backfaces
+	// Depth-only but with a depth bias and/or render only backfaces
 
-    m_ShadowPSO.SetRasterizerState(RasterizerShadow);
-    m_ShadowPSO.SetRenderTargetFormats(0, nullptr, g_ShadowBuffer.GetFormat());
-    m_ShadowPSO.Finalize();
+	m_ShadowPSO.SetRasterizerState(RasterizerShadow);
+	m_ShadowPSO.SetRenderTargetFormats(0, nullptr, g_ShadowBuffer.GetFormat());
+	m_ShadowPSO.Finalize();
 
-    // Shadows with alpha testing
-    m_CutoutShadowPSO = m_ShadowPSO;
-    m_CutoutShadowPSO.SetPixelShader(g_pDepthViewerPS, sizeof(g_pDepthViewerPS));
-    m_CutoutShadowPSO.SetRasterizerState(RasterizerShadowTwoSided);
-    m_CutoutShadowPSO.Finalize();
+	// Shadows with alpha testing
+	m_CutoutShadowPSO = m_ShadowPSO;
+	m_CutoutShadowPSO.SetPixelShader(g_pDepthViewerPS, sizeof(g_pDepthViewerPS));
+	m_CutoutShadowPSO.SetRasterizerState(RasterizerShadowTwoSided);
+	m_CutoutShadowPSO.Finalize();
 
-    // Full color pass
-    m_ModelPSO[0] = m_DepthPSO[0];
-    m_ModelPSO[0].SetBlendState(BlendDisable);
-    m_ModelPSO[0].SetDepthStencilState(DepthStateTestEqual);
-    DXGI_FORMAT formats[] { ColorFormat, ColorFormat, NormalFormat };
-    m_ModelPSO[0].SetRenderTargetFormats(_countof(formats), formats, DepthFormat);
-    m_ModelPSO[0].SetVertexShader(g_pModelViewerVS, sizeof(g_pModelViewerVS));
-    m_ModelPSO[0].SetPixelShader(g_pModelViewerPS, sizeof(g_pModelViewerPS));
-    m_ModelPSO[0].Finalize();
+	// Full color pass
+	m_ModelPSO[0] = m_DepthPSO[0];
+	m_ModelPSO[0].SetBlendState(BlendDisable);
+	m_ModelPSO[0].SetDepthStencilState(DepthStateTestEqual);
+	DXGI_FORMAT formats[]{ColorFormat, NormalFormat};
+	m_ModelPSO[0].SetRenderTargetFormats(_countof(formats), formats, DepthFormat);
+	m_ModelPSO[0].SetVertexShader(g_pModelViewerVS, sizeof(g_pModelViewerVS));
+	m_ModelPSO[0].SetPixelShader(g_pModelViewerPS, sizeof(g_pModelViewerPS));
+	m_ModelPSO[0].Finalize();
 
-    m_CutoutModelPSO[0] = m_ModelPSO[0];
-    m_CutoutModelPSO[0].SetRasterizerState(RasterizerTwoSided);
-    m_CutoutModelPSO[0].Finalize();
+	m_CutoutModelPSO[0] = m_ModelPSO[0];
+	m_CutoutModelPSO[0].SetRasterizerState(RasterizerTwoSided);
+	m_CutoutModelPSO[0].Finalize();
 
-    // A debug shader for counting lights in a tile
-    m_WaveTileCountPSO = m_ModelPSO[0];
-    m_WaveTileCountPSO.SetPixelShader(g_pWaveTileCountPS, sizeof(g_pWaveTileCountPS));
-    m_WaveTileCountPSO.Finalize();
+	// A debug shader for counting lights in a tile
+	m_WaveTileCountPSO = m_ModelPSO[0];
+	m_WaveTileCountPSO.SetPixelShader(g_pWaveTileCountPS, sizeof(g_pWaveTileCountPS));
+	m_WaveTileCountPSO.Finalize();
 
-    Lighting::InitializeResources();
+	Lighting::InitializeResources();
 
-    //m_ExtraTextures[0] = SSAOFullScreen()->GetSRV();
-    m_ExtraTextures[1] = g_ShadowBuffer.GetSRV();
+	m_ExtraTextures[1] = g_ShadowBuffer.GetSRV();
 
 	m_LowPassSig.Reset(3, 1);
 	m_LowPassSig[0].InitAsDescriptorRange(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 0, 1);
@@ -1137,7 +1156,7 @@ void D3D12RaytracingMiniEngineSample::Startup(void)
 	m_LowPassPSO.SetRootSignature(m_LowPassSig);
 	m_LowPassPSO.SetComputeShader(g_pLowPassCS, sizeof(g_pLowPassCS));
 	m_LowPassPSO.Finalize();
-	
+
 	// Reuses 
 	m_DownsamplePSO.SetRootSignature(m_LowPassSig);
 	m_DownsamplePSO.SetComputeShader(g_pDownsampleCS, sizeof(g_pDownsampleCS));
