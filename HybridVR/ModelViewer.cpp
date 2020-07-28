@@ -157,6 +157,7 @@ struct SceneData
 {
 	Scene Scene;
 	Matrix4 Matrix;
+	Matrix4 InvMatrix;
 	std::string ModelPath;
 	std::wstring TextureFolderPath;
 	std::vector<std::string> Reflective;
@@ -198,6 +199,7 @@ void g_CreateScene(Scene Scene)
 		break;
 
 	}
+	g_Scene.InvMatrix = Matrix4(XMMatrixInverse(nullptr, g_Scene.Matrix));
 }
 
 // SCENE END
@@ -327,7 +329,7 @@ private:
 
 int wmain(int argc, wchar_t** argv)
 {
-	g_CreateScene(Scene::kSponza);
+	g_CreateScene(Scene::kBistroExterior);
 	
 #if _DEBUG
 	CComPtr<ID3D12Debug> debugInterface;
@@ -1074,6 +1076,7 @@ void D3D12RaytracingMiniEngineSample::Startup(void)
 
 	// Full color pass
 	m_ModelPSO[0] = m_DepthPSO[0];
+	m_ModelPSO[0].SetRasterizerState(RasterizerDefault);
 	m_ModelPSO[0].SetBlendState(BlendDisable);
 	m_ModelPSO[0].SetDepthStencilState(DepthStateTestEqual);
 	DXGI_FORMAT formats[]{ColorFormat, NormalFormat};
@@ -1293,7 +1296,7 @@ void D3D12RaytracingMiniEngineSample::RenderObjects(GraphicsContext& gfxContext,
 	constants.curCam = curCam;
 
 	constants.modelToShadow = m_SunShadow.GetShadowMatrix();
-	XMStoreFloat3(&constants.viewerPos, m_Camera[curCam]->GetPosition());
+	XMStoreFloat3(&constants.viewerPos, g_Scene.InvMatrix * m_Camera[curCam]->GetPosition());
 
 	gfxContext.SetDynamicConstantBufferView(0, sizeof(constants), &constants);
 
