@@ -337,29 +337,29 @@ MRT main(VSOutput vsOutput)
 	mrt.Color = float4(0, 0, 0, 0);
     mrt.Normal = 0.0;
 
-    uint2 pixelPos = uint2(vsOutput.position.xy);
-# define SAMPLE_TEX(texName) texName.Sample(sampler0, vsOutput.uv)
+	uint2 pixelPos = uint2(vsOutput.position.xy);
+#define SAMPLE_TEX(texName) texName.Sample(sampler0, vsOutput.uv)
 
     float3 diffuseAlbedo = SAMPLE_TEX(texDiffuse);
     float3 colorSum = 0;
 
-    float gloss = 128.0;
-    float3 normal;
+	float gloss = 128.0;
+	float3 normal;
     {
-        normal = SAMPLE_TEX(texNormal) * 2.0 - 1.0;
-        AntiAliasSpecular(normal, gloss);
-        float3x3 tbn = float3x3(normalize(vsOutput.tangent), normalize(vsOutput.bitangent), normalize(vsOutput.normal));
-        normal = mul(normal, tbn);
+		normal = SAMPLE_TEX(texNormal) * 2.0 - 1.0;
+		AntiAliasSpecular(normal, gloss);
+		float3x3 tbn = float3x3(normalize(vsOutput.tangent), normalize(vsOutput.bitangent), normalize(vsOutput.normal));
+		normal = mul(normal, tbn);
 
         // Normalize result...
-        float lenSq = dot(normal, normal);
+		float lenSq = dot(normal, normal);
 
         // Some Sponza content appears to have no tangent space provided, resulting in degenerate normal vectors.
-        if (!isfinite(lenSq) || lenSq < 1e-6)
-            return mrt;
+		if (!isfinite(lenSq) || lenSq < 1e-6)
+			return mrt;
 
-        normal *= rsqrt(lenSq);
-    }
+		normal *= rsqrt(lenSq);
+	}
 
     float3 specularAlbedo = float3(0.56, 0.56, 0.56);
     float specularMask = SAMPLE_TEX(texSpecular).g;
@@ -367,15 +367,18 @@ MRT main(VSOutput vsOutput)
 
     colorSum += ApplyDirectionalLight(diffuseAlbedo, specularAlbedo, specularMask, gloss, normal, viewDir, SunDirection, SunColor, vsOutput.shadowCoord);
     colorSum += ApplyAmbientLight(diffuseAlbedo, 1, AmbientColor);
-
 	mrt.Color = float4(ApplySRGBCurve(colorSum), 1);
 
-    if (AreNormalsNeeded)
-    {
-        float reflection = specularMask * pow(1.0 - saturate(dot(-viewDir, normal)), 5.0);
+	if (AreNormalsNeeded)
+	{
+		float reflection = specularMask * pow(1.0 - saturate(dot(-viewDir, normal)), 5.0);
+		if (reflection < 0.005 && reflection > 0)
+		{
+			reflection = 0.005;
+		}
         mrt.Normal = float4(normal, reflection);
-    }
-
+	}
+    
     return mrt;
 }
 
