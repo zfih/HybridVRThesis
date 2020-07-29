@@ -2392,6 +2392,8 @@ void D3D12RaytracingMiniEngineSample::Raytrace(class GraphicsContext& gfxContext
 
 	// Clear the gfxContext's descriptor heap since ray tracing changes this underneath the sheets
 	gfxContext.SetDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, nullptr);
+
+	gfxContext.TransitionResource(g_SceneColorBuffer, D3D12_RESOURCE_STATE_RENDER_TARGET);
 }
 
 void D3D12RaytracingMiniEngineSample::SaveCamPos()
