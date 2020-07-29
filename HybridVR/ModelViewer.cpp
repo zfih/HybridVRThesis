@@ -153,7 +153,8 @@ const static UINT c_NumCameraPositions = 5;
 
 enum class Scene
 {
-	kBistro = 0,
+	kBistroInterior = 0,
+	kBistroExterior,
 	kSponza,
 	
 	kCount,
@@ -185,9 +186,16 @@ void g_CreateScene(Scene Scene)
 
 	switch (Scene)
 	{
-	case Scene::kBistro: {
+	case Scene::kBistroInterior: {
 		g_Scene.Matrix = Matrix4::MakeRotationX(-XM_PIDIV2);
-		g_Scene.ModelPath = ASSET_DIRECTORY "Models/Bistro/bistro.h3d";
+		g_Scene.ModelPath = ASSET_DIRECTORY "Models/Bistro/BistroInterior.h3d";
+		g_Scene.TextureFolderPath = ASSET_DIRECTORY L"Models/Bistro/";
+		g_Scene.Reflective = { "floor", "glass", "metal" };
+		g_Scene.CutOuts = {  };
+	} break;
+	case Scene::kBistroExterior: {
+		g_Scene.Matrix = Matrix4::MakeRotationX(-XM_PIDIV2);
+		g_Scene.ModelPath = ASSET_DIRECTORY "Models/Bistro/BistroExterior.h3d";
 		g_Scene.TextureFolderPath = ASSET_DIRECTORY L"Models/Bistro/";
 		g_Scene.Reflective = { "floor", "glass", "metal" };
 		g_Scene.CutOuts = {  };
@@ -209,7 +217,7 @@ void g_CreateScene(Scene Scene)
 
 // SCENE END
 
-static const int MAX_RT_DESCRIPTORS = 200;
+static const int MAX_RT_DESCRIPTORS = 1000;
 
 struct MaterialRootConstant
 {
@@ -350,7 +358,7 @@ private:
 
 int wmain(int argc, wchar_t** argv)
 {
-	g_CreateScene(Scene::kSponza);
+	g_CreateScene(Scene::kBistroInterior);
 	
 #if _DEBUG
 	CComPtr<ID3D12Debug> debugInterface;
