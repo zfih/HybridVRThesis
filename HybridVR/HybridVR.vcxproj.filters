@@ -121,6 +121,9 @@
     <FxCompile Include="Shaders\AddSSAOCS.hlsl">
       <Filter>Shaders</Filter>
     </FxCompile>
+    <FxCompile Include="RayGenerationShaderHybridLib.hlsl">
+      <Filter>Shaders</Filter>
+    </FxCompile>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="ForwardPlusLighting.cpp" />

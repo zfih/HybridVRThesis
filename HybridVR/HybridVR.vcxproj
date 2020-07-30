@@ -236,6 +236,12 @@
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">Library</ShaderType>
       <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">6.3</ShaderModel>
     </FxCompile>
+    <FxCompile Include="RayGenerationShaderHybridLib.hlsl">
+      <EntryPointName Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+      </EntryPointName>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Library</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">6.3</ShaderModel>
+    </FxCompile>
     <FxCompile Include="RayGenerationShaderLib.hlsl">
       <ShaderType>Compute</ShaderType>
       <ShaderModel>4.0</ShaderModel>

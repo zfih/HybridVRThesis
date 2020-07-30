@@ -327,7 +327,8 @@ struct MRT
 	float3 ColorRight : SV_Target1;
     float4 Normal : SV_Target2;*/
 	float4 Color : SV_Target0;
-	float4 Normal : SV_Target1;
+	float4 ColorRaw : SV_Target1;
+	float4 Normal : SV_Target2;
 };
 
 [RootSignature(ModelViewer_RootSig)]
@@ -368,7 +369,8 @@ MRT main(VSOutput vsOutput)
     colorSum += ApplyDirectionalLight(diffuseAlbedo, specularAlbedo, specularMask, gloss, normal, viewDir, SunDirection, SunColor, vsOutput.shadowCoord);
     colorSum += ApplyAmbientLight(diffuseAlbedo, 1, AmbientColor);
 	mrt.Color = float4(ApplySRGBCurve(colorSum), 1);
-
+	mrt.ColorRaw = mrt.Color;
+    
 	if (AreNormalsNeeded)
 	{
 		float reflection = specularMask * pow(1.0 - saturate(dot(-viewDir, normal)), 5.0);

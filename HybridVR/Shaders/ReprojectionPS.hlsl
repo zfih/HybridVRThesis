@@ -25,15 +25,23 @@ struct VertexOutput
     float occFlag : DOCCFLAG;
 };
 
+struct MRT
+{
+	float4 Color : SV_Target0;
+	float4 Normal : SV_Target1;
+};
+
 SamplerState gLinearSampler : register(s0);
 Texture2D gLeftEyeTex : register(t1);
+Texture2D gLeftEyeNormalTex : register(t2);
 
 static float gThreshold = 0.001; // TODO: Do we want to be able to change this? // This was 0.008
 static float3 gClearColor = float3(0, 0, 0);
 
-float4 main(VertexOutput vOut) : SV_TARGET
+MRT main(VertexOutput vOut)
 {
     float4 color;
+    float4 normal;
 
 #define _PERFRAGMENT
 //#define _SHOWDISOCCLUSION
@@ -41,6 +49,7 @@ float4 main(VertexOutput vOut) : SV_TARGET
 
 #ifdef _PERFRAGMENT
     color = float4(gLeftEyeTex.SampleLevel(gLinearSampler, vOut.texC, 0).rgb, 1);
+    normal = gLeftEyeNormalTex.SampleLevel(gLinearSampler, vOut.texC, 0);
 #endif
 #ifdef _SHOWUVS
     color = float4(1, 1, 1, 1);
@@ -50,6 +59,7 @@ float4 main(VertexOutput vOut) : SV_TARGET
         {
             //color = float4(1, 0, 0, 0);
             color = float4(gLeftEyeTex.SampleLevel(gLinearSampler, vOut.texC, 0).rgb, 1);
+            normal = float4(gLeftEyeNormalTex.SampleLevel(gLinearSampler, vOut.texC, 0).rgb, 1);
         }
 #else
     if (vOut.occFlag > gThreshold)
@@ -59,6 +69,10 @@ float4 main(VertexOutput vOut) : SV_TARGET
 #endif
 
     //color = float4(0, 1, 0, 1);
-    
-    return color;
+	MRT mrt;
+	mrt.Color = color;
+	mrt.Normal = normal;
+	mrt.Color.a = 0;
+	mrt.Normal.w = 0;
+    return mrt;
 }

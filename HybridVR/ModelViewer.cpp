@@ -51,6 +51,7 @@
 #include "CompiledShaders/WaveTileCountPS.h"
 #include "CompiledShaders/RayGenerationShaderLib.h"
 #include "CompiledShaders/RayGenerationShaderSSRLib.h"
+#include "CompiledShaders/RayGenerationShaderHybridLib.h"
 #include "CompiledShaders/HitShaderLib.h"
 #include "CompiledShaders/MissShaderLib.h"
 #include "CompiledShaders/DiffuseHitShaderLib.h"
@@ -142,6 +143,7 @@ enum RaytracingTypes
 	Shadows,
 	DiffuseHitShader,
 	Reflection,
+	AsrpPlus,
 	NumTypes
 };
 
@@ -303,6 +305,8 @@ private:
 	                     DepthBuffer& depth);
 	void RaytraceReflections(GraphicsContext& context, ColorBuffer& colorTarget,
 	                         DepthBuffer& depth, ColorBuffer& normals);
+	void RaytraceAsrpPlus(GraphicsContext& context, ColorBuffer& colorTarget,
+						  DepthBuffer& depth, ColorBuffer& normals);
 
 	void InitializeStateObjects(const Model& model, UINT numMeshes);
 	void InitializeRaytracingStateObjects(const Model& model, UINT numMeshes);
@@ -406,7 +410,8 @@ namespace Settings
 	"Shadow Rays",
 	"Diffuse & ShadowMaps",
 	"Diffuse & ShadowRays",
-	"Reflection Rays"
+	"Reflection Rays",
+	"ASRP+"
 	};
 
 	enum RaytracingMode
@@ -418,6 +423,7 @@ namespace Settings
 		RTM_DIFFUSE_WITH_SHADOWMAPS,
 		RTM_DIFFUSE_WITH_SHADOWRAYS,
 		RTM_REFLECTIONS,
+		RTM_ASRP_PLUS
 	};
 
 	ExpVar SunLightIntensity("Application/Lighting/Sun Light Intensity", 4.0f, 0.0f, 16.0f, 0.1f);
@@ -877,6 +883,29 @@ void D3D12RaytracingMiniEngineSample::InitializeRaytracingStateObjects(
 			pHitShaderTable.data(), shaderIdentifierSize, (UINT)pHitShaderTable.size(),
 			rayGenShaderExportName, missExportName);
 	}
+	// ASRP+
+	{
+		rayGenDxilLibSubobject = CreateDxilLibrary(
+			rayGenShaderExportName, g_pRayGenerationShaderHybridLib,
+			sizeof(g_pRayGenerationShaderHybridLib), rayGenDxilLibDesc,
+			rayGenExportDesc);
+		closestHitLibSubobject = CreateDxilLibrary(
+			closestHitExportName, g_pDiffuseHitShaderLib,
+			sizeof(g_pDiffuseHitShaderLib), closestHitDxilLibDesc,
+			closestHitExportDesc);
+		missDxilLibSubobject = CreateDxilLibrary(
+			missExportName, g_pmissShaderLib, sizeof(g_pmissShaderLib),
+			missDxilLibDesc, missExportDesc);
+
+		CComPtr<ID3D12StateObject> pPSO;
+		g_pRaytracingDevice->CreateStateObject(&stateObject,
+			IID_PPV_ARGS(&pPSO));
+		GetShaderTable(model, pPSO, pHitShaderTable.data());
+		g_RaytracingInputs[AsrpPlus] = RaytracingDispatchRayInputs(
+			*g_pRaytracingDevice, pPSO,
+			pHitShaderTable.data(), shaderIdentifierSize, (UINT)pHitShaderTable.size(),
+			rayGenShaderExportName, missExportName);
+	}
 	// -----------------//
 
 	WCHAR hitGroupExportNameAnyHitType[64];
@@ -1119,7 +1148,7 @@ void D3D12RaytracingMiniEngineSample::Startup(void)
 	m_ModelPSO[0].SetRasterizerState(RasterizerDefault);
 	m_ModelPSO[0].SetBlendState(BlendDisable);
 	m_ModelPSO[0].SetDepthStencilState(DepthStateTestEqual);
-	DXGI_FORMAT formats[]{ColorFormat, NormalFormat};
+	DXGI_FORMAT formats[]{ColorFormat, ColorFormat, NormalFormat};
 	m_ModelPSO[0].SetRenderTargetFormats(_countof(formats), formats, DepthFormat);
 	m_ModelPSO[0].SetVertexShader(g_pModelViewerVS, sizeof(g_pModelViewerVS));
 	m_ModelPSO[0].SetPixelShader(g_pModelViewerPS, sizeof(g_pModelViewerPS));
@@ -1152,7 +1181,7 @@ void D3D12RaytracingMiniEngineSample::Startup(void)
 
 	m_ReprojectionRS.Reset(3, 1);
 	m_ReprojectionRS.InitStaticSampler(0, ClampSamplerDesc);
-	m_ReprojectionRS[0].InitAsDescriptorRange(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 0, 2);
+	m_ReprojectionRS[0].InitAsDescriptorRange(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 0, 3);
 	m_ReprojectionRS[1].InitAsDescriptorRange(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 0, 1);
 	m_ReprojectionRS[2].InitAsConstantBuffer(0);
 	m_ReprojectionRS.Finalize(L"Reprojection Root Signature",
@@ -1171,7 +1200,8 @@ void D3D12RaytracingMiniEngineSample::Startup(void)
 	m_ReprojectionPSO.SetDepthStencilState(DepthStateReadWrite); // This might be incorrect
 	m_ReprojectionPSO.SetInputLayout(_countof(quadGridLayout), quadGridLayout);
 	m_ReprojectionPSO.SetPrimitiveTopologyType(D3D12_PRIMITIVE_TOPOLOGY_TYPE_PATCH);
-	m_ReprojectionPSO.SetRenderTargetFormat(ColorFormat, DepthFormat);
+	DXGI_FORMAT formats2[]{ ColorFormat, NormalFormat };
+	m_ReprojectionPSO.SetRenderTargetFormats(_countof(formats2), formats2, DepthFormat);
 	m_ReprojectionPSO.SetVertexShader(g_pReprojectionVS, sizeof(g_pReprojectionVS));
 	m_ReprojectionPSO.SetHullShader(g_pReprojectionHS, sizeof(g_pReprojectionHS));
 	m_ReprojectionPSO.SetDomainShader(g_pReprojectionDS, sizeof(g_pReprojectionDS));
@@ -1218,12 +1248,12 @@ void D3D12RaytracingMiniEngineSample::Startup(void)
 	{
 		CreateRayTraceAccelerationStructures(numMeshes);
 		Settings::RayTracingMode = Settings::RTM_REFLECTIONS;
-		OutputDebugStringW(L"DXR support present on Device");
+		OutputDebugStringW(L"DXR support present on Device\n");
 	}
 	else
 	{
 		Settings::RayTracingMode = Settings::RTM_OFF;
-		OutputDebugStringW(L"DXR support not present on Device");
+		OutputDebugStringW(L"DXR support not present on Device\n");
 	}
 
 	InitializeStateObjects(m_Model, numMeshes);
@@ -1320,6 +1350,8 @@ void D3D12RaytracingMiniEngineSample::Update(float deltaT)
 			Settings::RayTracingMode = Settings::RTM_DIFFUSE_WITH_SHADOWRAYS;
 		else if (GameInput::IsFirstPressed(GameInput::kKey_7))
 			Settings::RayTracingMode = Settings::RTM_REFLECTIONS;
+		else if (GameInput::IsFirstPressed(GameInput::kKey_8))
+			Settings::RayTracingMode = Settings::RTM_ASRP_PLUS;
 	}
 
 	static bool freezeCamera = false;
@@ -1611,8 +1643,9 @@ void D3D12RaytracingMiniEngineSample::RenderColor(GraphicsContext& Ctx, Camera& 
 		Ctx.TransitionResource(g_SceneDepthBuffer,
 			D3D12_RESOURCE_STATE_DEPTH_READ);
 
-		D3D12_CPU_DESCRIPTOR_HANDLE rtvs[2]{
+		D3D12_CPU_DESCRIPTOR_HANDLE rtvs[]{
 			g_SceneColorBuffer.GetSubRTV(CameraType),
+			g_SceneRawColorBuffer.GetRTV(),
 			g_SceneNormalBuffer.GetSubRTV(CameraType),
 		};
 
@@ -1686,8 +1719,14 @@ void D3D12RaytracingMiniEngineSample::ReprojectScene()
 
 	reprojectContext.TransitionResource(g_SceneDepthBuffer, D3D12_RESOURCE_STATE_DEPTH_WRITE, true);
 	reprojectContext.TransitionResource(g_SceneColorBuffer, D3D12_RESOURCE_STATE_RENDER_TARGET);
+	reprojectContext.TransitionResource(g_SceneNormalBuffer, D3D12_RESOURCE_STATE_RENDER_TARGET);
 	reprojectContext.ClearColor(g_SceneColorBuffer, 1);
-	reprojectContext.SetRenderTarget(g_SceneColorBuffer.GetSubRTV(1), g_SceneDepthBuffer.GetSubDSV(1));
+	reprojectContext.ClearColor(g_SceneNormalBuffer, 1);
+	D3D12_CPU_DESCRIPTOR_HANDLE rtvs[] = { 
+		g_SceneColorBuffer.GetSubRTV(1), 
+		g_SceneNormalBuffer.GetSubRTV(1)
+	};
+	reprojectContext.SetRenderTargets(_countof(rtvs), rtvs, g_SceneDepthBuffer.GetSubDSV(1));
 	
 	// Hull Shader
 	reprojectContext.SetDynamicDescriptor(1, 0, g_SceneDiffBuffer.GetUAV());
@@ -1711,6 +1750,7 @@ void D3D12RaytracingMiniEngineSample::ReprojectScene()
 	
 	// Pixel Shader
 	reprojectContext.SetDynamicDescriptor(0, 1, g_SceneColorBuffer.GetSRV());
+	reprojectContext.SetDynamicDescriptor(0, 2, g_SceneNormalBuffer.GetSRV());
 
 	reprojectContext.DrawIndexed(m_GridIndexBuffer.GetElementCount(), 0, 0);
 
@@ -2038,7 +2078,11 @@ void D3D12RaytracingMiniEngineSample::RenderScene()
 
 		g_initialize_dynamicCb(gfxContext, m_Camera, Cam::kRight,
 			g_SceneColorBuffer, g_dynamicConstantBuffer);
-		RaytraceDiffuse(gfxContext, g_SceneColorBuffer);
+		RaytraceAsrpPlus(
+			gfxContext, 
+			g_SceneColorBuffer, 
+			g_SceneDepthBuffer, 
+			g_SceneNormalBuffer);
 		gfxContext.Finish();
 	}
 	else 
@@ -2345,6 +2389,57 @@ void D3D12RaytracingMiniEngineSample::RaytraceReflections(
 	pRaytracingCommandList->DispatchRays(&dispatchRaysDesc);
 }
 
+void D3D12RaytracingMiniEngineSample::RaytraceAsrpPlus(
+	GraphicsContext& context,
+	ColorBuffer& colorTarget,
+	DepthBuffer& depth,
+	ColorBuffer& normals)
+{
+	ScopedTimer _p0(L"RaytracingWithHitShader", context);
+
+
+	HitShaderConstants hitShaderConstants = {};
+	hitShaderConstants.sunDirection = m_SunDirection;
+	hitShaderConstants.sunLight = Vector3(1.0f, 1.0f, 1.0f) * Settings::SunLightIntensity;
+	hitShaderConstants.ambientLight = Vector3(1.0f, 1.0f, 1.0f) * Settings::AmbientIntensity;
+	hitShaderConstants.ShadowTexelSize[0] = 1.0f / g_ShadowBuffer.GetWidth();
+	hitShaderConstants.modelToShadow = Transpose(m_SunShadow.GetShadowMatrix());
+	hitShaderConstants.IsReflection = true;
+	hitShaderConstants.UseShadowRays = false;
+	context.WriteBuffer(g_hitConstantBuffer, 0, &hitShaderConstants, sizeof(hitShaderConstants));
+
+	context.TransitionResource(g_dynamicConstantBuffer, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER);
+	context.TransitionResource(g_SSAOFullScreen, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+	context.TransitionResource(depth, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+	context.TransitionResource(g_ShadowBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+	context.TransitionResource(normals, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+	context.TransitionResource(g_hitConstantBuffer, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER);
+	context.TransitionResource(colorTarget, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+	context.FlushResourceBarriers();
+
+	ID3D12GraphicsCommandList* pCommandList = context.GetCommandList();
+
+	CComPtr<ID3D12GraphicsCommandList4> pRaytracingCommandList;
+	pCommandList->QueryInterface(IID_PPV_ARGS(&pRaytracingCommandList));
+
+	ID3D12DescriptorHeap* pDescriptorHeaps[] = { &g_pRaytracingDescriptorHeap->GetDescriptorHeap() };
+	pRaytracingCommandList->SetDescriptorHeaps(ARRAYSIZE(pDescriptorHeaps), pDescriptorHeaps);
+
+	pCommandList->SetComputeRootSignature(g_GlobalRaytracingRootSignature);
+	pCommandList->SetComputeRootDescriptorTable(0, g_SceneSrvs);
+	pCommandList->SetComputeRootConstantBufferView(1, g_hitConstantBuffer.GetGpuVirtualAddress());
+	pCommandList->SetComputeRootConstantBufferView(2, g_dynamicConstantBuffer.GetGpuVirtualAddress());
+	pCommandList->SetComputeRootDescriptorTable(3, g_DepthAndNormalsTable);
+	pCommandList->SetComputeRootDescriptorTable(4, g_OutputUAV);
+	pRaytracingCommandList->SetComputeRootShaderResourceView(
+		7, g_bvh_topLevelAccelerationStructure->GetGPUVirtualAddress());
+
+	D3D12_DISPATCH_RAYS_DESC dispatchRaysDesc = g_RaytracingInputs[AsrpPlus].GetDispatchRayDesc(
+		colorTarget.GetWidth(), colorTarget.GetHeight());
+	pRaytracingCommandList->SetPipelineState1(g_RaytracingInputs[AsrpPlus].m_pPSO);
+	pRaytracingCommandList->DispatchRays(&dispatchRaysDesc);
+}
+
 void D3D12RaytracingMiniEngineSample::RenderUI(class GraphicsContext& gfxContext)
 {
 	const UINT framesToAverage = 20;
@@ -2402,6 +2497,8 @@ void D3D12RaytracingMiniEngineSample::Raytrace(class GraphicsContext& gfxContext
 	case Settings::RTM_REFLECTIONS:
 		RaytraceReflections(gfxContext, g_SceneColorBuffer, g_SceneDepthBuffer, g_SceneNormalBuffer);
 		break;
+	case Settings::RTM_ASRP_PLUS:
+		RaytraceAsrpPlus(gfxContext, g_SceneColorBuffer, g_SceneDepthBuffer, g_SceneNormalBuffer);
 	}
 
 	// Clear the gfxContext's descriptor heap since ray tracing changes this underneath the sheets
