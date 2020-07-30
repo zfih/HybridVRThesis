@@ -2009,15 +2009,15 @@ void D3D12RaytracingMiniEngineSample::RenderScene()
 
 		SetupGraphicsState(gfxContext);
 
-		g_initialize_dynamicCb(gfxContext, m_Camera, Cam::kRight,
-			g_SceneColorBuffer, g_dynamicConstantBuffer);
-		RaytraceDiffuse(gfxContext, g_SceneColorBuffer);
-		gfxContext.Finish();
-
 		skipDiffusePass = true;
 		RenderEye(Cam::kRight, skipDiffusePass, false, psConstants);
 		
 		RenderSSAO();
+
+		g_initialize_dynamicCb(gfxContext, m_Camera, Cam::kRight,
+			g_SceneColorBuffer, g_dynamicConstantBuffer);
+		RaytraceDiffuse(gfxContext, g_SceneColorBuffer);
+		gfxContext.Finish();
 	}
 	else 
 	{
