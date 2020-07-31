@@ -111,7 +111,7 @@ void Graphics::InitializeRenderingBuffers( uint32_t bufferWidth, uint32_t buffer
 
         g_SceneColorBuffer.SetClearColor({ 0.1f, 0.1f, 0.25f, 0.0f });
         g_SceneColorBuffer.CreateArray( L"Main Color Buffers", bufferWidth, bufferHeight, 2, DefaultHdrColorFormat, esram );
-        g_SceneRawColorBuffer.Create( L"Main Raw Color Buffer", bufferWidth, bufferHeight, 1, DefaultHdrColorFormat, esram );
+        g_SceneRawColorBuffer.CreateArray( L"Main Raw Color Buffer", bufferWidth, bufferHeight, 2, DefaultHdrColorFormat, esram );
         g_VelocityBuffer.Create( L"Motion Vectors", bufferWidth, bufferHeight, 2, DXGI_FORMAT_R32_UINT );
         g_PostEffectsBuffer.Create( L"Post Effects Buffer", bufferWidth, bufferHeight, 2, DXGI_FORMAT_R32_UINT );
 

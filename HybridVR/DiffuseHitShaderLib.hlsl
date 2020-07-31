@@ -374,4 +374,6 @@ void Hit(inout RayPayload payload, in BuiltInTriangleIntersectionAttributes attr
 		reflectionPayload.Reflectivity = reflectivity * payload.Reflectivity;
 		TraceRay(g_accel, RAY_FLAG_CULL_BACK_FACING_TRIANGLES, ~0, 0, 1, 0, rayDesc, reflectionPayload);
 	}
+    
+	//g_screenOutput[int3(DispatchRaysIndex().xy, g_dynamic.curCam)] = float4(1, 0, 1, 1);
 }

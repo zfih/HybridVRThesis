@@ -1059,13 +1059,8 @@ void D3D12RaytracingMiniEngineSample::Startup(void)
 
 	ThrowIfFailed(g_Device->QueryInterface(IID_PPV_ARGS(&g_pRaytracingDevice)),
 	              L"Couldn't get DirectX Raytracing interface for the device.\n");
-#if 0
 	g_SceneNormalBuffer.CreateArray(L"Main Normal Buffer", g_SceneColorBuffer.GetWidth(), g_SceneColorBuffer.GetHeight(), 2,
-	                           DXGI_FORMAT_R16G16B16A16_FLOAT);
-#else
-	g_SceneNormalBuffer.CreateArray(L"Main Normal Buffer", g_SceneColorBuffer.GetWidth(), g_SceneColorBuffer.GetHeight(), 2,
-	                           DXGI_FORMAT_R8G8B8A8_SNORM);
-#endif
+		DXGI_FORMAT_R8G8B8A8_SNORM);
 
 	g_pRaytracingDescriptorHeap = std::unique_ptr<DescriptorHeapStack>(
 		new DescriptorHeapStack(*g_Device, MAX_RT_DESCRIPTORS, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, 0));
@@ -1640,12 +1635,18 @@ void D3D12RaytracingMiniEngineSample::RenderColor(GraphicsContext& Ctx, Camera& 
 	{
 		Ctx.SetPipelineState(Settings::ShowWaveTileCounts ? m_WaveTileCountPSO : m_ModelPSO[0]);
 
+		Ctx.TransitionResource(g_SceneColorBuffer,
+			D3D12_RESOURCE_STATE_RENDER_TARGET);
+		Ctx.TransitionResource(g_SceneRawColorBuffer,
+			D3D12_RESOURCE_STATE_RENDER_TARGET);
+		Ctx.TransitionResource(g_SceneNormalBuffer,
+			D3D12_RESOURCE_STATE_RENDER_TARGET);
 		Ctx.TransitionResource(g_SceneDepthBuffer,
-			D3D12_RESOURCE_STATE_DEPTH_READ);
+			D3D12_RESOURCE_STATE_DEPTH_READ, true);
 
 		D3D12_CPU_DESCRIPTOR_HANDLE rtvs[]{
 			g_SceneColorBuffer.GetSubRTV(CameraType),
-			g_SceneRawColorBuffer.GetRTV(),
+			g_SceneRawColorBuffer.GetSubRTV(CameraType),
 			g_SceneNormalBuffer.GetSubRTV(CameraType),
 		};
 
@@ -1674,15 +1675,17 @@ void D3D12RaytracingMiniEngineSample::ReprojectScene()
 	quadLevelContext.SetRootSignature(m_ReprojectionComputeRS);
 	quadLevelContext.SetPipelineState(m_ReprojectionComputePSO);
 
-	quadLevelContext.SetDynamicDescriptor(0, 0, g_SceneDepthBuffer.GetSubSRV(0));
-	quadLevelContext.SetDynamicDescriptor(0, 1, g_SceneNormalBuffer.GetSRV());
+	quadLevelContext.SetDynamicDescriptor(
+		0, 0, g_SceneDepthBuffer.GetSubSRV(Cam::kLeft));
+	quadLevelContext.TransitionResource(
+		g_SceneNormalBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+	quadLevelContext.SetDynamicDescriptor(
+		0, 1, g_SceneNormalBuffer.GetSubSRV(Cam::kLeft));
 
 	quadLevelContext.TransitionResource(
 		g_SceneDiffBuffer, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 
-	// TODO: Maybe the top works. Maybe bottom. Who knows?
 	quadLevelContext.SetDynamicDescriptor(1, 0, g_SceneDiffBuffer.GetUAV());
-	//quadLevelContext.SetBufferUAV(1, g_SceneDiffBuffer, 0);
 	
 	struct ComputeCB
 	{
@@ -1717,11 +1720,11 @@ void D3D12RaytracingMiniEngineSample::ReprojectScene()
 	reprojectContext.SetIndexBuffer(m_GridIndexBuffer.IndexBufferView());
 	reprojectContext.SetVertexBuffer(0, m_GridVertexBuffer.VertexBufferView());
 
-	reprojectContext.TransitionResource(g_SceneDepthBuffer, D3D12_RESOURCE_STATE_DEPTH_WRITE, true);
+	reprojectContext.TransitionResource(g_SceneDepthBuffer, D3D12_RESOURCE_STATE_DEPTH_WRITE);
 	reprojectContext.TransitionResource(g_SceneColorBuffer, D3D12_RESOURCE_STATE_RENDER_TARGET);
-	reprojectContext.TransitionResource(g_SceneNormalBuffer, D3D12_RESOURCE_STATE_RENDER_TARGET);
-	reprojectContext.ClearColor(g_SceneColorBuffer, 1);
-	reprojectContext.ClearColor(g_SceneNormalBuffer, 1);
+	reprojectContext.TransitionResource(g_SceneNormalBuffer, D3D12_RESOURCE_STATE_RENDER_TARGET, true);
+	//reprojectContext.ClearColor(g_SceneColorBuffer, 1);
+	//reprojectContext.ClearColor(g_SceneNormalBuffer, 1);
 	D3D12_CPU_DESCRIPTOR_HANDLE rtvs[] = { 
 		g_SceneColorBuffer.GetSubRTV(1), 
 		g_SceneNormalBuffer.GetSubRTV(1)
@@ -1730,7 +1733,6 @@ void D3D12RaytracingMiniEngineSample::ReprojectScene()
 	
 	// Hull Shader
 	reprojectContext.SetDynamicDescriptor(1, 0, g_SceneDiffBuffer.GetUAV());
-	//reprojectContext.SetBufferUAV(0, g_SceneDiffBuffer, 0);
 
 	// Domain Shader
 	reprojectContext.SetDynamicDescriptor(0, 0, g_SceneDepthBuffer.GetSubSRV(0));
@@ -1861,41 +1863,39 @@ void D3D12RaytracingMiniEngineSample::RenderPrepass(GraphicsContext& Ctx, Cam::C
 	Settings::g_ZPrepassTimer[CameraType].Reset();
 	Settings::g_ZPrepassTimer[CameraType].Start();
 	
-	{
-		Ctx.SetStencilRef(0x0);
+	Ctx.SetStencilRef(0x0);
 		
-		ScopedTimer _prof(L"Z PrePass", Ctx);
+	ScopedTimer _prof(L"Z PrePass", Ctx);
 
-		Ctx.SetDynamicConstantBufferView(1, sizeof(Constants), &Constants);
+	Ctx.SetDynamicConstantBufferView(1, sizeof(Constants), &Constants);
 
+	{
+		ScopedTimer _prof(L"Opaque", Ctx);
 		{
-			ScopedTimer _prof(L"Opaque", Ctx);
+			Ctx.TransitionResource(g_SceneDepthBuffer, D3D12_RESOURCE_STATE_DEPTH_WRITE, true);
+			// note: we no longer clear because we need the stencil from engine
+			// prepass
+
+			if (!Settings::VRDepthStencil)
 			{
-				Ctx.TransitionResource(g_SceneDepthBuffer, D3D12_RESOURCE_STATE_DEPTH_WRITE, true);
-				// note: we no longer clear because we need the stencil from engine
-				// prepass
-
-				if (!Settings::VRDepthStencil)
-				{
-					Ctx.ClearDepthAndStencil(g_SceneDepthBuffer, CameraType); // TODO: Check if CameraType is necessary
-				}
-
-				Ctx.SetPipelineState(m_DepthPSO[0]);
-				Ctx.SetDepthStencilTarget(g_SceneDepthBuffer.GetSubDSV(CameraType));
-
-				Ctx.SetViewportAndScissor(m_MainViewport, m_MainScissor);
+				Ctx.ClearDepthAndStencil(g_SceneDepthBuffer, CameraType); // TODO: Check if CameraType is necessary
 			}
 
-			RenderObjects(Ctx, CameraType, m_Camera[CameraType]->GetViewProjMatrix(),  kOpaque);
+			Ctx.SetPipelineState(m_DepthPSO[0]);
+			Ctx.SetDepthStencilTarget(g_SceneDepthBuffer.GetSubDSV(CameraType));
+
+			Ctx.SetViewportAndScissor(m_MainViewport, m_MainScissor);
 		}
 
+		RenderObjects(Ctx, CameraType, m_Camera[CameraType]->GetViewProjMatrix(),  kOpaque);
+	}
+
+	{
+		ScopedTimer _prof(L"Cutout", Ctx);
 		{
-			ScopedTimer _prof(L"Cutout", Ctx);
-			{
-				Ctx.SetPipelineState(m_CutoutDepthPSO[0]);
-			}
-			RenderObjects(Ctx, CameraType, m_Camera[CameraType]->GetViewProjMatrix(), kCutout);
+			Ctx.SetPipelineState(m_CutoutDepthPSO[0]);
 		}
+		RenderObjects(Ctx, CameraType, m_Camera[CameraType]->GetViewProjMatrix(), kCutout);
 	}
 	
 	Settings::g_ZPrepassTimer[CameraType].Stop();
@@ -2063,13 +2063,14 @@ void D3D12RaytracingMiniEngineSample::RenderScene()
 
 	if (Settings::ReprojEnable)
 	{
+		GraphicsContext& gfxContext = GraphicsContext::Begin(L"Scene Render");
+		//gfxContext.ClearColor(g_SceneNormalBuffer);
+
+		SetupGraphicsState(gfxContext);
+
 		RenderEye(Cam::kLeft, skipDiffusePass, false, psConstants);
 		
 		ReprojectScene();
-
-		GraphicsContext& gfxContext = GraphicsContext::Begin(L"Scene Render");
-
-		SetupGraphicsState(gfxContext);
 
 		skipDiffusePass = true;
 		RenderEye(Cam::kRight, skipDiffusePass, false, psConstants);
@@ -2505,6 +2506,7 @@ void D3D12RaytracingMiniEngineSample::Raytrace(class GraphicsContext& gfxContext
 	gfxContext.SetDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, nullptr);
 
 	gfxContext.TransitionResource(g_SceneColorBuffer, D3D12_RESOURCE_STATE_RENDER_TARGET);
+	gfxContext.TransitionResource(g_SceneNormalBuffer, D3D12_RESOURCE_STATE_RENDER_TARGET);
 }
 
 void D3D12RaytracingMiniEngineSample::SaveCamPos()

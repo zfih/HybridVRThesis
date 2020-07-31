@@ -68,11 +68,9 @@ MRT main(VertexOutput vOut)
     }
 #endif
 
-    //color = float4(0, 1, 0, 1);
 	MRT mrt;
 	mrt.Color = color;
 	mrt.Normal = normal;
-	mrt.Color.a = 0;
-	mrt.Normal.w = 0;
+	//mrt.Normal = float4(1, 0.8, 0, 0.5);
     return mrt;
 }
