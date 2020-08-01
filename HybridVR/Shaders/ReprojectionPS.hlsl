@@ -43,34 +43,16 @@ MRT main(VertexOutput vOut)
     float4 color;
     float4 normal;
 
-#define _PERFRAGMENT
-//#define _SHOWDISOCCLUSION
-
-
-#ifdef _PERFRAGMENT
     color = float4(gLeftEyeTex.SampleLevel(gLinearSampler, vOut.texC, 0).rgb, 1);
     normal = gLeftEyeNormalTex.SampleLevel(gLinearSampler, vOut.texC, 0);
-#endif
-#ifdef _SHOWUVS
-    color = float4(1, 1, 1, 1);
-#endif
-#ifdef _SHOWDISOCCLUSION
-        if (vOut.occFlag > gThreshold)
-        {
-            //color = float4(1, 0, 0, 0);
-            color = float4(gLeftEyeTex.SampleLevel(gLinearSampler, vOut.texC, 0).rgb, 1);
-            normal = float4(gLeftEyeNormalTex.SampleLevel(gLinearSampler, vOut.texC, 0).rgb, 1);
-        }
-#else
+
     if (vOut.occFlag > gThreshold)
     {
         discard;
     }
-#endif
-
+	
 	MRT mrt;
 	mrt.Color = color;
 	mrt.Normal = normal;
-	//mrt.Normal = float4(1, 0.8, 0, 0.5);
     return mrt;
 }

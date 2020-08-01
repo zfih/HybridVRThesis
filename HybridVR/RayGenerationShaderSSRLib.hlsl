@@ -34,16 +34,8 @@ void RayGen()
     float4 normalData = normals.Load(int4(readGBufferAt, g_dynamic.curCam, 0));
     if (normalData.w == 0.0)
         return;
-
-#ifdef VALIDATE_NORMAL
-    // Check if normal is real and non-zero
-    float lenSq = dot(normalData.xyz, normalData.xyz);
-    if (!isfinite(lenSq) || lenSq < 1e-6)
-        return;
-    float3 normal = normalData.xyz * rsqrt(lenSq);
-#else
+	
     float3 normal = normalData.xyz;
-#endif
 
     // Unproject into the world position using depth
     float4 unprojected = mul(g_dynamic.cameraToWorld, float4(screenPos, sceneDepth, 1));
@@ -67,4 +59,3 @@ void RayGen()
 	payload.Reflectivity = normalData.w;
     TraceRay(g_accel, RAY_FLAG_CULL_BACK_FACING_TRIANGLES, ~0,0,1,0, rayDesc, payload);
 }
-

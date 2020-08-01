@@ -2053,6 +2053,7 @@ void D3D12RaytracingMiniEngineSample::RenderScene()
 	psConstants.FirstLightIndex[1] = Lighting::m_FirstConeShadowedLight;
 	psConstants.FrameIndexMod2 = TemporalEffects::GetFrameIndexMod2();
 
+	
 	if(!skipShadowMap)
 	{
 		Settings::g_ShadowRenderTimer.Reset();
@@ -2063,10 +2064,10 @@ void D3D12RaytracingMiniEngineSample::RenderScene()
 
 	if (Settings::ReprojEnable)
 	{
-		GraphicsContext& gfxContext = GraphicsContext::Begin(L"Scene Render");
-		//gfxContext.ClearColor(g_SceneNormalBuffer);
+		GraphicsContext& clearCtx = GraphicsContext::Begin(L"CLEARING BBBBBBBBBB");
+		clearCtx.ClearColor(g_SceneNormalBuffer);
+		clearCtx.Finish();
 
-		SetupGraphicsState(gfxContext);
 
 		RenderEye(Cam::kLeft, skipDiffusePass, false, psConstants);
 		
@@ -2077,6 +2078,8 @@ void D3D12RaytracingMiniEngineSample::RenderScene()
 		
 		RenderSSAO();
 
+		GraphicsContext& gfxContext = GraphicsContext::Begin(L"AAAAAAAAAAAA");
+		SetupGraphicsState(gfxContext);
 		g_initialize_dynamicCb(gfxContext, m_Camera, Cam::kRight,
 			g_SceneColorBuffer, g_dynamicConstantBuffer);
 		RaytraceAsrpPlus(
