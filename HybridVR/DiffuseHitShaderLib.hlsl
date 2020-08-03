@@ -232,6 +232,7 @@ float3 ApplySRGBCurve(float3 x)
 [shader("closesthit")]
 void Hit(inout RayPayload payload, in BuiltInTriangleIntersectionAttributes attr)
 {
+    int3 pixel = int3(DispatchRaysIndex().xy, g_dynamic.curCam);
 	payload.RayHitT = RayTCurrent();
 	if (payload.SkipShading)
 	{
@@ -320,7 +321,7 @@ void Hit(inout RayPayload payload, in BuiltInTriangleIntersectionAttributes attr
 		shadowPayload.SkipShading = true;
 		shadowPayload.RayHitT = FLT_MAX;
 		shadowPayload.Bounces = payload.Bounces + 1;
-		TraceRay(g_accel, RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH, ~0, 0, 1, 0, rayDesc, shadowPayload);
+		//TraceRay(g_accel, RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH, ~0, 0, 1, 0, rayDesc, shadowPayload);
 		if (shadowPayload.RayHitT < FLT_MAX)
 		{
 			shadow = 0.0;
@@ -375,5 +376,5 @@ void Hit(inout RayPayload payload, in BuiltInTriangleIntersectionAttributes attr
 		TraceRay(g_accel, RAY_FLAG_CULL_BACK_FACING_TRIANGLES, ~0, 0, 1, 0, rayDesc, reflectionPayload);
 	}
     
-	//g_screenOutput[int3(DispatchRaysIndex().xy, g_dynamic.curCam)] = float4(1, 0, 1, 1);
+	//g_screenOutput[int3(DispatchRaysIndex().xy, g_dynamic.curCam)] = float4(WorldRayDirection(), 1);
 }

@@ -1060,7 +1060,8 @@ void D3D12RaytracingMiniEngineSample::Startup(void)
 	ThrowIfFailed(g_Device->QueryInterface(IID_PPV_ARGS(&g_pRaytracingDevice)),
 	              L"Couldn't get DirectX Raytracing interface for the device.\n");
 	g_SceneNormalBuffer.CreateArray(L"Main Normal Buffer", g_SceneColorBuffer.GetWidth(), g_SceneColorBuffer.GetHeight(), 2,
-		DXGI_FORMAT_R8G8B8A8_SNORM);
+		//DXGI_FORMAT_R8G8B8A8_SNORM);
+		DXGI_FORMAT_R32G32B32A32_FLOAT);
 
 	g_pRaytracingDescriptorHeap = std::unique_ptr<DescriptorHeapStack>(
 		new DescriptorHeapStack(*g_Device, MAX_RT_DESCRIPTORS, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, 0));
@@ -2065,6 +2066,7 @@ void D3D12RaytracingMiniEngineSample::RenderScene()
 	if (Settings::ReprojEnable)
 	{
 		GraphicsContext& clearCtx = GraphicsContext::Begin(L"CLEARING BBBBBBBBBB");
+		clearCtx.TransitionResource(g_SceneNormalBuffer, D3D12_RESOURCE_STATE_RENDER_TARGET, true);
 		clearCtx.ClearColor(g_SceneNormalBuffer);
 		clearCtx.Finish();
 
@@ -2082,7 +2084,7 @@ void D3D12RaytracingMiniEngineSample::RenderScene()
 		SetupGraphicsState(gfxContext);
 		g_initialize_dynamicCb(gfxContext, m_Camera, Cam::kRight,
 			g_SceneColorBuffer, g_dynamicConstantBuffer);
-		RaytraceAsrpPlus(
+		RaytraceAsrpPlus( 
 			gfxContext, 
 			g_SceneColorBuffer, 
 			g_SceneDepthBuffer, 

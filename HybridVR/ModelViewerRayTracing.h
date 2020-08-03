@@ -48,9 +48,10 @@ cbuffer b1 : register(b1)
     DynamicCB g_dynamic;
 };
 
-inline void GenerateCameraRay(uint2 index, out float3 origin, out float3 direction)
+
+inline float3 UnprojectPixel(uint2 pixel)
 {
-    float2 xy = index + 0.5; // center in the middle of the pixel
+    float2 xy = pixel + 0.5; // center in the middle of the pixel
     float2 screenPos = xy / g_dynamic.resolution * 2.0 - 1.0;
 
     // Invert Y for DirectX-style coordinates
@@ -59,6 +60,12 @@ inline void GenerateCameraRay(uint2 index, out float3 origin, out float3 directi
     // Unproject into a ray
     float4 unprojected = mul(g_dynamic.cameraToWorld, float4(screenPos, 0, 1));
     float3 world = unprojected.xyz / unprojected.w;
+    return world;
+}
+
+inline void GenerateCameraRay(uint2 index, out float3 origin, out float3 direction)
+{
+    float3 world = UnprojectPixel(index);
     origin = g_dynamic.worldCameraPosition;
     direction = normalize(world - origin);
 }

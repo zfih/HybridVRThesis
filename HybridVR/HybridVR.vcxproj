@@ -241,6 +241,7 @@
       </EntryPointName>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Library</ShaderType>
       <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">6.3</ShaderModel>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Debug|x64'"> -HV 2017 -Zpr </AdditionalOptions>
     </FxCompile>
     <FxCompile Include="RayGenerationShaderLib.hlsl">
       <ShaderType>Compute</ShaderType>
