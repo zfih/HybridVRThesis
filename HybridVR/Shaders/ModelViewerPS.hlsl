@@ -380,7 +380,7 @@ MRT main(VSOutput vsOutput)
 		}
         mrt.Normal = float4(normal, reflection);
 	}
-    
+
     return mrt;
 }
 

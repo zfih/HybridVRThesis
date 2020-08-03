@@ -232,7 +232,9 @@ float3 ApplySRGBCurve(float3 x)
 [shader("closesthit")]
 void Hit(inout RayPayload payload, in BuiltInTriangleIntersectionAttributes attr)
 {
-    int3 pixel = int3(DispatchRaysIndex().xy, g_dynamic.curCam);
+	int3 pixel = int3(DispatchRaysIndex().xy, g_dynamic.curCam);
+
+
 	payload.RayHitT = RayTCurrent();
 	if (payload.SkipShading)
 	{
@@ -295,6 +297,8 @@ void Hit(inout RayPayload payload, in BuiltInTriangleIntersectionAttributes attr
 	float3 normal;
 	float3 specularAlbedo = float3(0.56, 0.56, 0.56);
 	float specularMask = g_localSpecular.SampleGrad(g_s0, uv, ddx, ddy).g; //g_localSpecular.SampleLevel(g_s0, uv, 0).g;
+
+	
 	float gloss = 128.0;
     {
 		normal = g_localNormal.SampleGrad(g_s0, uv, ddx, ddy).rgb * 2.0 - 1.0; //g_localNormal.SampleLevel(g_s0, uv, 0).rgb * 2.0 - 1.0;
@@ -375,6 +379,4 @@ void Hit(inout RayPayload payload, in BuiltInTriangleIntersectionAttributes attr
 		reflectionPayload.Reflectivity = reflectivity * payload.Reflectivity;
 		TraceRay(g_accel, RAY_FLAG_CULL_BACK_FACING_TRIANGLES, ~0, 0, 1, 0, rayDesc, reflectionPayload);
 	}
-    
-	//g_screenOutput[int3(DispatchRaysIndex().xy, g_dynamic.curCam)] = float4(WorldRayDirection(), 1);
 }

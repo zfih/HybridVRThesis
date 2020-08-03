@@ -1059,9 +1059,10 @@ void D3D12RaytracingMiniEngineSample::Startup(void)
 
 	ThrowIfFailed(g_Device->QueryInterface(IID_PPV_ARGS(&g_pRaytracingDevice)),
 	              L"Couldn't get DirectX Raytracing interface for the device.\n");
+
+	DXGI_FORMAT normalFormat = DXGI_FORMAT_R8G8B8A8_UNORM;
 	g_SceneNormalBuffer.CreateArray(L"Main Normal Buffer", g_SceneColorBuffer.GetWidth(), g_SceneColorBuffer.GetHeight(), 2,
-		//DXGI_FORMAT_R8G8B8A8_SNORM);
-		DXGI_FORMAT_R32G32B32A32_FLOAT);
+		normalFormat);
 
 	g_pRaytracingDescriptorHeap = std::unique_ptr<DescriptorHeapStack>(
 		new DescriptorHeapStack(*g_Device, MAX_RT_DESCRIPTORS, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, 0));
@@ -1177,7 +1178,7 @@ void D3D12RaytracingMiniEngineSample::Startup(void)
 
 	m_ReprojectionRS.Reset(3, 1);
 	m_ReprojectionRS.InitStaticSampler(0, ClampSamplerDesc);
-	m_ReprojectionRS[0].InitAsDescriptorRange(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 0, 3);
+	m_ReprojectionRS[0].InitAsDescriptorRange(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 0, 4);
 	m_ReprojectionRS[1].InitAsDescriptorRange(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 0, 1);
 	m_ReprojectionRS[2].InitAsConstantBuffer(0);
 	m_ReprojectionRS.Finalize(L"Reprojection Root Signature",
@@ -1313,7 +1314,7 @@ void D3D12RaytracingMiniEngineSample::Startup(void)
 	m_QuadDivideFactor = 16;
 	
 	UINT bufferSize = g_SceneColorBuffer.GetWidth() * g_SceneColorBuffer.GetHeight() / m_QuadDivideFactor / m_QuadDivideFactor;
-	g_SceneDiffBuffer.Create(L"Scene Diff Buffer", bufferSize, sizeof(float));
+	g_SceneDiffBuffer.Create(L"Scene Diff Buffer", bufferSize, sizeof(float) * 2);
 	GenerateGrid(g_SceneColorBuffer.GetWidth(), g_SceneColorBuffer.GetHeight());
 }
 
@@ -1713,7 +1714,6 @@ void D3D12RaytracingMiniEngineSample::ReprojectScene()
 	GraphicsContext& reprojectContext = GraphicsContext::Begin(
 		L"Reproject Graphics Context");
 	
-
 	reprojectContext.SetViewportAndScissor(m_MainViewport, m_MainScissor);
 	reprojectContext.SetRootSignature(m_ReprojectionRS);
 	reprojectContext.SetPipelineState(m_ReprojectionPSO);
@@ -1724,8 +1724,7 @@ void D3D12RaytracingMiniEngineSample::ReprojectScene()
 	reprojectContext.TransitionResource(g_SceneDepthBuffer, D3D12_RESOURCE_STATE_DEPTH_WRITE);
 	reprojectContext.TransitionResource(g_SceneColorBuffer, D3D12_RESOURCE_STATE_RENDER_TARGET);
 	reprojectContext.TransitionResource(g_SceneNormalBuffer, D3D12_RESOURCE_STATE_RENDER_TARGET, true);
-	//reprojectContext.ClearColor(g_SceneColorBuffer, 1);
-	//reprojectContext.ClearColor(g_SceneNormalBuffer, 1);
+
 	D3D12_CPU_DESCRIPTOR_HANDLE rtvs[] = { 
 		g_SceneColorBuffer.GetSubRTV(1), 
 		g_SceneNormalBuffer.GetSubRTV(1)
@@ -1738,22 +1737,30 @@ void D3D12RaytracingMiniEngineSample::ReprojectScene()
 	// Domain Shader
 	reprojectContext.SetDynamicDescriptor(0, 0, g_SceneDepthBuffer.GetSubSRV(0));
 
-	struct ReprojInput
+	struct __declspec(align(16)) ReprojInput
 	{
 		XMMATRIX reprojectionMat;
+		Vector3 camPosLeft;
+		Vector3 camPosRight;
+		float depthThreshold;
+		float angleThreshold;
 	};
-
-	ReprojInput ri{
-		// TODO: FIX ENUM
-		//XMMatrixIdentity()
-		XMMatrixTranspose(m_Camera[1]->GetViewProjMatrix()) * 
-		XMMatrixTranspose(XMMatrixInverse(nullptr, m_Camera[0]->GetViewProjMatrix()))
-	};
+	
+	ReprojInput ri{};
+	ri.reprojectionMat = 
+		Transpose(m_Camera[Cam::kRight]->GetViewProjMatrix()) * 
+		Transpose(Invert(m_Camera[Cam::kLeft]->GetViewProjMatrix()));
+	ri.angleThreshold = 1000.0;// TODO MAKE THIS AN GUI THING
+	ri.depthThreshold = 0.001;// TODO MAKE THIS AN GUI THING
+	ri.camPosLeft = m_Camera[Cam::kLeft]->GetPosition();
+	ri.camPosRight = m_Camera[Cam::kRight]->GetPosition();
+	
 	reprojectContext.SetDynamicConstantBufferView(2, sizeof(ri), &ri);
 	
 	// Pixel Shader
 	reprojectContext.SetDynamicDescriptor(0, 1, g_SceneColorBuffer.GetSRV());
 	reprojectContext.SetDynamicDescriptor(0, 2, g_SceneNormalBuffer.GetSRV());
+	reprojectContext.SetDynamicDescriptor(0, 3, g_SceneRawColorBuffer.GetSRV());
 
 	reprojectContext.DrawIndexed(m_GridIndexBuffer.GetElementCount(), 0, 0);
 
@@ -1921,9 +1928,11 @@ void D3D12RaytracingMiniEngineSample::MainRender(GraphicsContext& Ctx, Cam::Came
 
 		if (!Settings::SSAO_DebugDraw)
 		{
-			Ctx.TransitionResource(g_SceneColorBuffer, D3D12_RESOURCE_STATE_RENDER_TARGET, true);
+			Ctx.TransitionResource(g_SceneColorBuffer, D3D12_RESOURCE_STATE_RENDER_TARGET);
+			Ctx.TransitionResource(g_SceneRawColorBuffer, D3D12_RESOURCE_STATE_RENDER_TARGET);
 			Ctx.TransitionResource(g_SceneNormalBuffer, D3D12_RESOURCE_STATE_RENDER_TARGET, true);
 			Ctx.ClearColor(g_SceneColorBuffer, CameraType);
+			Ctx.ClearColor(g_SceneRawColorBuffer, CameraType);
 			
 			RenderColor(Ctx, Camera, CameraType, g_SceneDepthBuffer, Constants);
 		}

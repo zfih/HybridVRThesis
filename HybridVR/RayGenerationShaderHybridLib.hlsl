@@ -50,7 +50,7 @@ void ScreenSpaceReflection(float4 normal, int2 xy, int3 pixel)
 
 	float3 primaryRayDirection = normalize(world - g_dynamic.worldCameraPosition);
 
-	float3 direction = reflect(primaryRayDirection, normal);
+	float3 direction = reflect(primaryRayDirection, normal.xyz);
 	float3 origin = world - primaryRayDirection * 0.1f; // Lift off the surface a bit
 
 	float numBounces = 1;
@@ -67,8 +67,6 @@ void FullTrace(int3 pixel)
 	float numBounces = 0;
 	float reflectivity = 1;
 
-	//g_screenOutput[pixel] = float4(origin, 1);
-	
 	FireRay(origin, direction, numBounces, reflectivity);
 }
 
@@ -81,21 +79,19 @@ void RayGen()
 
 	float4 normal = g_normals[pixel];
 
-	// If pixel has no reflectivity, it is NOT SSR
-	if(normal.w == 0.0)
+	// Pixel Good - Green
+	if(normal.w == 0.0 && g_screenOutput[pixel].a != 0)
 	{
-		// If pixel has no alpha, it needs complete redraw
-		if(g_screenOutput[pixel].a == 0)
-		{
-			//g_screenOutput[pixel] = g_depth[pixel].xxxx;
-			FullTrace(pixel);
-			return;
-		}
-
-		// No reflectivity, but has alpha: Keep it!
-		return;
+		g_screenOutput[pixel] = float4(0, 1, 0, 1);
 	}
-
-	// We have reflectivity, redraw.
-	ScreenSpaceReflection(normal, xy, pixel);
+	else if(normal.w != 0.0)// Need refl - Yellow
+	{
+		ScreenSpaceReflection(normal, xy, pixel);
+		g_screenOutput[pixel] = float4(1, 1, 0, 1);
+	}
+	else // Needs full - Red
+	{
+		//FullTrace(pixel);
+		g_screenOutput[pixel] = float4(1, 0, 0, 1);
+	}
 }

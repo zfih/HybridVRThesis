@@ -25,6 +25,10 @@ Texture2D gDepthTex : register(t0);
 cbuffer ReprojInput : register(b0)
 {
     float4x4 reprojectionMat;
+	float3 camPosLeft;
+    float3 camPosRight;
+    float depthThreshold;
+    float angleThreshold;
 };
 
 struct HS_Constant_Output
@@ -83,6 +87,5 @@ VertexOutput main(HS_Constant_Output input, float2 UV : SV_DomainLocation, const
     output.occFlag = abs(2 * zLeft - 2 * zRight); // sobel operator
     //output.occFlag = 0;
     //output.occFlag = abs(-4 * zMiddle + zLeft + zRight + zTop + zBottom); // laplace operator 
-
     return output;
 }
