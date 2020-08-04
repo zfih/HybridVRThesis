@@ -25,9 +25,10 @@ Texture2D gDepthTex : register(t0);
 cbuffer ReprojInput : register(b0)
 {
     float4x4 reprojectionMat;
+    float4x4 rightEyeToWorldMat;
 	float3 camPosLeft;
-    float3 camPosRight;
     float depthThreshold;
+    float3 camPosRight;
     float angleThreshold;
 };
 
@@ -70,7 +71,7 @@ VertexOutput main(HS_Constant_Output input, float2 UV : SV_DomainLocation, const
 
     float4 posWH = mul(float4(posH.xy, z, posH.w), reprojectionMat);
 
-    output.posW = posWH.xyz;
+    output.posW = float4(posWH.xyz, posWH.w);
     output.posH = float4(posWH.xy, z, posWH.w);
     /*output.posW = 0.1337;
     output.posH = 0.1337;*/

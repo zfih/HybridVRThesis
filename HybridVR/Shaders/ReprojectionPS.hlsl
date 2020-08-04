@@ -19,10 +19,10 @@
 
 struct VertexOutput
 {
-    float3 posW : POSW;
-    float4 posH : SV_POSITION;
-    float2 texC : TEXCRD;
-    float occFlag : DOCCFLAG;
+	float3 posW : POSW;
+	float4 posH : SV_POSITION;
+	float2 texC : TEXCRD;
+	float occFlag : DOCCFLAG;
 };
 
 struct MRT
@@ -33,11 +33,12 @@ struct MRT
 
 cbuffer ReprojInput : register(b0)
 {
-    float4x4 g_reprojectionMat;
-    float3 g_camPosLeft;
-    float3 g_camPosRight;
-    float g_depthThreshold;
-    float g_angleThreshold;
+float4x4 reprojectionMat;
+float4x4 rightEyeMatrix;
+float3 camPosLeft;
+float depthThreshold;
+float3 camPosRight;
+float angleThreshold;
 };
 
 SamplerState gLinearSampler : register(s0);
@@ -49,41 +50,38 @@ static float3 gClearColor = float3(0, 0, 0);
 
 MRT main(VertexOutput vOut)
 {
-    float4 color;
-    float4 normal;
+	float4 color;
+	float4 normal;
 
-    color = float4(gLeftEyeTex.SampleLevel(gLinearSampler, vOut.texC, 0).rgb, 1);
-    color = float4(gLeftEyeRawTex.SampleLevel(gLinearSampler, vOut.texC, 0).rgb, 1);
-    normal = gLeftEyeNormalTex.SampleLevel(gLinearSampler, vOut.texC, 0);
+	color = float4(gLeftEyeTex.SampleLevel(gLinearSampler, vOut.texC, 0).rgb, 1);
+	color = float4(gLeftEyeRawTex.SampleLevel(gLinearSampler, vOut.texC, 0).rgb, 1);
+	normal = gLeftEyeNormalTex.SampleLevel(gLinearSampler, vOut.texC, 0);
 
-    if (vOut.occFlag > g_depthThreshold)
-    {
-        //discard;
-    }
+	if(vOut.occFlag > depthThreshold)
+	{
+		discard;
+	}
 
-    //// IAPC
+	//// IAPC
+	float3 lPosLocal = mul(camPosLeft, rightEyeMatrix);
+	float3 rPosLocal = mul(camPosRight, rightEyeMatrix);
 
-    // Get angles
-    float3 leftDir = normalize(g_camPosLeft - vOut.posW);
-    float3 rightDir = normalize(g_camPosRight - vOut.posW);
+	// Get angles
+	float3 leftDir = normalize(lPosLocal - vOut.posH);
+	float3 rightDir = normalize(rPosLocal - vOut.posH);
 	
-    float angle = max(dot(leftDir, rightDir), 0);
-	
-	//// Compare
-	//if(angle > g_angleThreshold)
-	//{
- //       discard;
-	//}
+	float angle = dot(leftDir, rightDir);
+	// Compare
+	if(angle < angleThreshold)
+	{
+		discard;
+	}
 
 	// Set Color
-	
+
 	MRT mrt;
-	mrt.Color = color;
+	mrt.Color = float4(angle == 1, 0, 0, 1);
 	mrt.Normal = normal;
 
-    if (g_angleThreshold > 0 && g_angleThreshold < 0.002)
-    {
-        mrt.Color = float4(1, 0.7, 0, 1);
-    }
-    return mrt;
+	return mrt;
 }

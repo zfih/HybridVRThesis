@@ -73,6 +73,7 @@ void FullTrace(int3 pixel)
 [shader("raygeneration")]
 void RayGen()
 {
+	return;
 	int3 pixel = int3(DispatchRaysIndex().xy, g_dynamic.curCam);
 
 	float2 xy = pixel.xy + 0.5; // center in the middle of the pixel

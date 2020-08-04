@@ -644,6 +644,14 @@ void ImGui::BuildGUI(Math::Camera* cam, GameCore::CameraController* controller)
         ImGui::Checkbox("Reproject", &checkbox);
         Settings::ReprojEnable = checkbox;
 
+        float depthThreshold = Settings::DepthThreshold;
+        ImGui::DragFloat("Depth Threshold", &depthThreshold, 0.001, 0, 1);
+        Settings::DepthThreshold = depthThreshold;
+    	
+        float angleThreshold = Settings::AngleThreshold;
+        ImGui::DragFloat("Angle Threshold", &angleThreshold, 0.01, 0, 1);
+        Settings::AngleThreshold = angleThreshold;
+    	
         // ===================
         ImGui::Indent(-indent);
     } // VR

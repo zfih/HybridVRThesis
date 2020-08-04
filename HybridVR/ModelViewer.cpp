@@ -438,6 +438,8 @@ namespace Settings
 	BoolVar ShowWaveTileCounts("Application/Forward+/Show Wave Tile Counts", false);
 
 	BoolVar ReprojEnable("LOD/Reproject", true);
+	NumVar DepthThreshold("LOD/Depth Threshold", 0.001);
+	NumVar AngleThreshold("LOD/Angle Threshold", 0.5f);
 
 	EnumVar RayTracingMode("Application/Raytracing/RayTraceMode", RTM_DIFFUSE_WITH_SHADOWMAPS, _countof(rayTracingModes), rayTracingModes);
 
@@ -1740,20 +1742,26 @@ void D3D12RaytracingMiniEngineSample::ReprojectScene()
 	struct __declspec(align(16)) ReprojInput
 	{
 		XMMATRIX reprojectionMat;
-		Vector3 camPosLeft;
-		Vector3 camPosRight;
+		XMMATRIX rightEyeToWorldMat;
+		float3 camPosLeft;
 		float depthThreshold;
+		float3 camPosRight;
 		float angleThreshold;
 	};
+
+	XMMATRIX rightEyeVP = XMMatrixTranspose(m_Camera[Cam::kRight]->GetViewProjMatrix());
+	XMMATRIX leftEyeToRightEye =
+		rightEyeVP *
+		XMMatrixTranspose(XMMatrixInverse(nullptr, m_Camera[Cam::kLeft]->GetViewProjMatrix()));
+
 	
 	ReprojInput ri{};
-	ri.reprojectionMat = 
-		Transpose(m_Camera[Cam::kRight]->GetViewProjMatrix()) * 
-		Transpose(Invert(m_Camera[Cam::kLeft]->GetViewProjMatrix()));
-	ri.angleThreshold = 1000.0;// TODO MAKE THIS AN GUI THING
-	ri.depthThreshold = 0.001;// TODO MAKE THIS AN GUI THING
-	ri.camPosLeft = m_Camera[Cam::kLeft]->GetPosition();
-	ri.camPosRight = m_Camera[Cam::kRight]->GetPosition();
+	ri.reprojectionMat = leftEyeToRightEye;
+	ri.rightEyeToWorldMat = rightEyeVP;
+	ri.angleThreshold = Settings::AngleThreshold;
+	ri.depthThreshold = Settings::DepthThreshold;
+	XMStoreFloat3((XMFLOAT3 *)&ri.camPosLeft, m_Camera[Cam::kLeft]->GetPosition());
+	XMStoreFloat3((XMFLOAT3 *)&ri.camPosRight, m_Camera[Cam::kRight]->GetPosition());
 	
 	reprojectContext.SetDynamicConstantBufferView(2, sizeof(ri), &ri);
 	
@@ -1916,7 +1924,7 @@ void D3D12RaytracingMiniEngineSample::MainRender(GraphicsContext& Ctx, Cam::Came
 	{
 		Settings::g_SSAOTimer[CameraType].Reset();
 		Settings::g_SSAOTimer[CameraType].Start();
-		SSAO::Render(Ctx, *m_Camera[CameraType], CameraType);
+		//SSAO::Render(Ctx, *m_Camera[CameraType], CameraType);
 		Settings::g_SSAOTimer[CameraType].Stop();
 	}
 
@@ -2087,7 +2095,7 @@ void D3D12RaytracingMiniEngineSample::RenderScene()
 		skipDiffusePass = true;
 		RenderEye(Cam::kRight, skipDiffusePass, false, psConstants);
 		
-		RenderSSAO();
+		//RenderSSAO();
 
 		GraphicsContext& gfxContext = GraphicsContext::Begin(L"AAAAAAAAAAAA");
 		SetupGraphicsState(gfxContext);
