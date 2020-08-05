@@ -21,7 +21,7 @@
 
 namespace Settings
 {
-    IntVar LowResDivisor = IntVar("Graphics/TMP Resulition Divisor", 2, 2, 64);
+    IntVar LowResDivisor = IntVar("Graphics/TMP Resolution Divisor", 4, 2, 64);
 }
 
 namespace Graphics
