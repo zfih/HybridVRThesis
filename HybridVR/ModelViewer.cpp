@@ -456,10 +456,8 @@ namespace Settings
 
 	EnumVar RayTracingMode("Application/Raytracing/RayTraceMode", RTM_DIFFUSE_WITH_SHADOWMAPS, _countof(rayTracingModes), rayTracingModes);
 
-	CpuTimer g_ZPrepassTimer[2]{ {true, "ZPrepassLeft"}, {true, "ZPrepassRight"} };
-	CpuTimer g_SSAOTimer[2]{ {true, "SSAOLeft"}, {true, "SSAORight"} };
 	CpuTimer g_RaytraceTimer[2]{ {true, "RaytraceLeft"}, {true, "RaytraceRight"} };
-	CpuTimer g_EyeRenderTimer[2]{ { true, "LeftEyeRender" }, { true, "RightEyeRender" } };
+	CpuTimer g_EyeRenderTimer[2]{ { true, "RasterLeft" }, { true, "RasterRight" } };
 	CpuTimer g_ShadowRenderTimer(true, "ShadowRender");
 }
 
@@ -1444,7 +1442,6 @@ void D3D12RaytracingMiniEngineSample::AnimateCamera()
 {
 	static uint32_t currentPos, nextPos;
 	static float time = 0.0f;
-	static float speed = 0.0f;
 	
 	if(m_firstAnimation)
 	{
@@ -1452,6 +1449,8 @@ void D3D12RaytracingMiniEngineSample::AnimateCamera()
 		OutputDebugString(out.data());
 		m_firstAnimation = false;
 
+		time = 0.0f;
+		
 		currentPos = m_CameraPosArrayCurrentPosition;
 		nextPos = currentPos + 1;
 	}
@@ -1729,12 +1728,8 @@ void D3D12RaytracingMiniEngineSample::SetupGraphicsState(GraphicsContext& Ctx) c
 void D3D12RaytracingMiniEngineSample::RenderPrepass(GraphicsContext& Ctx, Cam::CameraType CameraType, Camera& Camera,
 	PSConstants& Constants)
 {
-	
 	RenderLightShadows(Ctx, CameraType);
 
-	Settings::g_ZPrepassTimer[CameraType].Reset();
-	Settings::g_ZPrepassTimer[CameraType].Start();
-	
 	{
 		Ctx.SetStencilRef(0x0);
 		
@@ -1771,17 +1766,12 @@ void D3D12RaytracingMiniEngineSample::RenderPrepass(GraphicsContext& Ctx, Cam::C
 			RenderObjects(Ctx, CameraType, m_Camera[CameraType]->GetViewProjMatrix(), kCutout);
 		}
 	}
-	
-	Settings::g_ZPrepassTimer[CameraType].Stop();
 }
 
 void D3D12RaytracingMiniEngineSample::MainRender(GraphicsContext& Ctx, Cam::CameraType CameraType, Camera& Camera,
 	PSConstants& Constants, bool SkipDiffusePass, bool SkipShadowMap)
 {
-	Settings::g_SSAOTimer[CameraType].Reset();
-	Settings::g_SSAOTimer[CameraType].Start();
 	SSAO::Render(Ctx, *m_Camera[CameraType], CameraType);
-	Settings::g_SSAOTimer[CameraType].Stop();
 
 	if (!SkipDiffusePass)
 	{
