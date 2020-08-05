@@ -1712,7 +1712,7 @@ void D3D12RaytracingMiniEngineSample::RenderEye(Cam::CameraType eye, bool SkipDi
 	MainRender(ctx, eye, camera,
 		psConstants, SkipDiffusePass, SkipShadowMap);
 
-	ctx.Finish(true);
+	ctx.Finish();
 	Settings::g_EyeRenderTimer[eye].Stop();
 }
 
