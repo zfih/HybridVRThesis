@@ -459,6 +459,7 @@ namespace Settings
 	CpuTimer g_RaytraceTimer[2]{ {true, "RaytraceLeft"}, {true, "RaytraceRight"} };
 	CpuTimer g_EyeRenderTimer[2]{ { true, "RasterLeft" }, { true, "RasterRight" } };
 	CpuTimer g_ShadowRenderTimer(true, "ShadowRender");
+	CpuTimer g_FrameIntegrationTimer(true, "FrameIntegration");
 }
 
 std::unique_ptr<DescriptorHeapStack> g_pRaytracingDescriptorHeap;
@@ -1929,6 +1930,9 @@ void D3D12RaytracingMiniEngineSample::RenderScene()
 
 void D3D12RaytracingMiniEngineSample::FrameIntegration()
 {
+	Settings::g_FrameIntegrationTimer.Reset();
+	Settings::g_FrameIntegrationTimer.Start();
+	
 	ComputeContext& cmpContext = ComputeContext::Begin(L"Frame Integration");
 	
 	if (Settings::TMPMode != Settings::TMPDebug::kOffFullRes && Settings::TMPMode != Settings::TMPDebug::kOffLowRes)
@@ -1981,6 +1985,7 @@ void D3D12RaytracingMiniEngineSample::FrameIntegration()
 	}
 
 	cmpContext.Finish();
+	Settings::g_FrameIntegrationTimer.Stop();
 }
 
 //
