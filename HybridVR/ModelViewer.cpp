@@ -147,7 +147,7 @@ enum RaytracingTypes
 
 const static UINT MaxRayRecursion = 5;
 
-const static UINT c_NumCameraPositions = 5;
+const static UINT c_NumCameraPositions = 10;
 
 //// SCENE
 
@@ -260,11 +260,12 @@ public:
 	virtual void Raytrace(class GraphicsContext&, UINT cam);
 
 	void SetCameraToPredefinedPosition(int cameraPosition);
-
 private:
-
+	
 	void GenerateGrid(UINT width, UINT height);
 	
+	void AnimateCamera();
+
 	void RenderShadowMap();
 	void RenderColor(
 		GraphicsContext& Ctx,
@@ -310,8 +311,17 @@ private:
 	void SaveCamPos();
 	void LoadCamPos();
 	const char* m_CamPosFilename = "SavedCamPos.txt";
-	const int m_CamPosCount = 5;
+	const int m_CamPosCount = 10;
 
+	struct CameraPosition
+	{
+		Vector3 position;
+		float heading;
+		float pitch;
+	};
+
+	void SetCameraPosition(CameraPosition camPos);
+	
 	VRCamera m_Camera;
 	std::auto_ptr<VRCameraController> m_CameraController;
 	D3D12_VIEWPORT m_MainViewport;
@@ -348,17 +358,13 @@ private:
 
 	Vector3 m_SunDirection;
 	ShadowCamera m_SunShadow;
-	UINT m_QuadDivideFactor;
 
-	struct CameraPosition
-	{
-		Vector3 position;
-		float heading;
-		float pitch;
-	};
+	UINT m_QuadDivideFactor;
 
 	CameraPosition m_CameraPosArray[c_NumCameraPositions];
 	UINT m_CameraPosArrayCurrentPosition;
+
+	bool m_firstAnimation = true;
 };
 
 
@@ -1323,11 +1329,19 @@ void D3D12RaytracingMiniEngineSample::Update(float deltaT)
 	}
 
 	static bool freezeCamera = false;
+	static bool animate = false;
 
 	if (GameInput::IsFirstPressed(GameInput::kKey_f))
 	{
 		freezeCamera = !freezeCamera;
 		GameInput::g_MouseLock = !GameInput::g_MouseLock;
+		animate = false;
+	}
+
+	if(GameInput::IsFirstPressed(GameInput::kKey_space) && freezeCamera)
+	{
+		animate = !animate;
+		m_firstAnimation = true;
 	}
 
 	if (GameInput::IsFirstPressed(GameInput::kKey_f1))
@@ -1353,6 +1367,11 @@ void D3D12RaytracingMiniEngineSample::Update(float deltaT)
 	if (!freezeCamera)
 	{
 		m_CameraController->Update(deltaT);
+	}
+
+	if(animate)
+	{
+		AnimateCamera();
 	}
 	
 	float costheta = cosf(Settings::SunOrientation);
@@ -1439,16 +1458,65 @@ void D3D12RaytracingMiniEngineSample::SetCameraToPredefinedPosition(int cameraPo
 {
 	if (cameraPosition < 0 || cameraPosition >= c_NumCameraPositions)
 		return;
+	
+	SetCameraPosition(m_CameraPosArray[cameraPosition]);
+}
 
-	m_CameraController->SetCurrentHeading(m_CameraPosArray[m_CameraPosArrayCurrentPosition].heading);
-	m_CameraController->SetCurrentPitch(m_CameraPosArray[m_CameraPosArrayCurrentPosition].pitch);
+
+void D3D12RaytracingMiniEngineSample::SetCameraPosition(CameraPosition camPos)
+{
+	m_CameraController->SetCurrentHeading(camPos.heading);
+	m_CameraController->SetCurrentPitch(camPos.pitch);
 
 	Matrix3 neworientation = Matrix3(m_CameraController->GetWorldEast(), m_CameraController->GetWorldUp(),
-	                                 -m_CameraController->GetWorldNorth())
+		-m_CameraController->GetWorldNorth())
 		* Matrix3::MakeYRotation(m_CameraController->GetCurrentHeading())
 		* Matrix3::MakeXRotation(m_CameraController->GetCurrentPitch());
-	m_Camera.SetTransform(AffineTransform(neworientation, m_CameraPosArray[m_CameraPosArrayCurrentPosition].position));
+	m_Camera.SetTransform(AffineTransform(neworientation, camPos.position));
 	m_Camera.Update();
+}
+
+
+void D3D12RaytracingMiniEngineSample::AnimateCamera()
+{
+	static uint32_t currentPos, nextPos;
+	static float time = 0.0f;
+	static float speed = 0.0f;
+	
+	if(m_firstAnimation)
+	{
+		std::wstring out = L"Started animating at frame: " + std::to_wstring(Graphics::GetFrameCount()) + L"\n";
+		OutputDebugString(out.data());
+		m_firstAnimation = false;
+
+		currentPos = m_CameraPosArrayCurrentPosition;
+		nextPos = currentPos + 1;
+	}
+
+	if(time >= 1.0f)
+	{
+		currentPos = nextPos;
+		nextPos = currentPos + 1;
+
+		if(currentPos == m_CamPosCount-1)
+		{
+			nextPos = 0;
+		}
+		
+		time = 0.0f;
+	}
+	else
+	{
+		time += 0.001f;
+	}
+
+	CameraPosition camPos{
+		Lerp(m_CameraPosArray[currentPos].position, m_CameraPosArray[nextPos].position, { time }),
+		Lerp(m_CameraPosArray[currentPos].heading, m_CameraPosArray[nextPos].heading, time),
+		Lerp(m_CameraPosArray[currentPos].pitch, m_CameraPosArray[nextPos].pitch, time)
+	};
+
+	SetCameraPosition(camPos);
 }
 
 void D3D12RaytracingMiniEngineSample::CreateRayTraceAccelerationStructures(UINT numMeshes)
