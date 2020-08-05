@@ -662,11 +662,13 @@ void Graphics::Initialize(void)
 	{
 		uint32_t width, height;
 		VR::g_HMD->GetRecommendedRenderTargetSize(&width, &height);
+        width = 1440 * 1.4;
+        height = 1660 * 1.4;
 		SetNativeResolution(width, height);
 	}
 	else
 	{
-		SetNativeResolution(1280, 720);
+		SetNativeResolution(1440*1.4, 1660*1.4);
 	}
     TemporalEffects::Initialize();
     PostEffects::Initialize();
@@ -966,6 +968,8 @@ void Graphics::Present(void)
 	
     s_SwapChain1->Present(PresentInterval, 0);
 
+    g_CommandManager.IdleGPU();
+
     // Test robustness to handle spikes in CPU time
     //if (s_DropRandomFrames)
     //{
@@ -975,6 +979,7 @@ void Graphics::Present(void)
 
     int64_t CurrentTick = SystemTime::GetCurrentTick();
 
+	
     if (Settings::EnableVSync)
     {
         // With VSync enabled, the time step between frames becomes a multiple of 16.666 ms.  We need
@@ -1003,8 +1008,11 @@ void Graphics::Present(void)
     SetNativeResolution(g_NativeWidth, g_NativeHeight);
 
     Settings::g_NoSyncTimer.Stop();
-	
-    VR::Sync();
+
+    if (VR::GetHMD())
+    {
+        VR::Sync();
+    }
 }
 
 uint64_t Graphics::GetFrameCount(void)
