@@ -34,7 +34,7 @@ struct MRT
 cbuffer ReprojInput : register(b0)
 {
 float4x4 reprojectionMat;
-float4x4 rightEyeMatrix;
+float4x4 camToWorldMat;
 float3 camPosLeft;
 float depthThreshold;
 float3 camPosRight;
@@ -47,6 +47,31 @@ Texture2D gLeftEyeNormalTex : register(t2);
 Texture2D gLeftEyeRawTex : register(t3);
 
 static float3 gClearColor = float3(0, 0, 0);
+
+bool equalsEpsilon(double a, double b, double epsilon)
+{
+	double diff = abs(a - b);
+	return diff < epsilon;
+}
+
+bool equalsEpsilon(float a, float b, float epsilon)
+{
+	float diff = abs(a - b);
+	return diff < epsilon;
+}
+
+bool equalsEpsilon(float3 a, float3 b, float epsilon)
+{
+	float3 diff = abs(a - b);
+	return diff < epsilon;
+}
+
+
+bool equalsEpsilon(float4 a, float4 b, float epsilon)
+{
+	float4 diff = abs(a - b);
+	return diff < epsilon;
+}
 
 MRT main(VertexOutput vOut)
 {
@@ -63,24 +88,26 @@ MRT main(VertexOutput vOut)
 	}
 
 	//// IAPC
-	float3 lPosLocal = mul(camPosLeft, rightEyeMatrix);
-	float3 rPosLocal = mul(camPosRight, rightEyeMatrix);
+
+	float4 p = float4(vOut.posW, 1);
+	p = mul(camToWorldMat, p);
+	p = p / p.w;
 
 	// Get angles
-	float3 leftDir = normalize(lPosLocal - vOut.posH);
-	float3 rightDir = normalize(rPosLocal - vOut.posH);
-	
-	float angle = dot(leftDir, rightDir);
+	double3 leftDir = normalize(p - camPosLeft);
+	double3 rightDir = normalize(p - camPosRight);
+
+	double angle = dot(leftDir, rightDir);
+
 	// Compare
 	if(angle < angleThreshold)
 	{
-		discard;
+		//discard;
 	}
 
-	// Set Color
-
+	// Set Color	
 	MRT mrt;
-	mrt.Color = float4(angle == 1, 0, 0, 1);
+	mrt.Color = float4(equalsEpsilon(camPosLeft, camPosRight, 1), 0, 0, 1);
 	mrt.Normal = normal;
 
 	return mrt;

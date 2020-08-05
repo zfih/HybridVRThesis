@@ -1742,26 +1742,30 @@ void D3D12RaytracingMiniEngineSample::ReprojectScene()
 	struct __declspec(align(16)) ReprojInput
 	{
 		XMMATRIX reprojectionMat;
-		XMMATRIX rightEyeToWorldMat;
+		XMMATRIX camToWorldMat;
 		float3 camPosLeft;
 		float depthThreshold;
 		float3 camPosRight;
 		float angleThreshold;
 	};
 
-	XMMATRIX rightEyeVP = XMMatrixTranspose(m_Camera[Cam::kRight]->GetViewProjMatrix());
-	XMMATRIX leftEyeToRightEye =
-		rightEyeVP *
-		XMMatrixTranspose(XMMatrixInverse(nullptr, m_Camera[Cam::kLeft]->GetViewProjMatrix()));
-
+	Matrix4 reprojectionMatrix = 
+		Transpose(Invert(m_Camera[Cam::kLeft]->GetViewProjMatrix())) * 
+		Transpose(m_Camera[Cam::kRight]->GetViewProjMatrix());
 	
+	Matrix4 rightEyeVPInv = Invert(m_Camera[Cam::kRight]->GetViewProjMatrix());
+
+	Vector3 leftPos = m_Camera[Cam::kLeft]->GetPosition();
+	Vector3 rightPos = m_Camera[Cam::kRight]->GetPosition();
+
+
 	ReprojInput ri{};
-	ri.reprojectionMat = leftEyeToRightEye;
-	ri.rightEyeToWorldMat = rightEyeVP;
+	ri.reprojectionMat = reprojectionMatrix;
+	ri.camToWorldMat = rightEyeVPInv;
 	ri.angleThreshold = Settings::AngleThreshold;
 	ri.depthThreshold = Settings::DepthThreshold;
-	XMStoreFloat3((XMFLOAT3 *)&ri.camPosLeft, m_Camera[Cam::kLeft]->GetPosition());
-	XMStoreFloat3((XMFLOAT3 *)&ri.camPosRight, m_Camera[Cam::kRight]->GetPosition());
+	XMStoreFloat3((XMFLOAT3 *)&ri.camPosLeft, leftPos);
+	XMStoreFloat3((XMFLOAT3 *)&ri.camPosRight, rightPos);
 	
 	reprojectContext.SetDynamicConstantBufferView(2, sizeof(ri), &ri);
 	

@@ -26,7 +26,10 @@ void BaseCamera::SetLookDirection( Vector3 forward, Vector3 up )
     // Deduce a valid, orthogonal right vector
     Vector3 right = Cross(forward, up);
     Scalar rightLenSq = LengthSquare(right);
-    right = Select(right * RecipSqrt(rightLenSq), Quaternion(Vector3(kYUnitVector), -XM_PIDIV2) * forward, rightLenSq < Scalar(0.000001f));
+    right = Select(
+        right * RecipSqrt(rightLenSq), 
+        Quaternion(Vector3(kYUnitVector), -XM_PIDIV2) * forward, 
+        rightLenSq < Scalar(0.000001f));
 
     // Compute actual up vector
     up = Cross(right, forward);
