@@ -6,11 +6,9 @@ namespace Settings
 {
 	// Profiling
 	extern CpuTimer g_NoSyncTimer;
-	extern CpuTimer g_ImGUITimer;
+	extern CpuTimer g_RenderTimer;
 	extern CpuTimer g_EyeRenderTimer[2];
 	extern CpuTimer g_ShadowRenderTimer;
-	extern CpuTimer g_ZPrepassTimer[2];
-	extern CpuTimer g_SSAOTimer[2];
 	extern CpuTimer g_RaytraceTimer[2];
 	// Profiling
 	
