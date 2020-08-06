@@ -647,12 +647,12 @@ void Graphics::Initialize(void)
 		uint32_t width, height;
 		VR::g_HMD->GetRecommendedRenderTargetSize(&width, &height);
         width = 1440 * 1.4;
-        height = 1660 * 1.4;
+        height = 1600 * 1.4;
 		SetNativeResolution(width, height);
 	}
 	else
 	{
-		SetNativeResolution(1440*1.4, 1660*1.4);
+		SetNativeResolution(1440*1.4, 1600*1.4);
 	}
     TemporalEffects::Initialize();
     PostEffects::Initialize();
