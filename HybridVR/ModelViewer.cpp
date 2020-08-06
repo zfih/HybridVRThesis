@@ -1703,6 +1703,8 @@ void D3D12RaytracingMiniEngineSample::RenderColor(GraphicsContext& Ctx, Camera& 
 
 void D3D12RaytracingMiniEngineSample::ReprojectScene()
 {
+	Settings::g_ReprojectTimer.Reset();
+	Settings::g_ReprojectTimer.Start();
 	ComputeContext& quadLevelContext = ComputeContext::Begin(
 		L"Reproject Compute Context");
 	
@@ -1784,6 +1786,8 @@ void D3D12RaytracingMiniEngineSample::ReprojectScene()
 
 	quadLevelContext.Finish();
 	reprojectContext.Finish();
+
+	Settings::g_ReprojectTimer.Stop();
 }
 
 void D3D12RaytracingMiniEngineSample::GenerateGrid(UINT width, UINT height)
@@ -2096,10 +2100,13 @@ void D3D12RaytracingMiniEngineSample::RenderScene()
 		
 		RenderSSAO();
 
+		Settings::g_HolefillingTimer.Reset();
+		Settings::g_HolefillingTimer.Start();
 		g_initialize_dynamicCb(gfxContext, m_Camera, Cam::kRight,
 			g_SceneColorBuffer, g_dynamicConstantBuffer);
 		RaytraceDiffuse(gfxContext, g_SceneColorBuffer);
 		gfxContext.Finish();
+		Settings::g_HolefillingTimer.Stop();
 	}
 	else 
 	{
