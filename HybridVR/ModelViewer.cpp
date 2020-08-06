@@ -360,6 +360,7 @@ private:
 
 	RootSignature m_LowPassSig;
 	ComputePSO m_LowPassPSO;
+	RootSignature m_DownsampleSig;
 	ComputePSO m_DownsamplePSO;
 	RootSignature m_FrameIntegrationSig;
 	ComputePSO m_FrameIntegrationPSO;
@@ -1164,8 +1165,15 @@ void D3D12RaytracingMiniEngineSample::Startup(void)
 	m_LowPassPSO.SetComputeShader(g_pLowPassCS, sizeof(g_pLowPassCS));
 	m_LowPassPSO.Finalize();
 
-	// Reuses 
-	m_DownsamplePSO.SetRootSignature(m_LowPassSig);
+	m_DownsampleSig.Reset(3, 1);
+	m_DownsampleSig[0].InitAsDescriptorRange(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 0, 1);
+	m_DownsampleSig[1].InitAsDescriptorRange(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 0, 1);
+	m_DownsampleSig[2].InitAsConstants(0, 1);
+	m_DownsampleSig.InitStaticSampler(0, SamplerLinearWrapDesc);
+	m_DownsampleSig.Finalize(L"DownsampleSignature", D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
+
+
+	m_DownsamplePSO.SetRootSignature(m_DownsampleSig);
 	m_DownsamplePSO.SetComputeShader(g_pDownsampleCS, sizeof(g_pDownsampleCS));
 	m_DownsamplePSO.Finalize();
 
@@ -1953,7 +1961,7 @@ void D3D12RaytracingMiniEngineSample::FrameIntegration()
 
 		cmpContext.Dispatch2D(g_SceneColorBufferLowPassed.GetWidth(), g_SceneColorBufferLowPassed.GetHeight());
 
-		// Reuses m_LowPassSig
+		cmpContext.SetRootSignature(m_DownsampleSig);
 		cmpContext.SetPipelineState(m_DownsamplePSO);
 
 		cmpContext.TransitionResource(g_SceneColorBuffer, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
