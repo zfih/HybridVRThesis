@@ -48,12 +48,6 @@ Texture2D gLeftEyeRawTex : register(t3);
 
 static float3 gClearColor = float3(0, 0, 0);
 
-bool equalsEpsilon(double a, double b, double epsilon)
-{
-	double diff = abs(a - b);
-	return diff < epsilon;
-}
-
 bool equalsEpsilon(float a, float b, float epsilon)
 {
 	float diff = abs(a - b);
@@ -63,52 +57,56 @@ bool equalsEpsilon(float a, float b, float epsilon)
 bool equalsEpsilon(float3 a, float3 b, float epsilon)
 {
 	float3 diff = abs(a - b);
-	return diff < epsilon;
+	return diff.x < epsilon && diff.y < epsilon && diff.z < epsilon;
 }
 
 
 bool equalsEpsilon(float4 a, float4 b, float epsilon)
 {
 	float4 diff = abs(a - b);
-	return diff < epsilon;
+	return diff.x < epsilon && diff.y < epsilon && diff.z < epsilon && diff.w < epsilon;
 }
 
 MRT main(VertexOutput vOut)
 {
-	float4 color;
-	float4 normal;
-
-	color = float4(gLeftEyeTex.SampleLevel(gLinearSampler, vOut.texC, 0).rgb, 1);
-	color = float4(gLeftEyeRawTex.SampleLevel(gLinearSampler, vOut.texC, 0).rgb, 1);
-	normal = gLeftEyeNormalTex.SampleLevel(gLinearSampler, vOut.texC, 0);
-
+	// Discard if depth difference too big.
 	if(vOut.occFlag > depthThreshold)
 	{
 		discard;
+		// a = 0 && w = 0 => Full retrace
 	}
+
+	float4 color;
+	float4 normal;
 
 	//// IAPC
 
+	// Get pixel to world space
 	float4 p = float4(vOut.posW, 1);
 	p = mul(camToWorldMat, p);
 	p = p / p.w;
 
 	// Get angles
-	double3 leftDir = normalize(p - camPosLeft);
-	double3 rightDir = normalize(p - camPosRight);
+	double3 leftDir = normalize((double3)p - (double3)camPosLeft);
+	double3 rightDir = normalize((double3)p - (double3)camPosRight);
 
-	double angle = dot(leftDir, rightDir);
+	double angle = pow(dot(leftDir, rightDir), 1000);
 
-	// Compare
-	if(angle < angleThreshold)
+	if(angle < angleThreshold) // Angle not good enough, redo
 	{
-		//discard;
+		color = float4(gLeftEyeRawTex.SampleLevel(gLinearSampler, vOut.texC, 0).rgb, 1);
+		normal = gLeftEyeNormalTex.SampleLevel(gLinearSampler, vOut.texC, 0);
+		// W != 0, A != 0
+	}
+	else // Angle is good, conserve pixel
+	{
+		color = float4(gLeftEyeTex.SampleLevel(gLinearSampler, vOut.texC, 0).rgb, 1);
+		normal = float4(0, 0, 0, 0);
+		// W == 0, A != 0
 	}
 
-	// Set Color	
 	MRT mrt;
-	mrt.Color = float4(equalsEpsilon(camPosLeft, camPosRight, 1), 0, 0, 1);
+	mrt.Color = color;
 	mrt.Normal = normal;
-
 	return mrt;
 }

@@ -1062,7 +1062,7 @@ void D3D12RaytracingMiniEngineSample::Startup(void)
 	ThrowIfFailed(g_Device->QueryInterface(IID_PPV_ARGS(&g_pRaytracingDevice)),
 	              L"Couldn't get DirectX Raytracing interface for the device.\n");
 
-	DXGI_FORMAT normalFormat = DXGI_FORMAT_R8G8B8A8_UNORM;
+	DXGI_FORMAT normalFormat = DXGI_FORMAT_R16G16B16A16_UNORM;
 	g_SceneNormalBuffer.CreateArray(L"Main Normal Buffer", g_SceneColorBuffer.GetWidth(), g_SceneColorBuffer.GetHeight(), 2,
 		normalFormat);
 

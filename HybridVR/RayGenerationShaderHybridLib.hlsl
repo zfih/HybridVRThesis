@@ -73,26 +73,32 @@ void FullTrace(int3 pixel)
 [shader("raygeneration")]
 void RayGen()
 {
-	return;
 	int3 pixel = int3(DispatchRaysIndex().xy, g_dynamic.curCam);
 
 	float2 xy = pixel.xy + 0.5; // center in the middle of the pixel
 
 	float4 normal = g_normals[pixel];
 
+	float4 color = g_screenOutput[pixel].a;
+	
 	// Pixel Good - Green
-	if(normal.w == 0.0 && g_screenOutput[pixel].a != 0)
+	if(normal.w == 0.0 && color.a != 0)
 	{
-		g_screenOutput[pixel] = float4(0, 1, 0, 1);
+		//g_screenOutput[pixel] = float4(0, 1, 0, 1);
 	}
-	else if(normal.w != 0.0)// Need refl - Yellow
+	else if(normal.w != 0.0 && color.a != 0)// Need refl - Yellow
 	{
 		ScreenSpaceReflection(normal, xy, pixel);
-		g_screenOutput[pixel] = float4(1, 1, 0, 1);
+		
+		//g_screenOutput[pixel] = float4(1, 1, 0, 1);
 	}
-	else // Needs full - Red
+	else if (normal.w == 0.0 && color.a == 0) // Needs full - Red
 	{
-		//FullTrace(pixel);
-		g_screenOutput[pixel] = float4(1, 0, 0, 1);
+		FullTrace(pixel);
+		//g_screenOutput[pixel] = float4(1, 0, 0, 1);
+	}
+	else // Should never happen
+	{
+		g_screenOutput[pixel] = float4(1, 0, 1, 1);
 	}
 }
