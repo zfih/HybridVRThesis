@@ -39,6 +39,8 @@ float3 camPosLeft;
 float depthThreshold;
 float3 camPosRight;
 float angleThreshold;
+float angleBlendingRange;
+int debugColors;
 };
 
 SamplerState gLinearSampler : register(s0);
@@ -67,6 +69,11 @@ bool equalsEpsilon(float4 a, float4 b, float epsilon)
 	return diff.x < epsilon && diff.y < epsilon && diff.z < epsilon && diff.w < epsilon;
 }
 
+bool inRange(float n, float min, float max)
+{
+	return min < n && n < max;
+}
+
 MRT main(VertexOutput vOut)
 {
 	// Discard if depth difference too big.
@@ -77,7 +84,10 @@ MRT main(VertexOutput vOut)
 	}
 
 	float4 color;
-	float4 normal;
+
+	float4 colorRefl = float4(gLeftEyeTex.SampleLevel(gLinearSampler, vOut.texC, 0).rgb, 1);
+	float4 colorRaw = float4(gLeftEyeRawTex.SampleLevel(gLinearSampler, vOut.texC, 0).rgb, 1);
+	float4 normal = gLeftEyeNormalTex.SampleLevel(gLinearSampler, vOut.texC, 0);
 
 	//// IAPC
 
@@ -89,20 +99,31 @@ MRT main(VertexOutput vOut)
 	// Get angles
 	double3 leftDir = normalize((double3)p - (double3)camPosLeft);
 	double3 rightDir = normalize((double3)p - (double3)camPosRight);
-
 	double angle = pow(dot(leftDir, rightDir), 1000);
 
-	if(angle < angleThreshold) // Angle not good enough, redo
+	double halfRange = angleBlendingRange / 2;
+	double lower = angleThreshold - halfRange;
+	double upper = angleThreshold + halfRange;
+
+
+	if(angle < lower) // Angle not good enough, redo
 	{
-		color = float4(gLeftEyeRawTex.SampleLevel(gLinearSampler, vOut.texC, 0).rgb, 1);
-		normal = gLeftEyeNormalTex.SampleLevel(gLinearSampler, vOut.texC, 0);
-		// W != 0, A != 0
+		color = colorRaw;
+		if(debugColors) color += float4(0.1, 0.0, 0.1, 0);
 	}
-	else // Angle is good, conserve pixel
+	else if(inRange(angle, lower, upper)) // Blend
 	{
-		color = float4(gLeftEyeTex.SampleLevel(gLinearSampler, vOut.texC, 0).rgb, 1);
+		float ratio = (angle - lower) / angleBlendingRange;
+		float invRatio = 1 - ratio;
+		color = ratio * colorRefl + invRatio * colorRaw;
+		normal.w *= invRatio;
+		if(debugColors) color += float4(0.1, 0.1, 0, 0);
+	}
+	else // Angle is above upper, conserve pixel
+	{
+		color = colorRefl;
+		if(debugColors) color += float4(0, 0.1, 0, 0);
 		normal = float4(0, 0, 0, 0);
-		// W == 0, A != 0
 	}
 
 	MRT mrt;

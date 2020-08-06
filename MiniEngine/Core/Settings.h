@@ -158,5 +158,7 @@ namespace Settings
 	extern BoolVar ReprojEnable;
 	extern NumVar DepthThreshold;
 	extern NumVar AngleThreshold;
+	extern NumVar AngleBlendingRange;
+	extern BoolVar DebugColors;
 	// Reprojection
 }

@@ -79,12 +79,11 @@ void RayGen()
 
 	float4 normal = g_normals[pixel];
 
-	float4 color = g_screenOutput[pixel].a;
+	float4 color = g_screenOutput[pixel];
 	
 	// Pixel Good - Green
 	if(normal.w == 0.0 && color.a != 0)
 	{
-		//g_screenOutput[pixel] = float4(0, 1, 0, 1);
 	}
 	else if(normal.w != 0.0 && color.a != 0)// Need refl - Yellow
 	{
@@ -92,7 +91,7 @@ void RayGen()
 		
 		//g_screenOutput[pixel] = float4(1, 1, 0, 1);
 	}
-	else if (normal.w == 0.0 && color.a == 0) // Needs full - Red
+	else if (color.a == 0) // Needs full - Red
 	{
 		FullTrace(pixel);
 		//g_screenOutput[pixel] = float4(1, 0, 0, 1);

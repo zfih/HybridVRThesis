@@ -277,7 +277,8 @@ private:
 		Cam::CameraType eye,
 		bool SkipDiffusePass,
 		bool RenderSSAO,
-		PSConstants& psConstants);
+		PSConstants& psConstants,
+		bool RayTrace);
 	void SetupGraphicsState(GraphicsContext& Ctx) const;
 	void RenderPrepass(
 		GraphicsContext& Ctx,
@@ -291,7 +292,8 @@ private:
 		Camera& Camera,
 		PSConstants& Constants,
 		bool SkipDiffusePass,
-		bool RenderSSAO
+		bool RenderSSAO,
+		bool RayTrace
 	);
 	
 	void CreateRayTraceAccelerationStructures(UINT numMeshes);
@@ -440,6 +442,8 @@ namespace Settings
 	BoolVar ReprojEnable("LOD/Reproject", true);
 	NumVar DepthThreshold("LOD/Depth Threshold", 0.001);
 	NumVar AngleThreshold("LOD/Angle Threshold", 0.5f);
+	NumVar AngleBlendingRange("LOD/Angle Blending Range", 0.5f);
+	BoolVar DebugColors("LOD/Debug Colors", false);
 
 	EnumVar RayTracingMode("Application/Raytracing/RayTraceMode", RTM_DIFFUSE_WITH_SHADOWMAPS, _countof(rayTracingModes), rayTracingModes);
 
@@ -762,7 +766,7 @@ void D3D12RaytracingMiniEngineSample::InitializeRaytracingStateObjects(
 	                          byte* pShaderTable)
 	{
 		ID3D12StateObjectProperties* stateObjectProperties = nullptr;
-		ThrowIfFailed(pPSO->QueryInterface(IID_PPV_ARGS(&stateObjectProperties)));
+/**/		ThrowIfFailed(pPSO->QueryInterface(IID_PPV_ARGS(&stateObjectProperties)));
 		void* pHitGroupIdentifierData = stateObjectProperties->
 			GetShaderIdentifier(hitGroupExportName);
 		for (UINT i = 0; i < numMeshes; i++)
@@ -1747,6 +1751,8 @@ void D3D12RaytracingMiniEngineSample::ReprojectScene()
 		float depthThreshold;
 		float3 camPosRight;
 		float angleThreshold;
+		float angleBlendingRange;
+		int debugColors;
 	};
 
 	Matrix4 reprojectionMatrix = 
@@ -1766,6 +1772,8 @@ void D3D12RaytracingMiniEngineSample::ReprojectScene()
 	ri.depthThreshold = Settings::DepthThreshold;
 	XMStoreFloat3((XMFLOAT3 *)&ri.camPosLeft, leftPos);
 	XMStoreFloat3((XMFLOAT3 *)&ri.camPosRight, rightPos);
+	ri.angleBlendingRange = Settings::AngleBlendingRange;
+	ri.debugColors = Settings::DebugColors;
 	
 	reprojectContext.SetDynamicConstantBufferView(2, sizeof(ri), &ri);
 	
@@ -1846,7 +1854,7 @@ void D3D12RaytracingMiniEngineSample::GenerateGrid(UINT width, UINT height)
 }
 
 void D3D12RaytracingMiniEngineSample::RenderEye(Cam::CameraType eye, bool SkipDiffusePass, bool RenderSSAO,
-	PSConstants& psConstants)
+	PSConstants& psConstants, bool Raytrace)
 {
 	Settings::g_EyeRenderTimer[eye].Reset();
 	Settings::g_EyeRenderTimer[eye].Start();
@@ -1858,7 +1866,7 @@ void D3D12RaytracingMiniEngineSample::RenderEye(Cam::CameraType eye, bool SkipDi
 	RenderPrepass(ctx, eye, camera, psConstants);
 
 	MainRender(ctx, eye, camera,
-		psConstants, SkipDiffusePass, RenderSSAO);
+		psConstants, SkipDiffusePass, RenderSSAO, Raytrace);
 
 	ctx.Finish();
 	Settings::g_EyeRenderTimer[eye].Stop();
@@ -1922,7 +1930,7 @@ void D3D12RaytracingMiniEngineSample::RenderPrepass(GraphicsContext& Ctx, Cam::C
 }
 
 void D3D12RaytracingMiniEngineSample::MainRender(GraphicsContext& Ctx, Cam::CameraType CameraType, Camera& Camera,
-	PSConstants& Constants, bool SkipDiffusePass, bool RenderSSAO)
+	PSConstants& Constants, bool SkipDiffusePass, bool RenderSSAO, bool DoRaytrace)
 {
 	if(RenderSSAO)
 	{
@@ -1966,7 +1974,7 @@ void D3D12RaytracingMiniEngineSample::MainRender(GraphicsContext& Ctx, Cam::Came
 			MotionBlur::RenderObjectBlur(Ctx, g_VelocityBuffer, CameraType);
 	}
 
-	if (g_RayTraceSupport/* && RayTracingMode != RTM_OFF*/)
+	if (DoRaytrace && g_RayTraceSupport/* && RayTracingMode != RTM_OFF*/)
 	{
 		Settings::g_RaytraceTimer[CameraType].Reset();
 		Settings::g_RaytraceTimer[CameraType].Start();
@@ -2086,22 +2094,22 @@ void D3D12RaytracingMiniEngineSample::RenderScene()
 
 	if (Settings::ReprojEnable)
 	{
-		GraphicsContext& clearCtx = GraphicsContext::Begin(L"CLEARING BBBBBBBBBB");
+		GraphicsContext& clearCtx = GraphicsContext::Begin(L"Clear buffers");
 		clearCtx.TransitionResource(g_SceneNormalBuffer, D3D12_RESOURCE_STATE_RENDER_TARGET, true);
 		clearCtx.ClearColor(g_SceneNormalBuffer);
 		clearCtx.Finish();
 
 
-		RenderEye(Cam::kLeft, skipDiffusePass, false, psConstants);
+		RenderEye(Cam::kLeft, skipDiffusePass, false, psConstants, true);
 		
 		ReprojectScene();
 
 		skipDiffusePass = true;
-		RenderEye(Cam::kRight, skipDiffusePass, false, psConstants);
+		RenderEye(Cam::kRight, skipDiffusePass, false, psConstants, false);
 		
-		//RenderSSAO();
+		RenderSSAO();
 
-		GraphicsContext& gfxContext = GraphicsContext::Begin(L"AAAAAAAAAAAA");
+		GraphicsContext& gfxContext = GraphicsContext::Begin(L"Holefilling");
 		SetupGraphicsState(gfxContext);
 		g_initialize_dynamicCb(gfxContext, m_Camera, Cam::kRight,
 			g_SceneColorBuffer, g_dynamicConstantBuffer);
@@ -2114,8 +2122,8 @@ void D3D12RaytracingMiniEngineSample::RenderScene()
 	}
 	else 
 	{
-		RenderEye(Cam::kLeft, skipDiffusePass, true, psConstants);
-		RenderEye(Cam::kRight, skipDiffusePass, true, psConstants);
+		RenderEye(Cam::kLeft, skipDiffusePass, true, psConstants, true);
+		RenderEye(Cam::kRight, skipDiffusePass, true, psConstants, true);
 	}
 }
 

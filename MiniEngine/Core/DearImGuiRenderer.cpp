@@ -645,12 +645,20 @@ void ImGui::BuildGUI(Math::Camera* cam, GameCore::CameraController* controller)
         Settings::ReprojEnable = checkbox;
 
         float depthThreshold = Settings::DepthThreshold;
-        ImGui::DragFloat("Depth Threshold", &depthThreshold, 0.0001, 0, 1);
+        ImGui::DragFloat("Depth Threshold", &depthThreshold, 0.00001f, 0, 0.1, "%.5f");
         Settings::DepthThreshold = depthThreshold;
     	
         float angleThreshold = Settings::AngleThreshold;
-        ImGui::DragFloat("Angle Threshold", &angleThreshold, 0.0001, 0, 1);
+        ImGui::DragFloat("Angle Threshold", &angleThreshold, 0.001, 0, 1);
         Settings::AngleThreshold = angleThreshold;
+    	
+        float angleBlendingRange = Settings::AngleBlendingRange;
+        ImGui::DragFloat("Angle Blending Range", &angleBlendingRange, 0.001, 0, 0.5);
+        Settings::AngleBlendingRange = angleBlendingRange;
+
+        bool debugColors = Settings::DebugColors;
+        ImGui::Checkbox("Debugger Colors", &debugColors);
+        Settings::DebugColors = debugColors;
     	
         // ===================
         ImGui::Indent(-indent);
