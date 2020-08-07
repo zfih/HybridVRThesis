@@ -84,12 +84,12 @@ void RayGen()
 	// Pixel Good - Green
 	if(normal.w == 0.0 && color.a != 0)
 	{
+		//g_screenOutput[pixel] = float4(0, 1, 0, 1);
 	}
 	else if(normal.w != 0.0 && color.a != 0)// Need refl - Yellow
 	{
 		ScreenSpaceReflection(normal, xy, pixel);
 		
-		//g_screenOutput[pixel] = float4(1, 1, 0, 1);
 	}
 	else if (color.a == 0) // Needs full - Red
 	{

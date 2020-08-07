@@ -34,19 +34,24 @@ struct MRT
 cbuffer ReprojInput : register(b0)
 {
 float4x4 reprojectionMat;
-float4x4 camToWorldMat;
-float3 camPosLeft;
 float depthThreshold;
-float3 camPosRight;
 float angleThreshold;
 float angleBlendingRange;
 int debugColors;
 };
 
 SamplerState gLinearSampler : register(s0);
+Texture2D gDepthTex : register(t0);
 Texture2D gLeftEyeTex : register(t1);
 Texture2D gLeftEyeNormalTex : register(t2);
 Texture2D gLeftEyeRawTex : register(t3);
+
+static const float PI = 3.141592;
+static const float TWO_PI = PI * 2.0;
+static const float PI_HALF = PI / 2.0;
+static const float PI_FOURTH = PI / 4.0;
+static const float PI_EIGHTH = PI / 8.0;
+
 
 static float3 gClearColor = float3(0, 0, 0);
 
@@ -80,7 +85,6 @@ MRT main(VertexOutput vOut)
 	if(vOut.occFlag > depthThreshold)
 	{
 		discard;
-		// a = 0 && w = 0 => Full retrace
 	}
 
 	float4 color;
@@ -89,43 +93,36 @@ MRT main(VertexOutput vOut)
 	float4 colorRaw = float4(gLeftEyeRawTex.SampleLevel(gLinearSampler, vOut.texC, 0).rgb, 1);
 	float4 normal = gLeftEyeNormalTex.SampleLevel(gLinearSampler, vOut.texC, 0);
 
-	//// IAPC
-
-	// Get pixel to world space
-	float4 p = float4(vOut.posW, 1);
-	p = mul(camToWorldMat, p);
-	p = p / p.w;
-
-	// Get angles
-	double3 leftDir = normalize((double3)p - (double3)camPosLeft);
-	double3 rightDir = normalize((double3)p - (double3)camPosRight);
-	double angle = pow(dot(leftDir, rightDir), 1000);
 
 	double halfRange = angleBlendingRange / 2;
 	double lower = angleThreshold - halfRange;
 	double upper = angleThreshold + halfRange;
 
+	float depth = gDepthTex.SampleLevel(gLinearSampler, vOut.texC, 0);
+	// todo(Danh) 13:35 07/08: Pass in IPD
+	float angle = abs(2 * atan(0.065 / (2 * depth)) - PI);
 
-	if(angle < lower) // Angle not good enough, redo
-	{
-		color = colorRaw;
-		if(debugColors) color += float4(0.1, 0.0, 0.1, 0);
-	}
-	else if(inRange(angle, lower, upper)) // Blend
-	{
-		float ratio = (angle - lower) / angleBlendingRange;
-		float invRatio = 1 - ratio;
-		color = ratio * colorRefl + invRatio * colorRaw;
-		normal.w *= invRatio;
-		if(debugColors) color += float4(0.1, 0.1, 0, 0);
-	}
-	else // Angle is above upper, conserve pixel
-	{
-		color = colorRefl;
-		if(debugColors) color += float4(0, 0.1, 0, 0);
-		normal = float4(0, 0, 0, 0);
-	}
+	float ratio = saturate((angle - lower) / angleBlendingRange);
+	float invRatio = 1 - ratio;
+	color = invRatio * colorRefl + ratio * colorRaw;
+	normal.w *= ratio;
 
+
+	if (debugColors)
+	{
+		if (angle > upper) // Angle not good enough, redo
+		{
+			color += float4(0.1, 0.0, 0.1, 0);
+		}
+		else if (inRange(angle, lower, upper)) // Blend
+		{
+			color += float4(0.1, 0.1, 0, 0);
+		}
+		else // Angle is above upper, conserve pixel
+		{
+			color += float4(0, 0.1, 0, 0);
+		}
+	}
 	MRT mrt;
 	mrt.Color = color;
 	mrt.Normal = normal;

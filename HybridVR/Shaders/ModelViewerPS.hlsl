@@ -13,6 +13,85 @@
 //
 // Thanks to Michal Drobot for his feedback.
 
+#if 0
+
+uniform float metallic;
+uniform float roughness;
+uniform float lightIntensity;
+const float PI = 3.14159265359;
+float DistributionGGX(vec3 N, vec3 H, float roughness)
+{
+    float a = roughness * roughness;
+    float a2 = a * a;
+    float NdotH = max(dot(N, H), 0.0);
+    float NdotH2 = NdotH * NdotH;
+    float num = a2;
+    float denom = (NdotH2 * (a2 - 1.0) + 1.0);
+    denom = PI * denom * denom;
+    return num / denom;
+}
+float GeometrySchlickGGX(float NdotV, float roughness)
+{
+    float r = (roughness + 1.0);
+    float k = (r * r) / 8.0;
+    float num = NdotV;
+    float denom = NdotV * (1.0 - k) + k;
+    return num / denom;
+}
+float GeometrySmith(vec3 N, vec3 V, vec3 L, float roughness)
+{
+    float NdotV = max(dot(N, V), 0.0);
+    float NdotL = max(dot(N, L), 0.0);
+    float ggx2 = GeometrySchlickGGX(NdotV, roughness);
+    float ggx1 = GeometrySchlickGGX(NdotL, roughness);
+    return ggx1 * ggx2;
+}
+vec3 fresnelSchlick(float cosTheta, vec3 F0)
+{
+    return F0 + (1.0 - F0) * pow(1.0 - cosTheta, 5.0);
+}
+
+
+// textures
+vec3 FragNorm = texture(texture_normal1, fs_in.textCoord).rgb;
+FragNorm = FragNorm * 2.0 - 1.0; // my vectors are in tangent space, your normals are probably in view space
+vec4 AlbedoAlpha = texture(texture_diffuse1, fs_in.textCoord);
+vec3 Albedo = pow(AlbedoAlpha.rgb, vec3(2.2)); // gamma to linear space
+// vectors used for light computation
+vec3 viewDir = normalize(fs_in.tangentViewPos - fs_in.tangentPos);
+vec3 lightDir = normalize(-fs_in.tangentLightDir);
+vec3 halfwayDir = normalize(lightDir + viewDir);
+// base fresnel factor
+vec3 F0 = vec3(0.04); // very similar for all dielectric/non-metallic objects
+F0 = mix(F0, Albedo, metallic); // much higher for conductors/metallic objects, can use albedo color
+// total radiance per color
+vec3 radiance = lightColor * lightIntensity;
+// factors for cook-torrance brdf
+float NDF = DistributionGGX(FragNorm, halfwayDir, roughness);
+float G = GeometrySmith(FragNorm, viewDir, lightDir, roughness);
+vec3 F = fresnelSchlick(clamp(dot(halfwayDir, viewDir), 0.0, 1.0), F0);
+// specular factor defined by fresnel
+vec3 kS = F;
+// diffuse factor is the remaining radiance
+vec3 kD = vec3(1.0) - kS;
+// diffuse factor is 0 for conductor/metallic objects
+kD *= 1.0 - metallic;
+// cook-torrance brdf
+vec3 numerator = NDF * G * F;
+float denominator = 4.0 * max(dot(FragNorm, viewDir), 0.0) * max(dot(FragNorm, lightDir), 0.0);
+vec3 specular = numerator / max(denominator, 0.001);
+vec3 diffuse = kD * Albedo / PI;
+// scale by cosine of light angle relative to the surface normal
+float NdotL = max(dot(FragNorm, lightDir), 0.0);
+vec3 Lo = (diffuse + specular) * radiance * NdotL;
+vec3 ambient = vec3(0.03) * Albedo; // we can still cheat with ambient light
+vec3 color = ambient + Lo;
+color = color / (color + vec3(1.0)); // tone mapping - HDR to LDR
+color = pow(color, vec3(1.0 / 2.2));   // gamma correction
+FragColor = vec4(color, AlbedoAlpha.a);
+#endif
+
+
 #include "ModelViewerRS.hlsli"
 #include "LightGrid.hlsli"
 

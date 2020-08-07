@@ -141,8 +141,9 @@ namespace GameCore
             
             MipsContext.Finish();
         }
-    	
+
         Graphics::Present();
+        //g_CommandManager.IdleGPU();
 
         return !game.IsDone();
     }

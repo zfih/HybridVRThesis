@@ -57,7 +57,6 @@ struct VertexOutput
 VertexOutput main(HS_Constant_Output input, float2 UV : SV_DomainLocation, const OutputPatch<HS_Output, 4> patch, uint patchId : SV_PrimitiveID)
 {
     VertexOutput output;
-    
     float3 topMidpoint = lerp(patch[0].posW, patch[1].posW, UV.x);
     float3 bottomMidpoint = lerp(patch[3].posW, patch[2].posW, UV.x);
 

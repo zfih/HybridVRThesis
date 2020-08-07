@@ -441,8 +441,8 @@ namespace Settings
 
 	BoolVar ReprojEnable("LOD/Reproject", true);
 	NumVar DepthThreshold("LOD/Depth Threshold", 0.001);
-	NumVar AngleThreshold("LOD/Angle Threshold", 0.5f);
-	NumVar AngleBlendingRange("LOD/Angle Blending Range", 0.5f);
+	NumVar AngleThreshold("LOD/Angle Threshold", 0.1f);
+	NumVar AngleBlendingRange("LOD/Angle Blending Range", 0.02f);
 	BoolVar DebugColors("LOD/Debug Colors", false);
 
 	EnumVar RayTracingMode("Application/Raytracing/RayTraceMode", RTM_DIFFUSE_WITH_SHADOWMAPS, _countof(rayTracingModes), rayTracingModes);
@@ -1746,10 +1746,7 @@ void D3D12RaytracingMiniEngineSample::ReprojectScene()
 	struct __declspec(align(16)) ReprojInput
 	{
 		XMMATRIX reprojectionMat;
-		XMMATRIX camToWorldMat;
-		float3 camPosLeft;
 		float depthThreshold;
-		float3 camPosRight;
 		float angleThreshold;
 		float angleBlendingRange;
 		int debugColors;
@@ -1767,11 +1764,8 @@ void D3D12RaytracingMiniEngineSample::ReprojectScene()
 
 	ReprojInput ri{};
 	ri.reprojectionMat = reprojectionMatrix;
-	ri.camToWorldMat = rightEyeVPInv;
 	ri.angleThreshold = Settings::AngleThreshold;
 	ri.depthThreshold = Settings::DepthThreshold;
-	XMStoreFloat3((XMFLOAT3 *)&ri.camPosLeft, leftPos);
-	XMStoreFloat3((XMFLOAT3 *)&ri.camPosRight, rightPos);
 	ri.angleBlendingRange = Settings::AngleBlendingRange;
 	ri.debugColors = Settings::DebugColors;
 	
