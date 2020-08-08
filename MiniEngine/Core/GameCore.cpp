@@ -48,6 +48,7 @@ namespace Graphics
 namespace Settings
 {
     CpuTimer g_NoSyncTimer(true, "NoSync");
+    CpuTimer g_RenderTimer(true, "FullFrame");
 }
 
 namespace GameCore
@@ -76,6 +77,9 @@ namespace GameCore
 
     bool UpdateApplication( IGameApp& game )
     {
+        Settings::g_RenderTimer.Reset();
+        Settings::g_RenderTimer.Start();
+    	
         if (!Settings::UseImGui)
         {
             GraphicsContext& UiContext = GraphicsContext::Begin(L"Render UI");
@@ -91,13 +95,8 @@ namespace GameCore
         }
         else
         {
-            Settings::g_ImGUITimer.Reset();
-            Settings::g_ImGUITimer.Start();
-        	
             ImGui::BuildGUI(LODGlobal::g_camera, LODGlobal::g_cameraController);
         	ImGui::RenderGUI();
-
-            Settings::g_ImGUITimer.Stop();
         }
     	
         Settings::g_NoSyncTimer.Reset();
@@ -145,6 +144,7 @@ namespace GameCore
         Graphics::Present();
         //g_CommandManager.IdleGPU();
 
+        Settings::g_RenderTimer.Stop();
         return !game.IsDone();
     }
 
