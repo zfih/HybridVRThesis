@@ -200,7 +200,7 @@ void g_CreateScene(Scene Scene)
 		g_Scene.Matrix = Matrix4::MakeRotationX(-XM_PIDIV2);
 		g_Scene.ModelPath = ASSET_DIRECTORY "Models/Bistro/BistroExterior.h3d";
 		g_Scene.TextureFolderPath = ASSET_DIRECTORY L"Models/Bistro/";
-		g_Scene.Reflective = { "floor", "glass", "metal" };
+		g_Scene.Reflective = { "floor", "glass", "metal", "brick", "cobble" };
 		g_Scene.CutOuts = {  };
 	} break;
 	case Scene::kSponza:
@@ -370,7 +370,7 @@ private:
 
 int wmain(int argc, wchar_t** argv)
 {
-	g_CreateScene(Scene::kSponza);
+	g_CreateScene(Scene::kBistroExterior);
 	
 #if _DEBUG
 	CComPtr<ID3D12Debug> debugInterface;
