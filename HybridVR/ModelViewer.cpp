@@ -400,7 +400,7 @@ private:
 
 int wmain(int argc, wchar_t** argv)
 {
-	g_CreateScene(Scene::kBistroExterior);
+	g_CreateScene(Scene::kSponza);
 	
 #if _DEBUG
 	CComPtr<ID3D12Debug> debugInterface;
@@ -1958,7 +1958,7 @@ void D3D12RaytracingMiniEngineSample::RenderEye(Cam::CameraType eye, bool SkipDi
 	GraphicsContext& ctx =
 		GraphicsContext::Begin(L"Scene Render " + CameraTypeToWString(eye));
 	ctx.TransitionResource(g_SceneNormalBuffer, D3D12_RESOURCE_STATE_RENDER_TARGET, true);
-	ctx.ClearColor(g_SceneNormalBuffer, eye);
+	//ctx.ClearColor(g_SceneNormalBuffer, eye);
 	Camera& camera = *m_Camera[eye];
 
 	SetupGraphicsState(ctx);
@@ -2197,7 +2197,6 @@ void D3D12RaytracingMiniEngineSample::RenderScene()
 		skipDiffusePass = true;
 		RenderEye(Cam::kRight, skipDiffusePass, false, psConstants, false);
 		
-		RenderSSAO();
 
 		GraphicsContext& gfxContext = GraphicsContext::Begin(L"Holefilling");
 		SetupGraphicsState(gfxContext);
@@ -2208,12 +2207,17 @@ void D3D12RaytracingMiniEngineSample::RenderScene()
 			g_SceneColorBuffer, 
 			g_SceneDepthBuffer, 
 			g_SceneNormalBuffer);
+		
+		
 		gfxContext.Finish();
+
+		RenderSSAO();
 	}
 	else 
 	{
 		RenderEye(Cam::kLeft, skipDiffusePass, true, psConstants, true);
 		RenderEye(Cam::kRight, skipDiffusePass, true, psConstants, true);
+		RenderSSAO();
 	}
 }
 
@@ -2239,6 +2243,8 @@ void D3D12RaytracingMiniEngineSample::RenderSSAO()
 		1, 0, 1, &g_SceneColorBuffer.GetSubUAV(VRCamera::LEFT));
 	ctx.Dispatch2D(g_SceneColorBuffer.GetWidth(),
 				   g_SceneColorBuffer.GetHeight());
+	ctx.TransitionResource(g_SSAOFullScreen, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, true);
+	ctx.ClearUAV(g_SSAOFullScreen);
 
 	SSAO::Render(gfxContext, *m_Camera[VRCamera::RIGHT], VRCamera::RIGHT);
 

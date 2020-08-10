@@ -307,7 +307,12 @@ void Hit(inout RayPayload payload, in BuiltInTriangleIntersectionAttributes attr
 		normal = normalize(mul(normal, tbn));
 	}
     
-	float3 outputColor = AmbientColor * diffuseColor * texSSAO[DispatchRaysIndex().xy];
+    float3 outputColor = AmbientColor * diffuseColor;
+    
+    if (!payload.Bounces)
+    {
+        outputColor *= texSSAO[DispatchRaysIndex().xy];
+    }
 
 	float shadow = 1.0;
 	if (UseShadowRays)
