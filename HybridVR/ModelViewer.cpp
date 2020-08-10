@@ -1752,7 +1752,7 @@ void D3D12RaytracingMiniEngineSample::RenderEye(Cam::CameraType eye, bool SkipDi
 	GraphicsContext& ctx =
 		GraphicsContext::Begin(L"Scene Render " + CameraTypeToWString(eye));
 	ctx.TransitionResource(g_SceneNormalBuffer, D3D12_RESOURCE_STATE_RENDER_TARGET, true);
-	ctx.ClearColor(g_SceneNormalBuffer, eye);
+	ctx.ClearColor(g_SceneNormalBuffer);
 	Camera& camera = *m_Camera[eye];
 
 	SetupGraphicsState(ctx);
