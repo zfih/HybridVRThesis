@@ -396,7 +396,7 @@ private:
 
 int wmain(int argc, wchar_t** argv)
 {
-	g_CreateScene(Scene::kSponza);
+	g_CreateScene(Scene::kBistroExterior);
 	
 #if _DEBUG
 	CComPtr<ID3D12Debug> debugInterface;
