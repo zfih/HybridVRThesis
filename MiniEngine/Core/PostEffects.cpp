@@ -64,7 +64,7 @@ namespace DepthOfField
 
 namespace Settings
 {
-    BoolVar EnableHDR("Graphics/HDR/Enable", true);
+    BoolVar EnableHDR("Graphics/HDR/Enable", false);
     BoolVar EnableAdaptation("Graphics/HDR/Adaptive Exposure", true);
     ExpVar MinExposure("Graphics/HDR/Min Exposure", 1.0f / 64.0f, -8.0f, 0.0f, 0.25f);
     ExpVar MaxExposure("Graphics/HDR/Max Exposure", 64.0f, 0.0f, 8.0f, 0.25f);
@@ -73,7 +73,7 @@ namespace Settings
     ExpVar Exposure("Graphics/HDR/Exposure", 2.0f, -8.0f, 8.0f, 0.25f);
     BoolVar DrawHistogram("Graphics/HDR/Draw Histogram", false);
 
-    BoolVar BloomEnable("Graphics/Bloom/Enable", true);
+    BoolVar BloomEnable("Graphics/Bloom/Enable", false);
     NumVar BloomThreshold("Graphics/Bloom/Threshold", 4.0f, 0.0f, 8.0f, 0.1f);        // The threshold luminance above which a pixel will start to bloom
     NumVar BloomStrength("Graphics/Bloom/Strength", 0.1f, 0.0f, 2.0f, 0.05f);        // A modulator controlling how much bloom is added back into the image
     NumVar BloomUpsampleFactor("Graphics/Bloom/Scatter", 0.65f, 0.0f, 1.0f, 0.05f);    // Controls the "focus" of the blur.  High values spread out more causing a haze.

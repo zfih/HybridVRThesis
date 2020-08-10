@@ -202,6 +202,16 @@ struct SceneData
 	std::wstring TextureFolderPath;
 	std::vector<std::string> Reflective;
 	std::vector<std::string> CutOuts;
+
+	bool UseCustom;
+	Vector3 StartingPosition;
+	float StartingHeading;
+	float StartingPitch;
+
+	float AmbientIntensity;
+	float SunOrientation;
+	float SunInclination;
+	float SunIntensity;
 };
 
 SceneData g_Scene {};
@@ -217,14 +227,30 @@ void g_CreateScene(Scene Scene)
 		g_Scene.ModelPath = ASSET_DIRECTORY "Models/Bistro/BistroInterior.h3d";
 		g_Scene.TextureFolderPath = ASSET_DIRECTORY L"Models/Bistro/";
 		g_Scene.Reflective = { "floor", "glass", "metal" };
-		g_Scene.CutOuts = {  };
+		g_Scene.CutOuts = {  "leaf", "leaves"};
+		g_Scene.AmbientIntensity = 1.0;
+		g_Scene.SunIntensity = 2.0;
+		g_Scene.SunOrientation = -0.5;
+		g_Scene.SunInclination = 0.75;
+		g_Scene.StartingHeading = 0;
+		g_Scene.StartingPitch = -0.2;
+		g_Scene.StartingPosition = { -3700, 125, 4000 };
+		g_Scene.UseCustom = true;
 	} break;
 	case Scene::kBistroExterior: {
 		g_Scene.Matrix = Matrix4::MakeRotationX(-XM_PIDIV2);
 		g_Scene.ModelPath = ASSET_DIRECTORY "Models/Bistro/BistroExterior.h3d";
 		g_Scene.TextureFolderPath = ASSET_DIRECTORY L"Models/Bistro/";
-		g_Scene.Reflective = { "floor", "glass", "metal" };
-		g_Scene.CutOuts = {  };
+		g_Scene.Reflective = { "floor", "glass", "metal", "cobble", "brick" };
+		g_Scene.CutOuts = { "leaf", "leaves" };
+		g_Scene.AmbientIntensity = 1.0;
+		g_Scene.SunIntensity = 2.0;
+		g_Scene.SunOrientation = -0.5;
+		g_Scene.SunInclination = 0.75;
+		g_Scene.StartingHeading = 0;
+		g_Scene.StartingPitch = -0.2;
+		g_Scene.StartingPosition = { -3700, 125, 4000 };
+		g_Scene.UseCustom = true;
 	} break;
 	case Scene::kSponza:
 	{
@@ -233,6 +259,7 @@ void g_CreateScene(Scene Scene)
 		g_Scene.TextureFolderPath = ASSET_DIRECTORY L"Models/Sponza/Textures/";
 		g_Scene.Reflective = { "floor" };
 		g_Scene.CutOuts = { "thorn", "plant", "chain" };
+		g_Scene.UseCustom = false;
 	} break;
 	default:
 		g_CreateScene(Scene::kSponza);
@@ -254,8 +281,7 @@ struct MaterialRootConstant
 
 RaytracingDispatchRayInputs g_RaytracingInputs[RaytracingTypes::NumTypes];
 
-// TODO: Oh boi
-D3D12_CPU_DESCRIPTOR_HANDLE g_bvh_attributeSrvs[34];
+D3D12_CPU_DESCRIPTOR_HANDLE g_bvh_attributeSrvs[200];
 
 bool g_RayTraceSupport = false;
 
@@ -1120,7 +1146,7 @@ void D3D12RaytracingMiniEngineSample::Startup(void)
 
 	// Depth-only but with a depth bias and/or render only backfaces
 
-	m_ShadowPSO.SetRasterizerState(RasterizerShadow);
+	m_ShadowPSO.SetRasterizerState(RasterizerShadowTwoSided);
 	m_ShadowPSO.SetRenderTargetFormats(0, nullptr, g_ShadowBuffer.GetFormat());
 	m_ShadowPSO.Finalize();
 
@@ -1192,7 +1218,7 @@ void D3D12RaytracingMiniEngineSample::Startup(void)
 
 	
 	TextureManager::Initialize(g_Scene.TextureFolderPath);
-	bool bModelLoadSuccess = m_Model.Load(g_Scene.ModelPath.c_str());
+	bool bModelLoadSuccess = m_Model.Load(g_Scene.ModelPath.c_str(), g_Scene.Matrix, g_Scene.InvMatrix);
 	ASSERT(bModelLoadSuccess, "Failed to load model");
 	ASSERT(m_Model.m_Header.meshCount > 0, "Model contains no meshes");
 
@@ -1275,6 +1301,19 @@ void D3D12RaytracingMiniEngineSample::Startup(void)
     m_ExtraTextures[3] = Lighting::m_LightShadowArray.GetSRV();
     m_ExtraTextures[4] = Lighting::m_LightGrid.GetSRV();
     m_ExtraTextures[5] = Lighting::m_LightGridBitMask.GetSRV();
+
+	if (g_Scene.UseCustom)
+	{
+		Settings::AmbientIntensity = exp2f(g_Scene.AmbientIntensity);
+		Settings::SunOrientation = g_Scene.SunOrientation;
+		Settings::SunLightIntensity = g_Scene.SunIntensity;
+		Settings::SunInclination = g_Scene.SunInclination;
+		SetCameraPosition({
+			g_Scene.StartingPosition,
+			g_Scene.StartingHeading,
+			g_Scene.StartingPitch });
+	}
+
 }
 
 void D3D12RaytracingMiniEngineSample::Cleanup(void)
@@ -1353,7 +1392,7 @@ void D3D12RaytracingMiniEngineSample::Update(float deltaT)
 	{
 		AnimateCamera();
 	}
-	
+
 	float costheta = cosf(Settings::SunOrientation);
 	float sintheta = sinf(Settings::SunOrientation);
 	float cosphi = cosf(Settings::SunInclination * XM_PIDIV2);
@@ -1384,12 +1423,11 @@ void D3D12RaytracingMiniEngineSample::RenderObjects(GraphicsContext& gfxContext,
 
 	VSConstants constants;
 
-	Matrix4 model = g_Scene.Matrix;
-	constants.modelToProjection = ViewProjMat * model;
+	constants.modelToProjection = ViewProjMat;
 	constants.curCam = curCam;
 
 	constants.modelToShadow = m_SunShadow.GetShadowMatrix();
-	XMStoreFloat3(&constants.viewerPos, g_Scene.InvMatrix * m_Camera[curCam]->GetPosition());
+	XMStoreFloat3(&constants.viewerPos, m_Camera[curCam]->GetPosition());
 
 	gfxContext.SetDynamicConstantBufferView(0, sizeof(constants), &constants);
 
@@ -1593,7 +1631,8 @@ void D3D12RaytracingMiniEngineSample::CreateRayTraceAccelerationStructures(UINT 
 		D3D12_RAYTRACING_INSTANCE_DESC& instanceDesc = instanceDescs[i];
 		UINT descriptorIndex = g_pRaytracingDescriptorHeap->AllocateBufferUav(*bottomLevelStructure);
 
-		XMStoreFloat3x4((XMFLOAT3X4 *)instanceDesc.Transform, g_Scene.Matrix);
+		XMMatrixIdentity();
+		XMStoreFloat3x4((XMFLOAT3X4 *)instanceDesc.Transform, XMMatrixIdentity());
 
 		instanceDesc.AccelerationStructure = g_bvh_bottomLevelAccelerationStructures[i]->GetGPUVirtualAddress();
 		instanceDesc.Flags = 0;
@@ -1712,6 +1751,8 @@ void D3D12RaytracingMiniEngineSample::RenderEye(Cam::CameraType eye, bool SkipDi
 	Settings::g_EyeRenderTimer[eye].Start();
 	GraphicsContext& ctx =
 		GraphicsContext::Begin(L"Scene Render " + CameraTypeToWString(eye));
+	ctx.TransitionResource(g_SceneNormalBuffer, D3D12_RESOURCE_STATE_RENDER_TARGET, true);
+	ctx.ClearColor(g_SceneNormalBuffer, eye);
 	Camera& camera = *m_Camera[eye];
 
 	SetupGraphicsState(ctx);
@@ -1790,7 +1831,7 @@ void D3D12RaytracingMiniEngineSample::MainRender(GraphicsContext& Ctx, Cam::Came
 
 		if (!Settings::SSAO_DebugDraw)
 		{
-			Ctx.TransitionResource(g_SceneColorBuffer, D3D12_RESOURCE_STATE_RENDER_TARGET, true);
+			Ctx.TransitionResource(g_SceneColorBuffer, D3D12_RESOURCE_STATE_RENDER_TARGET);
 			Ctx.TransitionResource(g_SceneNormalBuffer, D3D12_RESOURCE_STATE_RENDER_TARGET, true);
 			Ctx.ClearColor(g_SceneColorBuffer, CameraType, GetMipLevel(CameraType));
 
