@@ -649,7 +649,7 @@ void Graphics::Initialize(void)
         width = 1440 * 1.4;
         height = 1600 * 1.4;
 		SetNativeResolution(width, height);
-	}
+ 	}
 	else
 	{
 		SetNativeResolution(1440*1.4, 1600*1.4);
@@ -781,7 +781,7 @@ void Graphics::SubmitToVRHMD(bool isArray)
 
 void Graphics::PreparePresentLDR(void)
 {
-    GraphicsContext& Context = GraphicsContext::Begin(L"Present");
+	GraphicsContext& Context = GraphicsContext::Begin(L"Present");
 
     Context.TransitionResource(g_SceneColorBuffer, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, true);
     Context.Flush();
@@ -932,7 +932,7 @@ void Graphics::Present(void)
 	
     s_SwapChain1->Present(PresentInterval, 0);
 
-    g_CommandManager.IdleGPU();
+    //g_CommandManager.IdleGPU();
 
     // Test robustness to handle spikes in CPU time
     //if (s_DropRandomFrames)
@@ -973,10 +973,7 @@ void Graphics::Present(void)
 
     Settings::g_NoSyncTimer.Stop();
 
-    if (VR::GetHMD())
-    {
-        VR::Sync();
-    }
+    VR::Sync();
 }
 
 uint64_t Graphics::GetFrameCount(void)

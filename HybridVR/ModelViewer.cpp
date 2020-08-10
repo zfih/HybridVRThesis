@@ -793,7 +793,7 @@ void D3D12RaytracingMiniEngineSample::InitializeRaytracingStateObjects(
 	                          byte* pShaderTable)
 	{
 		ID3D12StateObjectProperties* stateObjectProperties = nullptr;
-/**/		ThrowIfFailed(pPSO->QueryInterface(IID_PPV_ARGS(&stateObjectProperties)));
+		ThrowIfFailed(pPSO->QueryInterface(IID_PPV_ARGS(&stateObjectProperties)));
 		void* pHitGroupIdentifierData = stateObjectProperties->
 			GetShaderIdentifier(hitGroupExportName);
 		for (UINT i = 0; i < numMeshes; i++)
