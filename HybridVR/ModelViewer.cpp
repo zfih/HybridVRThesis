@@ -2243,8 +2243,6 @@ void D3D12RaytracingMiniEngineSample::RenderSSAO()
 		1, 0, 1, &g_SceneColorBuffer.GetSubUAV(VRCamera::LEFT));
 	ctx.Dispatch2D(g_SceneColorBuffer.GetWidth(),
 				   g_SceneColorBuffer.GetHeight());
-	ctx.TransitionResource(g_SSAOFullScreen, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, true);
-	ctx.ClearUAV(g_SSAOFullScreen);
 
 	SSAO::Render(gfxContext, *m_Camera[VRCamera::RIGHT], VRCamera::RIGHT);
 
