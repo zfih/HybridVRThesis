@@ -81,6 +81,7 @@ bool inRange(float n, float min, float max)
 
 MRT main(VertexOutput vOut)
 {
+
 	// Discard if depth difference too big.
 	if(vOut.occFlag > depthThreshold)
 	{
@@ -92,6 +93,17 @@ MRT main(VertexOutput vOut)
 	float4 colorRefl = float4(gLeftEyeTex.SampleLevel(gLinearSampler, vOut.texC, 0).rgb, 1);
 	float4 colorRaw = float4(gLeftEyeRawTex.SampleLevel(gLinearSampler, vOut.texC, 0).rgb, 1);
 	float4 normal = gLeftEyeNormalTex.SampleLevel(gLinearSampler, vOut.texC, 0);
+	MRT mrt;
+	mrt.Color = float4(0, 0, 0, 0);
+	mrt.Normal  = float4(0, 0, 0, 0);
+
+	// Normalize result...
+	float lenSq = dot(normal, normal);
+
+		// Some Sponza content appears to have no tangent space provided, resulting in degenerate normal vectors.
+	if (!isfinite(lenSq) || lenSq < 1e-6)
+		return mrt;
+
 
 
 	double halfRange = angleBlendingRange / 2;
@@ -123,7 +135,7 @@ MRT main(VertexOutput vOut)
 			color += float4(0, 0.1, 0, 0);
 		}
 	}
-	MRT mrt;
+
 	mrt.Color = color;
 	mrt.Normal = normal;
 	return mrt;
