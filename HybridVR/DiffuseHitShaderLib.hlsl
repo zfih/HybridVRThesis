@@ -304,7 +304,17 @@ void Hit(inout RayPayload payload, in BuiltInTriangleIntersectionAttributes attr
 		normal = g_localNormal.SampleGrad(g_s0, uv, ddx, ddy).rgb * 2.0 - 1.0; //g_localNormal.SampleLevel(g_s0, uv, 0).rgb * 2.0 - 1.0;
 		AntiAliasSpecular(normal, gloss);
 		float3x3 tbn = float3x3(vsTangent, vsBitangent, vsNormal);
-		normal = normalize(mul(normal, tbn));
+        normal = mul(normal, tbn);
+
+        // Normalize result...
+        float lenSq = dot(normal, normal);
+
+        // Some Sponza content appears to have no tangent space provided, resulting in degenerate normal vectors.
+        if (!isfinite(lenSq) || lenSq < 1e-6)
+            return;
+
+
+        normal *= rsqrt(lenSq);
 	}
     
     float3 outputColor = AmbientColor * diffuseColor;
