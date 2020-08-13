@@ -634,17 +634,25 @@ void ImGui::BuildGUI(Math::Camera* cam, GameCore::CameraController* controller)
     } // VR
 
     if (ImGui::CollapsingHeader("LOD", ImGuiTreeNodeFlags_CollapsingHeader | ImGuiTreeNodeFlags_Framed))
-    { // VR
+    { // LOD
         ImGui::Indent(indent);
         // ==================
 
-        bool checkbox = Settings::ReprojEnable;
-        ImGui::Checkbox("Reproject", &checkbox);
-        Settings::ReprojEnable = checkbox;
+	    bool checkbox = Settings::ReprojEnable;
+	    ImGui::Checkbox("Reproject", &checkbox);
+	    Settings::ReprojEnable = checkbox;
+
+        bool animation = Settings::SetAnimationFrame;
+        ImGui::Checkbox("Set Animation Frame", &animation);
+        Settings::SetAnimationFrame = animation;
+
+        int val = Settings::AnimationFrame;
+        ImGui::DragInt("Animation Frame Number", &val, 1, 0, 10000);
+        Settings::AnimationFrame = val;
 
         // ===================
         ImGui::Indent(-indent);
-    } // VR
+    } // LOD
 	
     { // Other
 
