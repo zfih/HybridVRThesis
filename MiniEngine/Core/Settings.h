@@ -33,6 +33,9 @@ namespace Settings
 	extern EnumVar RayTracingMode;
 
 	extern IntVar m_TestValueSuperDuper;
+
+	extern IntVar AnimationFrame;
+	extern BoolVar SetAnimationFrame;
 	// Model Viewer
 
 	// Lighting Grid
