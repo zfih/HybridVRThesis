@@ -293,8 +293,34 @@ void Hit(inout RayPayload payload, in BuiltInTriangleIntersectionAttributes attr
 	float2 ddx, ddy;
 	CalculateUVDerivatives(triangleNormal, dpdu, dpdv, worldPosition, xOffsetPoint, yOffsetPoint, payload.Bounces, ddx, ddy);
 
-	const float3 diffuseColor = g_localTexture.SampleGrad(g_s0, uv, ddx, ddy).rgb; //g_localTexture.SampleLevel(g_s0, uv, 0).rgb;
-	float3 normal;
+	const float4 diffuseColor = g_localTexture.SampleGrad(g_s0, uv, ddx, ddy); //g_localTexture.SampleLevel(g_s0, uv, 0).rgb;
+	
+    
+    //if (diffuseColor.w == 0)
+    //{
+        
+    //    float3 dir = WorldRayDirection();
+    //    float3 origin = WorldRayOrigin() + dir * 0.001;
+        
+    //    RayDesc rayDesc =
+    //    {
+    //        origin,
+    //        0.1f,
+    //        origin,
+    //        FLT_MAX
+    //    };
+        
+    //    RayPayload pl;
+    //    pl.SkipShading = true;
+    //    pl.RayHitT = FLT_MAX;
+    //    pl.Bounces = payload.Bounces + 1;
+		
+    //    TraceRay(g_accel, RAY_FLAG_NONE, ~0, 0, 1, 0, rayDesc, pl);
+        
+    //    return;
+    //}
+    
+    float3 normal;
 	float3 specularAlbedo = float3(0.56, 0.56, 0.56);
 	float specularMask = g_localSpecular.SampleGrad(g_s0, uv, ddx, ddy).g; //g_localSpecular.SampleLevel(g_s0, uv, 0).g;
 
@@ -352,6 +378,8 @@ void Hit(inout RayPayload payload, in BuiltInTriangleIntersectionAttributes attr
 		float4 shadowCoord = mul(ModelToShadow, float4(worldPosition, 1.0f));
 		shadow = GetShadow(shadowCoord.xyz);
 	}
+    
+    
     
 	const float3 viewDir = WorldRayDirection();
 	outputColor += shadow * ApplyLightCommon(

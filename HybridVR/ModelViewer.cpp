@@ -219,7 +219,7 @@ void g_CreateScene(Scene Scene)
 		g_Scene.ModelPath = ASSET_DIRECTORY "Models/Bistro/BistroExterior.h3d";
 		g_Scene.TextureFolderPath = ASSET_DIRECTORY L"Models/Bistro/";
 		g_Scene.Reflective = { "floor", "glass", "metal", "cobble", "brick" };
-		g_Scene.CutOuts = { "leaf", "leaves" };
+		g_Scene.CutOuts = {  };
 		g_Scene.AmbientIntensity = 1.0;
 		g_Scene.SunIntensity = 2.0;
 		g_Scene.SunOrientation = -0.5;
@@ -1096,7 +1096,7 @@ void D3D12RaytracingMiniEngineSample::Startup(void)
 	ThrowIfFailed(g_Device->QueryInterface(IID_PPV_ARGS(&g_pRaytracingDevice)),
 	              L"Couldn't get DirectX Raytracing interface for the device.\n");
 
-	DXGI_FORMAT normalFormat = DXGI_FORMAT_R16G16B16A16_UNORM;
+	DXGI_FORMAT normalFormat = DXGI_FORMAT_R8G8B8A8_SNORM;
 	g_SceneNormalBuffer.CreateArray(L"Main Normal Buffer", g_SceneColorBuffer.GetWidth(), g_SceneColorBuffer.GetHeight(), 2,
 		normalFormat);
 
@@ -2220,6 +2220,10 @@ void D3D12RaytracingMiniEngineSample::RenderScene()
 		skipDiffusePass = true;
 		RenderEye(Cam::kRight, skipDiffusePass, psConstants, false);
 		
+		if(Settings::SSAO_Enable)
+		{
+			RenderSSAO();
+		}
 
 		GraphicsContext& gfxContext = GraphicsContext::Begin(L"Holefilling");
 		SetupGraphicsState(gfxContext);
@@ -2233,11 +2237,6 @@ void D3D12RaytracingMiniEngineSample::RenderScene()
 		
 		
 		gfxContext.Finish();
-		if(Settings::SSAO_Enable)
-		{
-			
-		RenderSSAO();
-		}
 	}
 	else 
 	{
