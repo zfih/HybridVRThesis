@@ -293,6 +293,7 @@ private:
 	void GenerateGrid(UINT width, UINT height);
 	
 	void AnimateCamera();
+	void GoToAnimation();
 	void RenderShadowMap();
 	void RenderColor(
 		GraphicsContext& Ctx,
@@ -400,7 +401,7 @@ private:
 
 int wmain(int argc, wchar_t** argv)
 {
-	g_CreateScene(Scene::kBistroInterior);
+	g_CreateScene(Scene::kBistroExterior);
 	
 #if _DEBUG
 	CComPtr<ID3D12Debug> debugInterface;
@@ -478,6 +479,10 @@ namespace Settings
 	EnumVar RayTracingMode("Application/Raytracing/RayTraceMode", RTM_DIFFUSE_WITH_SHADOWMAPS, _countof(rayTracingModes), rayTracingModes);
 
 	BoolVar AOFirst("SSAO/AOFirst", true);
+
+	IntVar AnimationFrame("Application/LOD/Animation Frame", 0, 0, 10000);
+	BoolVar SetAnimationFrame("Application/LOD/Set Animation Frame", false);
+	
 
 	CpuTimer g_RaytraceTimer[2]{ {true, "RaytraceLeft"}, {true, "RaytraceRight"} };
 	CpuTimer g_EyeRenderTimer[2]{ { true, "RasterLeft" }, { true, "RasterRight" } };
@@ -1433,6 +1438,11 @@ void D3D12RaytracingMiniEngineSample::Update(float deltaT)
 		LoadCamPos();
 	}
 
+	if(Settings::SetAnimationFrame)
+	{
+		GoToAnimation();
+	}
+	
 	if (!freezeCamera)
 	{
 		m_CameraController->Update(deltaT);
@@ -1549,6 +1559,7 @@ void D3D12RaytracingMiniEngineSample::AnimateCamera()
 {
 	static uint32_t currentPos, nextPos;
 	static float time = 0.0f;
+	static uint32_t frames = 0;
 	
 	if(m_firstAnimation)
 	{
@@ -1557,6 +1568,7 @@ void D3D12RaytracingMiniEngineSample::AnimateCamera()
 		m_firstAnimation = false;
 
 		time = 0.0f;
+		frames = 0;
 		
 		currentPos = m_CameraPosArrayCurrentPosition;
 		nextPos = currentPos + 1;
@@ -1573,16 +1585,36 @@ void D3D12RaytracingMiniEngineSample::AnimateCamera()
 		}
 		
 		time = 0.0f;
+		frames = 0;
 	}
 	else
 	{
 		time += 0.001f;
+		frames++;
 	}
 
+	Settings::AnimationFrame = currentPos * 1000 + frames;
+	
 	CameraPosition camPos{
 		Lerp(m_CameraPosArray[currentPos].position, m_CameraPosArray[nextPos].position, { time }),
 		Lerp(m_CameraPosArray[currentPos].heading, m_CameraPosArray[nextPos].heading, time),
 		Lerp(m_CameraPosArray[currentPos].pitch, m_CameraPosArray[nextPos].pitch, time)
+	};
+
+	SetCameraPosition(camPos);
+}
+
+void D3D12RaytracingMiniEngineSample::GoToAnimation()
+{
+	uint32_t currentPos = Settings::AnimationFrame / 1000;
+	uint32_t nextPos = currentPos + 1;
+
+	float time = Settings::AnimationFrame % 1000 * 0.001f;
+
+	CameraPosition camPos{
+	Lerp(m_CameraPosArray[currentPos].position, m_CameraPosArray[nextPos].position, { time }),
+	Lerp(m_CameraPosArray[currentPos].heading, m_CameraPosArray[nextPos].heading, time),
+	Lerp(m_CameraPosArray[currentPos].pitch, m_CameraPosArray[nextPos].pitch, time)
 	};
 
 	SetCameraPosition(camPos);

@@ -657,6 +657,14 @@ void ImGui::BuildGUI(Math::Camera* cam, GameCore::CameraController* controller)
         bool debugColors = Settings::DebugColors;
         ImGui::Checkbox("Debugger Colors", &debugColors);
         Settings::DebugColors = debugColors;
+
+        bool animation = Settings::SetAnimationFrame;
+        ImGui::Checkbox("Set Animation Frame", &animation);
+        Settings::SetAnimationFrame = animation;
+
+        int val = Settings::AnimationFrame;
+        ImGui::DragInt("Animation Frame Number", &val, 1, 0, 10000);
+        Settings::AnimationFrame = val;
     	
         // ===================
         ImGui::Indent(-indent);
