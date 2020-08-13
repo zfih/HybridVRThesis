@@ -628,6 +628,23 @@ void ImGui::BuildGUI(Math::Camera* cam, GameCore::CameraController* controller)
         // ===================
         ImGui::Indent(-indent);
     } // VR
+
+    if (ImGui::CollapsingHeader("LOD", ImGuiTreeNodeFlags_CollapsingHeader | ImGuiTreeNodeFlags_Framed))
+    { // LOD
+        ImGui::Indent(indent);
+        // ==================
+
+        bool checkbox = Settings::SetAnimationFrame;
+        ImGui::Checkbox("Set Animation Frame", &checkbox);
+        Settings::SetAnimationFrame = checkbox;
+
+        int val = Settings::AnimationFrame;
+        ImGui::DragInt("Animation Frame Number", &val, 1, 0, 10000);
+        Settings::AnimationFrame = val;
+
+        // ===================
+        ImGui::Indent(-indent);
+    } // LOD
 	
     { // Other
 
