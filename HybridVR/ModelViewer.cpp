@@ -303,7 +303,6 @@ private:
 	void RenderEye(
 		Cam::CameraType eye,
 		bool SkipDiffusePass,
-		bool RenderSSAO,
 		PSConstants& psConstants,
 		bool RayTrace);
 	void SetupGraphicsState(GraphicsContext& Ctx) const;
@@ -319,7 +318,6 @@ private:
 		Camera& Camera,
 		PSConstants& Constants,
 		bool SkipDiffusePass,
-		bool RenderSSAO,
 		bool RayTrace
 	);
 	
@@ -1982,22 +1980,19 @@ void D3D12RaytracingMiniEngineSample::GenerateGrid(UINT width, UINT height)
 		quads.data());
 }
 
-void D3D12RaytracingMiniEngineSample::RenderEye(Cam::CameraType eye, bool SkipDiffusePass, bool RenderSSAO,
+void D3D12RaytracingMiniEngineSample::RenderEye(Cam::CameraType eye, bool SkipDiffusePass,
 	PSConstants& psConstants, bool Raytrace)
 {
 	Settings::g_EyeRenderTimer[eye].Reset();
 	Settings::g_EyeRenderTimer[eye].Start();
-	GraphicsContext& ctx =
-		GraphicsContext::Begin(L"Scene Render " + CameraTypeToWString(eye));
-	ctx.TransitionResource(g_SceneNormalBuffer, D3D12_RESOURCE_STATE_RENDER_TARGET, true);
-	//ctx.ClearColor(g_SceneNormalBuffer, eye);
+	GraphicsContext& ctx = GraphicsContext::Begin(L"Scene Render " + CameraTypeToWString(eye));
 	Camera& camera = *m_Camera[eye];
 
 	SetupGraphicsState(ctx);
 	RenderPrepass(ctx, eye, camera, psConstants);
 
 	MainRender(ctx, eye, camera,
-		psConstants, SkipDiffusePass, RenderSSAO, Raytrace);
+		psConstants, SkipDiffusePass, Raytrace);
 
 	ctx.Finish();
 	Settings::g_EyeRenderTimer[eye].Stop();
@@ -2055,12 +2050,8 @@ void D3D12RaytracingMiniEngineSample::RenderPrepass(GraphicsContext& Ctx, Cam::C
 }
 
 void D3D12RaytracingMiniEngineSample::MainRender(GraphicsContext& Ctx, Cam::CameraType CameraType, Camera& Camera,
-	PSConstants& Constants, bool SkipDiffusePass, bool RenderSSAO, bool DoRaytrace)
+	PSConstants& Constants, bool SkipDiffusePass, bool DoRaytrace)
 {
-	if(RenderSSAO)
-	{
-		//SSAO::Render(Ctx, *m_Camera[CameraType], CameraType);
-	}
 
 	if (!SkipDiffusePass)
 	{
@@ -2222,12 +2213,12 @@ void D3D12RaytracingMiniEngineSample::RenderScene()
 		clearCtx.Finish();
 
 
-		RenderEye(Cam::kLeft, skipDiffusePass, false, psConstants, true);
+		RenderEye(Cam::kLeft, skipDiffusePass, psConstants, true);
 		
 		ReprojectScene();
 
 		skipDiffusePass = true;
-		RenderEye(Cam::kRight, skipDiffusePass, false, psConstants, false);
+		RenderEye(Cam::kRight, skipDiffusePass, psConstants, false);
 		
 
 		GraphicsContext& gfxContext = GraphicsContext::Begin(L"Holefilling");
@@ -2242,14 +2233,20 @@ void D3D12RaytracingMiniEngineSample::RenderScene()
 		
 		
 		gfxContext.Finish();
-
+		if(Settings::SSAO_Enable)
+		{
+			
 		RenderSSAO();
+		}
 	}
 	else 
 	{
-		RenderEye(Cam::kLeft, skipDiffusePass, true, psConstants, true);
-		RenderEye(Cam::kRight, skipDiffusePass, true, psConstants, true);
-		RenderSSAO();
+		RenderEye(Cam::kLeft, skipDiffusePass, psConstants, true);
+		RenderEye(Cam::kRight, skipDiffusePass,  psConstants, true);
+		if (Settings::SSAO_Enable)
+		{
+			RenderSSAO();
+		}
 	}
 }
 

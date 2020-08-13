@@ -321,7 +321,7 @@ void Hit(inout RayPayload payload, in BuiltInTriangleIntersectionAttributes attr
     
     if (!payload.Bounces)
     {
-        outputColor *= texSSAO[DispatchRaysIndex().xy];
+        //outputColor *= texSSAO[DispatchRaysIndex().xy];
     }
 
 	float shadow = 1.0;
