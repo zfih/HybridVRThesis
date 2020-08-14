@@ -399,7 +399,7 @@ private:
 
 int wmain(int argc, wchar_t** argv)
 {
-	g_CreateScene(Scene::kBistroExterior);
+	g_CreateScene(Scene::kSponza);
 	
 #if _DEBUG
 	CComPtr<ID3D12Debug> debugInterface;
@@ -2219,11 +2219,7 @@ void D3D12RaytracingMiniEngineSample::RenderScene()
 
 		skipDiffusePass = true;
 		RenderEye(Cam::kRight, skipDiffusePass, psConstants, false);
-		
-		if(Settings::SSAO_Enable)
-		{
-			RenderSSAO();
-		}
+
 
 		GraphicsContext& gfxContext = GraphicsContext::Begin(L"Holefilling");
 		SetupGraphicsState(gfxContext);
@@ -2235,17 +2231,17 @@ void D3D12RaytracingMiniEngineSample::RenderScene()
 			g_SceneDepthBuffer, 
 			g_SceneNormalBuffer);
 		
-		
 		gfxContext.Finish();
 	}
 	else 
 	{
 		RenderEye(Cam::kLeft, skipDiffusePass, psConstants, true);
 		RenderEye(Cam::kRight, skipDiffusePass,  psConstants, true);
-		if (Settings::SSAO_Enable)
-		{
-			RenderSSAO();
-		}
+	}
+
+	if (Settings::SSAO_Enable)
+	{
+		RenderSSAO();
 	}
 }
 
