@@ -397,7 +397,7 @@ private:
 
 int wmain(int argc, wchar_t** argv)
 {
-	g_CreateScene(Scene::kBistroExterior);
+	g_CreateScene(Scene::kSponza);
 	
 #if _DEBUG
 	CComPtr<ID3D12Debug> debugInterface;
@@ -2002,11 +2002,6 @@ void D3D12RaytracingMiniEngineSample::RenderPrepass(GraphicsContext& Ctx, Cam::C
 void D3D12RaytracingMiniEngineSample::MainRender(GraphicsContext& Ctx, Cam::CameraType CameraType, Camera& Camera,
 	PSConstants& Constants, bool SkipDiffusePass, bool RenderSSAO)
 {
-	if(RenderSSAO)
-	{
-		SSAO::Render(Ctx, *m_Camera[CameraType], CameraType);
-	}
-
 
 	if (!SkipDiffusePass)
 	{
@@ -2163,14 +2158,12 @@ void D3D12RaytracingMiniEngineSample::RenderScene()
 		
 		ReprojectScene();
 
-		GraphicsContext& gfxContext = GraphicsContext::Begin(L"Scene Render");
+		GraphicsContext& gfxContext = GraphicsContext::Begin(L"Holefilling");
 
 		SetupGraphicsState(gfxContext);
 
 		skipDiffusePass = true;
 		RenderEye(Cam::kRight, skipDiffusePass, false, psConstants);
-		
-		RenderSSAO();
 
 		Settings::g_HolefillingTimer.Reset();
 		Settings::g_HolefillingTimer.Start();
@@ -2184,6 +2177,11 @@ void D3D12RaytracingMiniEngineSample::RenderScene()
 	{
 		RenderEye(Cam::kLeft, skipDiffusePass, true, psConstants);
 		RenderEye(Cam::kRight, skipDiffusePass, true, psConstants);
+	}
+	
+	if (Settings::SSAO_Enable)
+	{
+		RenderSSAO();
 	}
 }
 
