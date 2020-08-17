@@ -415,6 +415,7 @@ MRT main(VSOutput vsOutput)
 {
     MRT mrt;
 	mrt.Color = float4(0, 0, 0, 0);
+	mrt.ColorRaw = float4(0, 0, 0, 0);
     mrt.Normal = 0.0;
 
 	uint2 pixelPos = uint2(vsOutput.position.xy);

@@ -97,6 +97,9 @@ MRT main(VertexOutput vOut)
 	mrt.Color = float4(0, 0, 0, 0);
 	mrt.Normal  = float4(0, 0, 0, 0);
 
+	// Normalize result...
+	float lenSq = dot(normal, normal);
+
 	double halfRange = angleBlendingRange / 2;
 	double lower = angleThreshold - halfRange;
 	double upper = angleThreshold + halfRange;
