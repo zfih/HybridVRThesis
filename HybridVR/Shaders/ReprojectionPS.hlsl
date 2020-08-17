@@ -97,15 +97,6 @@ MRT main(VertexOutput vOut)
 	mrt.Color = float4(0, 0, 0, 0);
 	mrt.Normal  = float4(0, 0, 0, 0);
 
-	// Normalize result...
-	float lenSq = dot(normal, normal);
-
-		// Some Sponza content appears to have no tangent space provided, resulting in degenerate normal vectors.
-	if (!isfinite(lenSq) || lenSq < 1e-6)
-		return mrt;
-
-
-
 	double halfRange = angleBlendingRange / 2;
 	double lower = angleThreshold - halfRange;
 	double upper = angleThreshold + halfRange;
