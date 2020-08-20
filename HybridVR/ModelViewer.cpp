@@ -242,7 +242,7 @@ void g_CreateScene(Scene Scene)
 		g_Scene.ModelPath = ASSET_DIRECTORY "Models/Bistro/BistroExterior.h3d";
 		g_Scene.TextureFolderPath = ASSET_DIRECTORY L"Models/Bistro/";
 		g_Scene.Reflective = { "floor", "glass", "metal", "cobble", "brick" };
-		g_Scene.CutOuts = { "leaf", "leaves" };
+		g_Scene.CutOuts = { "leaf", "leaves", "foliage" };
 		g_Scene.AmbientIntensity = 1.0;
 		g_Scene.SunIntensity = 2.0;
 		g_Scene.SunOrientation = -0.5;
@@ -1784,7 +1784,7 @@ void D3D12RaytracingMiniEngineSample::RenderEye(Cam::CameraType eye, bool SkipDi
 	GraphicsContext& ctx =
 		GraphicsContext::Begin(L"Scene Render " + CameraTypeToWString(eye));
 	ctx.TransitionResource(g_SceneNormalBuffer, D3D12_RESOURCE_STATE_RENDER_TARGET, true);
-	ctx.ClearColor(g_SceneNormalBuffer);
+	ctx.ClearColor(g_SceneNormalBuffer, 0, GetMipLevel(eye));
 	Camera& camera = *m_Camera[eye];
 
 	SetupGraphicsState(ctx);
