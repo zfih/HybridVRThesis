@@ -204,7 +204,7 @@ void g_CreateScene(Scene Scene)
 		g_Scene.ModelPath = ASSET_DIRECTORY "Models/Bistro/BistroInterior.h3d";
 		g_Scene.TextureFolderPath = ASSET_DIRECTORY L"Models/Bistro/";
 		g_Scene.Reflective = { "floor", "glass", "metal" };
-		g_Scene.CutOuts = {  "leaf", "leaves"};
+		g_Scene.CutOuts = { "leaf", "leaves"};
 		g_Scene.AmbientIntensity = 1.0;
 		g_Scene.SunIntensity = 2.0;
 		g_Scene.SunOrientation = -0.5;
@@ -219,7 +219,7 @@ void g_CreateScene(Scene Scene)
 		g_Scene.ModelPath = ASSET_DIRECTORY "Models/Bistro/BistroExterior.h3d";
 		g_Scene.TextureFolderPath = ASSET_DIRECTORY L"Models/Bistro/";
 		g_Scene.Reflective = { "floor", "glass", "metal", "cobble", "brick" };
-		g_Scene.CutOuts = {  };
+		g_Scene.CutOuts = { "leaf", "leaves", "foliage" };
 		g_Scene.AmbientIntensity = 1.0;
 		g_Scene.SunIntensity = 2.0;
 		g_Scene.SunOrientation = -0.5;
@@ -399,7 +399,7 @@ private:
 
 int wmain(int argc, wchar_t** argv)
 {
-	g_CreateScene(Scene::kSponza);
+	g_CreateScene(Scene::kBistroExterior);
 	
 #if _DEBUG
 	CComPtr<ID3D12Debug> debugInterface;
