@@ -217,7 +217,7 @@ void g_CreateScene(Scene Scene)
 		g_Scene.ModelPath = ASSET_DIRECTORY "Models/Bistro/BistroExterior.h3d";
 		g_Scene.TextureFolderPath = ASSET_DIRECTORY L"Models/Bistro/";
 		g_Scene.Reflective = { "floor", "glass", "metal", "cobble", "brick" };
-		g_Scene.CutOuts = { "leaf", "leaves" };
+		g_Scene.CutOuts = { "leaf", "leaves", "foliage" };
 		g_Scene.AmbientIntensity = 1.0;
 		g_Scene.SunIntensity = 2.0;
 		g_Scene.SunOrientation = -0.5;
@@ -397,7 +397,7 @@ private:
 
 int wmain(int argc, wchar_t** argv)
 {
-	g_CreateScene(Scene::kSponza);
+	g_CreateScene(Scene::kBistroExterior);
 	
 #if _DEBUG
 	CComPtr<ID3D12Debug> debugInterface;
@@ -2033,14 +2033,14 @@ void D3D12RaytracingMiniEngineSample::MainRender(GraphicsContext& Ctx, Cam::Came
 			DepthOfField::Render(Ctx, m_Camera[CameraType]->GetNearClip(), m_Camera[CameraType]->GetFarClip(), CameraType);
 		else
 			MotionBlur::RenderObjectBlur(Ctx, g_VelocityBuffer, CameraType);
-	}
 
-	if (g_RayTraceSupport/* && RayTracingMode != RTM_OFF*/)
-	{
-		Settings::g_RaytraceTimer[CameraType].Reset();
-		Settings::g_RaytraceTimer[CameraType].Start();
-		Raytrace(Ctx, CameraType);
-		Settings::g_RaytraceTimer[CameraType].Stop();
+		if (g_RayTraceSupport/* && RayTracingMode != RTM_OFF*/)
+		{
+			Settings::g_RaytraceTimer[CameraType].Reset();
+			Settings::g_RaytraceTimer[CameraType].Start();
+			Raytrace(Ctx, CameraType);
+			Settings::g_RaytraceTimer[CameraType].Stop();
+		}
 	}
 }
 
