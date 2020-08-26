@@ -300,7 +300,7 @@ void Hit(inout RayPayload payload, in BuiltInTriangleIntersectionAttributes attr
 		AntiAliasSpecular(normal, gloss);
 		float3x3 tbn = float3x3(vsTangent, vsBitangent, vsNormal);
 		normal = normalize(mul(normal, tbn));
-	}
+    }
     
 	float3 outputColor = AmbientColor * diffuseColor * texSSAO[DispatchRaysIndex().xy];
 
@@ -352,11 +352,11 @@ void Hit(inout RayPayload payload, in BuiltInTriangleIntersectionAttributes attr
 	}
     
 	g_screenOutput[int3(DispatchRaysIndex().xy, g_dynamic.curCam)] = float4(outputColor, 1);
-
+    
 	float reflectivity =
         specularMask * pow(1.0 - saturate(dot(-viewDir, normal)), 5.0);
     
-	if (Reflective && payload.Bounces < 3)
+    if (false && Reflective && payload.Bounces < 3)
 	{
 		float3 reflectionDirection = reflect(viewDir, normal);
 		float3 reflectionOrigin = worldPosition + reflectionDirection * 0.1f;
