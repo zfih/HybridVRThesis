@@ -117,7 +117,7 @@ float3 ApplyLightCommon(
     float nDotH = saturate(dot(halfVec, normal));
 
     FSchlick(specularColor, diffuseColor, lightDir, halfVec);
-
+    
     float specularFactor = specularMask * pow(nDotH, gloss) * (gloss + 2) / 8;
 
     float nDotL = saturate(dot(normal, lightDir));
@@ -290,13 +290,16 @@ void Hit(inout RayPayload payload, in BuiltInTriangleIntersectionAttributes attr
 	float2 ddx, ddy;
 	CalculateUVDerivatives(triangleNormal, dpdu, dpdv, worldPosition, xOffsetPoint, yOffsetPoint, payload.Bounces, ddx, ddy);
 
-	const float3 diffuseColor = g_localTexture.SampleGrad(g_s0, uv, ddx, ddy).rgb; //g_localTexture.SampleLevel(g_s0, uv, 0).rgb;
+	const float3 diffuseColor = g_localTexture.SampleGrad(g_s0, uv, ddx, ddy).rgb;
+	//const float3 diffuseColor = g_localTexture.SampleLevel(g_s0, uv, 0).rgb;
 	float3 normal;
 	float3 specularAlbedo = float3(0.56, 0.56, 0.56);
-	float specularMask = g_localSpecular.SampleGrad(g_s0, uv, ddx, ddy).g; //g_localSpecular.SampleLevel(g_s0, uv, 0).g;
+	float specularMask = g_localSpecular.SampleGrad(g_s0, uv, ddx, ddy).g;
+	//float specularMask = g_localSpecular.SampleLevel(g_s0, uv, 0).g;
 	float gloss = 128.0;
     {
-		normal = g_localNormal.SampleGrad(g_s0, uv, ddx, ddy).rgb * 2.0 - 1.0; //g_localNormal.SampleLevel(g_s0, uv, 0).rgb * 2.0 - 1.0;
+		normal = g_localNormal.SampleGrad(g_s0, uv, ddx, ddy).rgb * 2.0 - 1.0;
+		//normal = g_localNormal.SampleLevel(g_s0, uv, 0).rgb * 2.0 - 1.0;
 		AntiAliasSpecular(normal, gloss);
 		float3x3 tbn = float3x3(vsTangent, vsBitangent, vsNormal);
 		normal = normalize(mul(normal, tbn));
