@@ -35,7 +35,7 @@ void RayGen()
     if (normalData.w == 0.0)
         return;
 
-#ifdef VALIDATE_NORMAL
+#if true //def VALIDATE_NORMAL
     // Check if normal is real and non-zero
     float lenSq = dot(normalData.xyz, normalData.xyz);
     if (!isfinite(lenSq) || lenSq < 1e-6)
@@ -52,8 +52,8 @@ void RayGen()
 	float3 primaryRayDirection = normalize(world - g_dynamic.worldCameraPosition);
 
     // R
-    float3 direction = normalize(primaryRayDirection - 2 * dot(primaryRayDirection, normal) * normal);
-    float3 origin = world - primaryRayDirection * 0.1f;     // Lift off the surface a bit
+    float3 direction = reflect(primaryRayDirection, normal); //normalize(primaryRayDirection - 2 * dot(primaryRayDirection, normal) * normal);
+    float3 origin = world + primaryRayDirection * 0.1f;     // Lift off the surface a bit
 
     RayDesc rayDesc = { origin,
         0.0f,

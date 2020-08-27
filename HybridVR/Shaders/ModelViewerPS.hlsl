@@ -346,7 +346,7 @@ MRT main(VSOutput vsOutput)
 	float gloss = 128.0;
 	float3 normal;
     {
-		normal = SAMPLE_TEX(texNormal) * 2.0 - 1.0;
+		/*normal = SAMPLE_TEX(texNormal) * 2.0 - 1.0;
 		AntiAliasSpecular(normal, gloss);
 		float3x3 tbn = float3x3(normalize(vsOutput.tangent), normalize(vsOutput.bitangent), normalize(vsOutput.normal));
 		normal = mul(normal, tbn);
@@ -358,8 +358,9 @@ MRT main(VSOutput vsOutput)
 		if (!isfinite(lenSq) || lenSq < 1e-6)
 			return mrt;
 
-		normal *= rsqrt(lenSq);
-	}
+		normal *= rsqrt(lenSq);*/
+        normal = vsOutput.normal;
+    }
 
     float3 specularAlbedo = float3(0.56, 0.56, 0.56);
     float specularMask = SAMPLE_TEX(texSpecular).g;
