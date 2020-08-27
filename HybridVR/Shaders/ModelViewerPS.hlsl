@@ -359,7 +359,7 @@ MRT main(VSOutput vsOutput)
 			return mrt;
 
 		normal *= rsqrt(lenSq);
-	}
+    }
 
     float3 specularAlbedo = float3(0.56, 0.56, 0.56);
     float specularMask = SAMPLE_TEX(texSpecular).g;
