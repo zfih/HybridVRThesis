@@ -55,6 +55,19 @@ static const float PI_EIGHTH = PI / 8.0;
 
 static float3 gClearColor = float3(0, 0, 0);
 
+
+float3 RemoveSRGBCurve(float3 x)
+{
+    // Approximately pow(x, 2.2)
+	return x < 0.04045 ? x / 12.92 : pow((x + 0.055) / 1.055, 2.4);
+}
+
+float3 ApplySRGBCurve(float3 x)
+{
+    // Approximately pow(x, 1.0 / 2.2)
+	return x < 0.0031308 ? 12.92 * x : 1.055 * pow(x, 1.0 / 2.4) - 0.055;
+}
+
 bool equalsEpsilon(float a, float b, float epsilon)
 {
 	float diff = abs(a - b);
@@ -91,12 +104,14 @@ MRT main(VertexOutput vOut)
 	float4 color;
 
 	float4 colorRefl = float4(gLeftEyeTex.SampleLevel(gLinearSampler, vOut.texC, 0).rgb, 1);
+	
 	float4 colorRaw = float4(gLeftEyeRawTex.SampleLevel(gLinearSampler, vOut.texC, 0).rgb, 1);
+	
 	float4 normal = gLeftEyeNormalTex.SampleLevel(gLinearSampler, vOut.texC, 0);
 	MRT mrt;
 	mrt.Color = float4(0, 0, 0, 0);
 	mrt.Normal  = float4(0, 0, 0, 0);
-
+	
 	// Normalize result...
 	float lenSq = dot(normal, normal);
 

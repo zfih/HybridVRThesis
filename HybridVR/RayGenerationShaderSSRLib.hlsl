@@ -27,14 +27,12 @@ void RayGen()
     // Invert Y for DirectX-style coordinates
     screenPos.y =  -screenPos.y;
 
-    float2 readGBufferAt = xy;
-
     // Read depth and normal
-    float sceneDepth = depth.Load(int4(readGBufferAt, g_dynamic.curCam, 0));
-    float4 normalData = normals.Load(int4(readGBufferAt, g_dynamic.curCam, 0));
-    if (normalData.w == 0.0)
-        return;
-	
+    float sceneDepth = depth[int3(xy, g_dynamic.curCam)];
+	float4 normalData = normals[int3(xy, g_dynamic.curCam)];
+	if (normalData.w == 0.0)
+		return;
+    
     float3 normal = normalData.xyz;
 
     // Unproject into the world position using depth
@@ -44,7 +42,7 @@ void RayGen()
 	float3 primaryRayDirection = normalize(world - g_dynamic.worldCameraPosition);
 
     // R
-    float3 direction = normalize(primaryRayDirection - 2 * dot(primaryRayDirection, normal) * normal);
+	float3 direction = reflect(primaryRayDirection, normal);
     float3 origin = world - primaryRayDirection * 0.1f;     // Lift off the surface a bit
 
     RayDesc rayDesc = { origin,
@@ -58,4 +56,6 @@ void RayGen()
     payload.Bounces = 1;
 	payload.Reflectivity = normalData.w;
     TraceRay(g_accel, RAY_FLAG_CULL_BACK_FACING_TRIANGLES, ~0,0,1,0, rayDesc, payload);
+    
+	//g_screenOutput[int3(DispatchRaysIndex().xy, g_dynamic.curCam)] = float4(normalData.w, 0, 0, 1);
 }

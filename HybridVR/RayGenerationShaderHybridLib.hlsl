@@ -31,6 +31,8 @@ void FireRay(float3 origin, float3 direction, float bounces, float reflectivity)
 	payload.Bounces = bounces;
 	payload.Reflectivity = reflectivity;
 	TraceRay(g_accel, RAY_FLAG_CULL_BACK_FACING_TRIANGLES, ~0, 0, 1, 0, rayDesc, payload);
+	
+    //g_screenOutput[int3(DispatchRaysIndex().xy, g_dynamic.curCam)] = float4(reflectivity, 0, 0, 1);
 }
 
 void ScreenSpaceReflection(float4 normal, int2 xy, int3 pixel)
@@ -77,9 +79,9 @@ void RayGen()
 
 	float2 xy = pixel.xy + 0.5; // center in the middle of the pixel
 
-	float4 normal = g_normals[pixel];
+	float4 normal = g_normals[int3(xy, g_dynamic.curCam)];
 
-	float4 color = g_screenOutput[pixel];
+	float4 color = g_screenOutput[int3(xy, g_dynamic.curCam)];
 	
 	// Pixel Good - Green
 	if(normal.w == 0.0 && color.a != 0)
@@ -88,16 +90,16 @@ void RayGen()
 	}
 	else if(normal.w != 0.0 && color.a != 0)// Need refl - Yellow
 	{
-		ScreenSpaceReflection(normal, xy, pixel);
+		ScreenSpaceReflection(normal, xy, int3(xy, g_dynamic.curCam));
 		
 	}
 	else if (color.a == 0) // Needs full - Red
 	{
-		FullTrace(pixel);
+		FullTrace(int3(xy, g_dynamic.curCam));
 		//g_screenOutput[pixel] = float4(1, 0, 0, 1);
 	}
 	else // Should never happen
 	{
-		g_screenOutput[pixel] = float4(1, 0, 1, 1);
+		g_screenOutput[int3(xy, g_dynamic.curCam)] = float4(1, 0, 1, 1);
 	}
 }

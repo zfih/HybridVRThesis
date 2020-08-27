@@ -117,7 +117,7 @@ float3 ApplyLightCommon(
     float nDotH = saturate(dot(halfVec, normal));
 
     FSchlick(specularColor, diffuseColor, lightDir, halfVec);
-
+    
     float specularFactor = specularMask * pow(nDotH, gloss) * (gloss + 2) / 8;
 
     float nDotL = saturate(dot(normal, lightDir));
@@ -296,38 +296,17 @@ void Hit(inout RayPayload payload, in BuiltInTriangleIntersectionAttributes attr
 	const float4 diffuseColor = g_localTexture.SampleGrad(g_s0, uv, ddx, ddy); //g_localTexture.SampleLevel(g_s0, uv, 0).rgb;
 	
     
-    //if (diffuseColor.w == 0)
-    //{
-        
-    //    float3 dir = WorldRayDirection();
-    //    float3 origin = WorldRayOrigin() + dir * 0.001;
-        
-    //    RayDesc rayDesc =
-    //    {
-    //        origin,
-    //        0.1f,
-    //        origin,
-    //        FLT_MAX
-    //    };
-        
-    //    RayPayload pl;
-    //    pl.SkipShading = true;
-    //    pl.RayHitT = FLT_MAX;
-    //    pl.Bounces = payload.Bounces + 1;
-		
-    //    TraceRay(g_accel, RAY_FLAG_NONE, ~0, 0, 1, 0, rayDesc, pl);
-        
-    //    return;
-    //}
     
     float3 normal;
 	float3 specularAlbedo = float3(0.56, 0.56, 0.56);
-	float specularMask = g_localSpecular.SampleGrad(g_s0, uv, ddx, ddy).g; //g_localSpecular.SampleLevel(g_s0, uv, 0).g;
+	//float specularMask = g_localSpecular.SampleGrad(g_s0, uv, ddx, ddy).g; 
+    float specularMask = g_localSpecular.SampleLevel(g_s0, uv, 0).g;
 
 	
 	float gloss = 128.0;
     {
-		normal = g_localNormal.SampleGrad(g_s0, uv, ddx, ddy).rgb * 2.0 - 1.0; //g_localNormal.SampleLevel(g_s0, uv, 0).rgb * 2.0 - 1.0;
+		normal = g_localNormal.SampleGrad(g_s0, uv, ddx, ddy).rgb * 2.0 - 1.0;
+		//normal = g_localNormal.SampleLevel(g_s0, uv, 0).rgb * 2.0 - 1.0;
 		AntiAliasSpecular(normal, gloss);
 		float3x3 tbn = float3x3(vsTangent, vsBitangent, vsNormal);
         normal = mul(normal, tbn);
@@ -400,11 +379,11 @@ void Hit(inout RayPayload payload, in BuiltInTriangleIntersectionAttributes attr
 	}
     
 	g_screenOutput[int3(DispatchRaysIndex().xy, g_dynamic.curCam)] = float4(outputColor, 1);
-
+    
 	float reflectivity =
         specularMask * pow(1.0 - saturate(dot(-viewDir, normal)), 5.0);
     
-	if (Reflective && payload.Bounces < 3)
+    if (Reflective && payload.Bounces < 3)
 	{
 		float3 reflectionDirection = reflect(viewDir, normal);
 		float3 reflectionOrigin = worldPosition + reflectionDirection * 0.1f;

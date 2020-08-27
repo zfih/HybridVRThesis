@@ -172,7 +172,9 @@ struct SceneData
 	std::wstring TextureFolderPath;
 	std::vector<std::string> Reflective;
 	std::vector<std::string> CutOuts;
-
+	
+	bool flipUvY;
+	float inverseNormals;
 	bool UseCustom;
 	Vector3 StartingPosition;
 	float StartingHeading;
@@ -213,6 +215,8 @@ void g_CreateScene(Scene Scene)
 		g_Scene.StartingPitch = -0.2;
 		g_Scene.StartingPosition = { -3700, 125, 4000 };
 		g_Scene.UseCustom = true;
+		g_Scene.flipUvY = true;
+		g_Scene.inverseNormals = true;
 	} break;
 	case Scene::kBistroExterior: {
 		g_Scene.Matrix = Matrix4::MakeRotationX(-XM_PIDIV2);
@@ -228,6 +232,8 @@ void g_CreateScene(Scene Scene)
 		g_Scene.StartingPitch = -0.2;
 		g_Scene.StartingPosition = { -3700, 125, 4000 };
 		g_Scene.UseCustom = true;
+		g_Scene.flipUvY = true;
+		g_Scene.inverseNormals = true;
 	} break;
 	case Scene::kSponza:
 	{
@@ -236,6 +242,7 @@ void g_CreateScene(Scene Scene)
 		g_Scene.TextureFolderPath = ASSET_DIRECTORY L"Models/Sponza/Textures/";
 		g_Scene.Reflective = { "floor" };
 		g_Scene.CutOuts = { "thorn", "plant", "chain" };
+		g_Scene.inverseNormals = false;
 		g_Scene.UseCustom = false;
 	} break;
 	default:
@@ -289,11 +296,11 @@ public:
 
 	void SetCameraToPredefinedPosition(int cameraPosition);
 private:
-
 	void GenerateGrid(UINT width, UINT height);
 	
 	void AnimateCamera();
 	void GoToAnimation();
+
 	void RenderShadowMap();
 	void RenderColor(
 		GraphicsContext& Ctx,
@@ -389,7 +396,6 @@ private:
 	Vector3 m_SunDirection;
 	ShadowCamera m_SunShadow;
 	UINT m_QuadDivideFactor;
-	
 	CameraPosition m_CameraPosArray[c_NumCameraPositions];
 	UINT m_CameraPosArrayCurrentPosition;
 
@@ -480,11 +486,12 @@ namespace Settings
 
 	IntVar AnimationFrame("Application/LOD/Animation Frame", 0, 0, 10000);
 	BoolVar SetAnimationFrame("Application/LOD/Set Animation Frame", false);
-	
 
 	CpuTimer g_RaytraceTimer[2]{ {true, "RaytraceLeft"}, {true, "RaytraceRight"} };
 	CpuTimer g_EyeRenderTimer[2]{ { true, "RasterLeft" }, { true, "RasterRight" } };
 	CpuTimer g_ShadowRenderTimer(true, "ShadowRender");
+	CpuTimer g_ReprojectTimer(true, "Reproject");
+	CpuTimer g_HolefillingTimer(true, "HoleFilling");
 }
 
 std::unique_ptr<DescriptorHeapStack> g_pRaytracingDescriptorHeap;
@@ -1261,7 +1268,12 @@ void D3D12RaytracingMiniEngineSample::Startup(void)
 
 	
 	TextureManager::Initialize(g_Scene.TextureFolderPath);
-	bool bModelLoadSuccess = m_Model.Load(g_Scene.ModelPath.c_str(), g_Scene.Matrix, g_Scene.InvMatrix);
+	bool bModelLoadSuccess = m_Model.Load(
+		g_Scene.ModelPath.c_str(),
+		g_Scene.Matrix,
+		g_Scene.InvMatrix,
+		g_Scene.flipUvY,
+		g_Scene.inverseNormals);
 	ASSERT(bModelLoadSuccess, "Failed to load model");
 	ASSERT(m_Model.m_Header.meshCount > 0, "Model contains no meshes");
 
@@ -1364,7 +1376,6 @@ void D3D12RaytracingMiniEngineSample::Startup(void)
 			g_Scene.StartingHeading,
 			g_Scene.StartingPitch });
 	}
-
 }
 
 void D3D12RaytracingMiniEngineSample::Cleanup(void)
@@ -1810,6 +1821,8 @@ void D3D12RaytracingMiniEngineSample::RenderColor(GraphicsContext& Ctx, Camera& 
 
 void D3D12RaytracingMiniEngineSample::ReprojectScene()
 {
+	Settings::g_ReprojectTimer.Reset();
+	Settings::g_ReprojectTimer.Start();
 	ComputeContext& quadLevelContext = ComputeContext::Begin(
 		L"Reproject Compute Context");
 	
@@ -1913,6 +1926,8 @@ void D3D12RaytracingMiniEngineSample::ReprojectScene()
 
 	quadLevelContext.Finish();
 	reprojectContext.Finish();
+
+	Settings::g_ReprojectTimer.Stop();
 }
 
 void D3D12RaytracingMiniEngineSample::GenerateGrid(UINT width, UINT height)
@@ -2066,7 +2081,7 @@ void D3D12RaytracingMiniEngineSample::MainRender(GraphicsContext& Ctx, Cam::Came
 			Ctx.TransitionResource(g_SceneNormalBuffer, D3D12_RESOURCE_STATE_RENDER_TARGET, true);
 			Ctx.ClearColor(g_SceneColorBuffer, CameraType);
 			Ctx.ClearColor(g_SceneRawColorBuffer, CameraType);
-			
+
 			RenderColor(Ctx, Camera, CameraType, g_SceneDepthBuffer, Constants);
 		}
 
@@ -2076,7 +2091,7 @@ void D3D12RaytracingMiniEngineSample::MainRender(GraphicsContext& Ctx, Cam::Came
 		MotionBlur::GenerateCameraVelocityBuffer(Ctx, *m_Camera[CameraType], true);
 
 		TemporalEffects::ResolveImage(Ctx, CameraType);
-		
+
 		ParticleEffects::Render(Ctx, *m_Camera[CameraType], g_SceneColorBuffer, g_SceneDepthBuffer,
 			g_LinearDepth[TemporalEffects::GetFrameIndexMod2()]);
 
@@ -2086,13 +2101,19 @@ void D3D12RaytracingMiniEngineSample::MainRender(GraphicsContext& Ctx, Cam::Came
 		else
 			MotionBlur::RenderObjectBlur(Ctx, g_VelocityBuffer, CameraType);
 	}
-
 	if (DoRaytrace && g_RayTraceSupport/* && RayTracingMode != RTM_OFF*/)
 	{
 		Settings::g_RaytraceTimer[CameraType].Reset();
 		Settings::g_RaytraceTimer[CameraType].Start();
 		Raytrace(Ctx, CameraType);
 		Settings::g_RaytraceTimer[CameraType].Stop();
+		if (g_RayTraceSupport/* && RayTracingMode != RTM_OFF*/)
+		{
+			Settings::g_RaytraceTimer[CameraType].Reset();
+			Settings::g_RaytraceTimer[CameraType].Start();
+			Raytrace(Ctx, CameraType);
+			Settings::g_RaytraceTimer[CameraType].Stop();
+		}
 	}
 }
 
@@ -2196,8 +2217,8 @@ void D3D12RaytracingMiniEngineSample::RenderScene()
 	psConstants.FirstLightIndex[1] = Lighting::m_FirstConeShadowedLight;
 	psConstants.FrameIndexMod2 = TemporalEffects::GetFrameIndexMod2();
 
-	
-	if(!skipShadowMap)
+
+	if (!skipShadowMap)
 	{
 		Settings::g_ShadowRenderTimer.Reset();
 		Settings::g_ShadowRenderTimer.Start();
@@ -2214,7 +2235,7 @@ void D3D12RaytracingMiniEngineSample::RenderScene()
 
 
 		RenderEye(Cam::kLeft, skipDiffusePass, psConstants, true);
-		
+
 		ReprojectScene();
 
 		skipDiffusePass = true;
@@ -2225,18 +2246,19 @@ void D3D12RaytracingMiniEngineSample::RenderScene()
 		SetupGraphicsState(gfxContext);
 		g_initialize_dynamicCb(gfxContext, m_Camera, Cam::kRight,
 			g_SceneColorBuffer, g_dynamicConstantBuffer);
-		RaytraceAsrpPlus( 
-			gfxContext, 
-			g_SceneColorBuffer, 
-			g_SceneDepthBuffer, 
+		RaytraceAsrpPlus(
+			gfxContext,
+			g_SceneColorBuffer,
+			g_SceneDepthBuffer,
 			g_SceneNormalBuffer);
-		
+
 		gfxContext.Finish();
+		Settings::g_HolefillingTimer.Stop();
 	}
-	else 
+	else
 	{
 		RenderEye(Cam::kLeft, skipDiffusePass, psConstants, true);
-		RenderEye(Cam::kRight, skipDiffusePass,  psConstants, true);
+		RenderEye(Cam::kRight, skipDiffusePass, psConstants, true);
 	}
 
 	if (Settings::SSAO_Enable)

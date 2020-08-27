@@ -228,7 +228,7 @@ float3 ApplyLightCommon(
     float3 halfVec = normalize(lightDir - viewDir);
     float nDotH = saturate(dot(halfVec, normal));
 
-    FSchlick(diffuseColor, specularColor, lightDir, halfVec);
+    FSchlick(specularColor, diffuseColor, lightDir, halfVec);
 
     float specularFactor = specularMask * pow(nDotH, gloss) * (gloss + 2) / 8;
 
@@ -422,6 +422,7 @@ MRT main(VSOutput vsOutput)
 #define SAMPLE_TEX(texName) texName.Sample(sampler0, vsOutput.uv)
 
     float3 diffuseAlbedo = SAMPLE_TEX(texDiffuse);
+   
     float3 colorSum = 0;
 
 	float gloss = 128.0;
@@ -440,7 +441,7 @@ MRT main(VSOutput vsOutput)
 			return mrt;
 
 		normal *= rsqrt(lenSq);
-	}
+    }
 
     float3 specularAlbedo = float3(0.56, 0.56, 0.56);
     float specularMask = SAMPLE_TEX(texSpecular).g;
@@ -460,7 +461,7 @@ MRT main(VSOutput vsOutput)
 		}
         mrt.Normal = float4(normal, reflection);
 	}
-
+	mrt.Color = float4(diffuseAlbedo, 1);
     return mrt;
 }
 
