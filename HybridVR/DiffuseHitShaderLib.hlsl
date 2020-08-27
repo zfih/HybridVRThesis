@@ -356,7 +356,7 @@ void Hit(inout RayPayload payload, in BuiltInTriangleIntersectionAttributes attr
 	float reflectivity =
         specularMask * pow(1.0 - saturate(dot(-viewDir, normal)), 5.0);
     
-    if (false && Reflective && payload.Bounces < 3)
+    if (Reflective && payload.Bounces < 3)
 	{
 		float3 reflectionDirection = reflect(viewDir, normal);
 		float3 reflectionOrigin = worldPosition + reflectionDirection * 0.1f;
