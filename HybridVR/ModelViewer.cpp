@@ -202,7 +202,8 @@ struct SceneData
 	std::wstring TextureFolderPath;
 	std::vector<std::string> Reflective;
 	std::vector<std::string> CutOuts;
-
+	
+	bool flipUvY;
 	bool UseCustom;
 	Vector3 StartingPosition;
 	float StartingHeading;
@@ -236,6 +237,7 @@ void g_CreateScene(Scene Scene)
 		g_Scene.StartingPitch = -0.2;
 		g_Scene.StartingPosition = { -3700, 125, 4000 };
 		g_Scene.UseCustom = true;
+		g_Scene.flipUvY = true;
 	} break;
 	case Scene::kBistroExterior: {
 		g_Scene.Matrix = Matrix4::MakeRotationX(-XM_PIDIV2);
@@ -251,6 +253,7 @@ void g_CreateScene(Scene Scene)
 		g_Scene.StartingPitch = -0.2;
 		g_Scene.StartingPosition = { -3700, 125, 4000 };
 		g_Scene.UseCustom = true;
+		g_Scene.flipUvY = true;
 	} break;
 	case Scene::kSponza:
 	{
@@ -413,7 +416,7 @@ private:
 
 int wmain(int argc, wchar_t** argv)
 {
-	g_CreateScene(Scene::kBistroExterior);
+	g_CreateScene(Scene::kSponza);
 	
 #if _DEBUG
 	CComPtr<ID3D12Debug> debugInterface;
@@ -1223,7 +1226,7 @@ void D3D12RaytracingMiniEngineSample::Startup(void)
 
 	
 	TextureManager::Initialize(g_Scene.TextureFolderPath);
-	bool bModelLoadSuccess = m_Model.Load(g_Scene.ModelPath.c_str(), g_Scene.Matrix, g_Scene.InvMatrix);
+	bool bModelLoadSuccess = m_Model.Load(g_Scene.ModelPath.c_str(), g_Scene.Matrix, g_Scene.InvMatrix, g_Scene.flipUvY);
 	ASSERT(bModelLoadSuccess, "Failed to load model");
 	ASSERT(m_Model.m_Header.meshCount > 0, "Model contains no meshes");
 
