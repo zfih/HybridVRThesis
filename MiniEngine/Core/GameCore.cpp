@@ -143,7 +143,7 @@ namespace GameCore
         Graphics::Present();
 
         Settings::g_RenderTimer.Stop();
-        game.TakeScreenshot();
+        //game.TakeScreenshot();
         return !game.IsDone();
     }
 
