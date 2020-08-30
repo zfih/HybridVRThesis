@@ -349,6 +349,13 @@ private:
 	UINT m_CameraPosArrayCurrentPosition;
 
 	bool m_takeScreenshot = false;
+
+	const std::string m_SceneNames[3] =
+	{
+		"BistroInterior",
+		"BistroExterior",
+		"Sponza"
+	};
 };
 
 
@@ -356,7 +363,7 @@ ScreenTextureData g_ScreenTextureData;
 
 int wmain(int argc, wchar_t** argv)
 {
-	g_CreateScene(Scene::kSponza);
+	g_CreateScene(Scene::kBistroExterior);
 	
 #if _DEBUG
 	CComPtr<ID3D12Debug> debugInterface;
@@ -2381,14 +2388,22 @@ void D3D12RaytracingMiniEngineSample::TakeScreenshot()
 {
 	if (m_takeScreenshot)
 	{
-		_mkdir("screenshots");
-		std::wstring ws1 = L"screenshots\\master_cam";
-		std::wstring ws2 = std::to_wstring(m_CameraPosArrayCurrentPosition);
-		std::wstring ws3 = L".png";
+		const std::string sceneName = m_SceneNames[(int)(g_Scene.Scene)];
+		std::string pathName1 = "screenshots\\";
+		std::string pathName2 = "screenshots\\" + sceneName;
+		std::string pathName3 = "screenshots\\" + sceneName + "\\master";
+		int res1 = _mkdir(pathName1.c_str());
+		res1 = _mkdir(pathName2.c_str());
+		res1 = _mkdir(pathName3.c_str());
 
-		auto filename = ws1 + ws2 + ws3;
+		std::wstring ws1 = L"screenshots\\";
+		std::wstring ws2 = std::wstring(sceneName.begin(), sceneName.end());
+		std::wstring ws3 = L"\\master\\master_cam";
+		std::wstring ws4 = std::to_wstring(m_CameraPosArrayCurrentPosition);
+		std::wstring ws5 = L".png";
+		std::wstring filename = ws1 + ws2 + ws3 + ws4 + ws5;
 
-		HRESULT res = DirectX::SaveWICTextureToFile(
+		HRESULT res2 = DirectX::SaveWICTextureToFile(
 			g_CommandManager.GetCommandQueue(),
 			g_SceneColorBuffer.GetResource(),
 			GUID_ContainerFormatPng,
