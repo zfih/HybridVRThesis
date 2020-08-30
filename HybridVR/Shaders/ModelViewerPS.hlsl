@@ -333,7 +333,7 @@ struct MRT
 MRT main(VSOutput vsOutput)
 {
     MRT mrt;
-	mrt.Color = float4(0,1,0,1);
+	mrt.Color = 0.0;
     mrt.Normal = 0.0;
     
     float monoStereoBlend = 1.0f;
@@ -343,12 +343,12 @@ MRT main(VSOutput vsOutput)
 		float depth = texCenterDepth[vsOutput.position.xy];
         if (depth > 0.5f)
         {
-            mrt.Color = float4(0, 0, 1, 0);
+            //mrt.Color = float4(0, 0, 1, 0);
             return mrt;
         }
         else if (depth > 0.001f)
 		{
-			mrt.Color = float4(1, 0, 0, 0);
+			//mrt.Color = float4(1, 0, 0, 0);
 			return mrt;
 		}
         else if (depth > 0.0f)
