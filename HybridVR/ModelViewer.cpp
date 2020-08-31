@@ -491,7 +491,7 @@ namespace Settings
 
 	BoolVar ReprojEnable("LOD/Reproject", true);
 	NumVar DepthThreshold("LOD/Depth Threshold", 0.001);
-	NumVar AngleThreshold("LOD/Angle Threshold", 0.0f);
+	NumVar AngleThreshold("LOD/Angle Threshold", 0.1f);
 	NumVar AngleBlendingRange("LOD/Angle Blending Range", 0.02f);
 	BoolVar DebugColors("LOD/Debug Colors", false);
 
