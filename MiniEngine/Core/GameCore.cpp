@@ -145,6 +145,7 @@ namespace GameCore
         Graphics::Present();
 
         Settings::g_RenderTimer.Stop();
+        game.TakeScreenshot();
         return !game.IsDone();
     }
 

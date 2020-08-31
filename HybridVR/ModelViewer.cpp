@@ -70,7 +70,9 @@
 #include <fstream>
 #include <iso646.h>
 
-
+#include <direct.h>
+#include <wincodec.h>
+#include "ScreenGrab12.h"
 
 #include "../MiniEngine/Core/CameraType.h"
 #include "GlobalState.h"
@@ -307,6 +309,8 @@ public:
 	virtual void RenderUI(class GraphicsContext&) override;
 	virtual void Raytrace(class GraphicsContext&, UINT cam);
 
+	virtual void TakeScreenshot() override;
+
 	void SetCameraToPredefinedPosition(int cameraPosition);
 private:
 	void FrameIntegration();
@@ -411,12 +415,20 @@ private:
 	UINT m_CameraPosArrayCurrentPosition;
 
 	bool m_firstAnimation = true;
+	int m_takeScreenshot = 0;
+
+	const std::string m_SceneNames[3] =
+	{
+		"BistroInterior",
+		"BistroExterior",
+		"Sponza"
+	};
 };
 
 
 int wmain(int argc, wchar_t** argv)
 {
-	g_CreateScene(Scene::kSponza);
+	g_CreateScene(Scene::kBistroExterior);
 	
 #if _DEBUG
 	CComPtr<ID3D12Debug> debugInterface;
@@ -1389,6 +1401,10 @@ void D3D12RaytracingMiniEngineSample::Update(float deltaT)
 	else if (GameInput::IsFirstPressed(GameInput::kKey_f4))
 	{
 		LoadCamPos();
+	}
+	else if (GameInput::IsFirstPressed(GameInput::kKey_f5))
+	{
+		m_takeScreenshot = 2;
 	}
 
 	if(Settings::SetAnimationFrame)
@@ -2421,6 +2437,47 @@ void D3D12RaytracingMiniEngineSample::Raytrace(class GraphicsContext& gfxContext
 
 	// Clear the gfxContext's descriptor heap since ray tracing changes this underneath the sheets
 	gfxContext.SetDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, nullptr);
+}
+
+void D3D12RaytracingMiniEngineSample::TakeScreenshot()
+{
+	if (m_takeScreenshot > 0)
+	{
+		const std::string sceneName = m_SceneNames[(int)(g_Scene.Scene)];
+		std::string pathName1 = "screenshots\\";
+		std::string pathName2 = "screenshots\\" + sceneName;
+		std::string pathName3 = "screenshots\\" + sceneName + "\\tmp";
+		int res1 = _mkdir(pathName1.c_str());
+		res1 = _mkdir(pathName2.c_str());
+		res1 = _mkdir(pathName3.c_str());
+
+		std::wstring ws1 = L"screenshots\\";
+		std::wstring ws2 = std::wstring(sceneName.begin(), sceneName.end());
+		std::wstring ws3;
+		if (GetMipLevel(Cam::kRight) == 0)
+			ws3 = L"\\tmp\\tmp_low_cam";
+		else
+		{
+			ws3 = L"\\tmp\\tmp_high_cam";
+		}
+		std::wstring ws4 = std::to_wstring(m_CameraPosArrayCurrentPosition);
+		std::wstring ws5 = L".png";
+		std::wstring filename = ws1 + ws2 + ws3 + ws4 + ws5;
+
+		HRESULT res2 = DirectX::SaveWICTextureToFile(
+			g_CommandManager.GetCommandQueue(),
+			g_SceneColorBuffer.GetResource(),
+			//g_SceneColorBufferLowPassed.GetResource(),
+			GUID_ContainerFormatPng,
+			filename.c_str(),
+			D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE,
+			D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE,
+			nullptr,
+			nullptr,
+			true);
+
+		m_takeScreenshot--;
+	}
 }
 
 void D3D12RaytracingMiniEngineSample::SaveCamPos()
