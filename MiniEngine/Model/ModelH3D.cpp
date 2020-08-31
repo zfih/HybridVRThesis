@@ -99,10 +99,9 @@ bool Model::LoadH3D(const char *filename, Matrix4 &mat, Matrix4& invMat, bool fl
 		Vertex *v = (Vertex*)(m_pVertexData + m_VertexStride * vertexIndex);
 
 		XMStoreFloat3(&v->p, mat * Vector4(v->p, 1));
-		XMStoreFloat3(&v->n, invMat * Vector4(v->n, 0));
-		XMStoreFloat3(&v->t, invMat * Vector4(v->t, 0));
-		XMStoreFloat3(&v->b, invMat * Vector4(v->b, 0));
-		//v->n.y = -v->n.y;
+		XMStoreFloat3(&v->n, mat * Vector4(v->n, 0));
+		XMStoreFloat3(&v->t, mat * Vector4(v->t, 0));
+		XMStoreFloat3(&v->b, mat * Vector4(v->b, 0));
 		if (flipUvY)
 		{
 			v->uv.y = 1.0 - v->uv.y;

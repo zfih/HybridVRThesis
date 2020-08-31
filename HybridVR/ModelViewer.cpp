@@ -2107,13 +2107,6 @@ void D3D12RaytracingMiniEngineSample::MainRender(GraphicsContext& Ctx, Cam::Came
 		Settings::g_RaytraceTimer[CameraType].Start();
 		Raytrace(Ctx, CameraType);
 		Settings::g_RaytraceTimer[CameraType].Stop();
-		if (g_RayTraceSupport/* && RayTracingMode != RTM_OFF*/)
-		{
-			Settings::g_RaytraceTimer[CameraType].Reset();
-			Settings::g_RaytraceTimer[CameraType].Start();
-			Raytrace(Ctx, CameraType);
-			Settings::g_RaytraceTimer[CameraType].Stop();
-		}
 	}
 }
 
