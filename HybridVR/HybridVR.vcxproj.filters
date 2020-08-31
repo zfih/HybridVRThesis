@@ -126,6 +126,7 @@
     <ClCompile Include="ForwardPlusLighting.cpp" />
     <ClCompile Include="ModelViewer.cpp" />
     <ClCompile Include="stdafx.cpp" />
+    <ClCompile Include="ScreenGrab12.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="ForwardPlusLighting.h" />
@@ -138,6 +139,7 @@
     <ClInclude Include="Raytracing.h" />
     <ClInclude Include="DescriptorHeapStack.h" />
     <ClInclude Include="GlobalState.h" />
+    <ClInclude Include="ScreenGrab12.h" />
   </ItemGroup>
   <ItemGroup>
     <Image Include="Textures\Models\background.DDS">

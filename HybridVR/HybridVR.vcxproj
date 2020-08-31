@@ -91,6 +91,7 @@
   <ItemGroup>
     <ClCompile Include="ForwardPlusLighting.cpp" />
     <ClCompile Include="ModelViewer.cpp" />
+    <ClCompile Include="ScreenGrab12.cpp" />
     <ClCompile Include="stdafx.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -340,6 +341,7 @@
     <ClInclude Include="ModelViewerRayTracing.h" />
     <ClInclude Include="Raytracing.h" />
     <ClInclude Include="RayTracingHlslCompat.h" />
+    <ClInclude Include="ScreenGrab12.h" />
     <ClInclude Include="stdafx.h" />
   </ItemGroup>
   <ItemGroup>
