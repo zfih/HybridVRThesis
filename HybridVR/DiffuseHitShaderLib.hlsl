@@ -35,6 +35,8 @@ Texture2D<float4> g_localSpecular : register(t8);
 
 Texture2DArray<float4>   normals  : register(t13);
 
+RWTexture2D<float> reflectionDistance : register(u3);
+
 uint3 Load3x16BitIndices(
     uint offsetBytes)
 {
@@ -383,6 +385,12 @@ void Hit(inout RayPayload payload, in BuiltInTriangleIntersectionAttributes attr
 	float reflectivity =
         specularMask * pow(1.0 - saturate(dot(-viewDir, normal)), 5.0);
     
+    if (g_dynamic.curCam == 0 && payload.Bounces == 1)
+    {
+        reflectionDistance[DispatchRaysIndex().xy] = 
+            RayTCurrent() / reflectionDistance[DispatchRaysIndex().xy];
+    }
+
     if (Reflective && payload.Bounces < 3)
 	{
 		float3 reflectionDirection = reflect(viewDir, normal);

@@ -420,7 +420,7 @@ private:
 
 int wmain(int argc, wchar_t** argv)
 {
-	g_CreateScene(Scene::kBistroExterior);
+	g_CreateScene(Scene::kSponza);
 	
 #if _DEBUG
 	CComPtr<ID3D12Debug> debugInterface;
@@ -556,13 +556,21 @@ void InitializeSceneInfo(
 static
 void InitializeViews(const Model& model)
 {
-	D3D12_CPU_DESCRIPTOR_HANDLE uavHandle;
-	UINT uavDescriptorIndex;
-	g_GpuSceneMaterialSrvs = new D3D12_GPU_DESCRIPTOR_HANDLE[model.m_Header.materialCount];
-	g_pRaytracingDescriptorHeap->AllocateDescriptor(uavHandle, uavDescriptorIndex);
-	Graphics::g_Device->CopyDescriptorsSimple(1, uavHandle, g_SceneColorBuffer.GetUAV(),
-	                                          D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
-	g_OutputUAV = g_pRaytracingDescriptorHeap->GetGpuHandle(uavDescriptorIndex);
+	{
+		D3D12_CPU_DESCRIPTOR_HANDLE uavHandle;
+		UINT uavDescriptorIndex;
+		g_GpuSceneMaterialSrvs = new D3D12_GPU_DESCRIPTOR_HANDLE[model.m_Header.materialCount];
+		g_pRaytracingDescriptorHeap->AllocateDescriptor(uavHandle, uavDescriptorIndex);
+		Graphics::g_Device->CopyDescriptorsSimple(1, uavHandle, g_SceneColorBuffer.GetUAV(),
+			D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+		g_OutputUAV = g_pRaytracingDescriptorHeap->GetGpuHandle(uavDescriptorIndex);
+
+		UINT unused;
+		g_pRaytracingDescriptorHeap->AllocateDescriptor(uavHandle, unused);
+		Graphics::g_Device->CopyDescriptorsSimple(1, uavHandle, g_SceneReflectionDistBuffer.GetUAV(),
+			D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+		g_OutputUAV = g_pRaytracingDescriptorHeap->GetGpuHandle(uavDescriptorIndex);
+	}
 
 	{
 		D3D12_CPU_DESCRIPTOR_HANDLE srvHandle;
@@ -1236,7 +1244,7 @@ void D3D12RaytracingMiniEngineSample::Startup(void)
 
 	m_ReprojectionRS.Reset(3, 1);
 	m_ReprojectionRS.InitStaticSampler(0, ClampSamplerDesc);
-	m_ReprojectionRS[0].InitAsDescriptorRange(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 0, 4);
+	m_ReprojectionRS[0].InitAsDescriptorRange(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 0, 5);
 	m_ReprojectionRS[1].InitAsDescriptorRange(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 0, 1);
 	m_ReprojectionRS[2].InitAsConstantBuffer(0);
 	m_ReprojectionRS.Finalize(L"Reprojection Root Signature",
@@ -1940,6 +1948,7 @@ void D3D12RaytracingMiniEngineSample::ReprojectScene()
 	reprojectContext.SetDynamicDescriptor(0, 1, g_SceneColorBuffer.GetSRV());
 	reprojectContext.SetDynamicDescriptor(0, 2, g_SceneNormalBuffer.GetSRV());
 	reprojectContext.SetDynamicDescriptor(0, 3, g_SceneRawColorBuffer.GetSRV());
+	reprojectContext.SetDynamicDescriptor(0, 4, g_SceneReflectionDistBuffer.GetSRV());
 
 	reprojectContext.DrawIndexed(m_GridIndexBuffer.GetElementCount(), 0, 0);
 
@@ -2552,6 +2561,8 @@ void D3D12RaytracingMiniEngineSample::RaytraceReflections(
 	context.TransitionResource(g_hitConstantBuffer, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER);
 	context.TransitionResource(colorTarget, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 	context.FlushResourceBarriers();
+
+	context.ClearUAV(g_SceneReflectionDistBuffer);
 
 	ID3D12GraphicsCommandList* pCommandList = context.GetCommandList();
 

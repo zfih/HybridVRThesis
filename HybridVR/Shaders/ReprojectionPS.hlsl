@@ -45,6 +45,7 @@ Texture2D gDepthTex : register(t0);
 Texture2D gLeftEyeTex : register(t1);
 Texture2D gLeftEyeNormalTex : register(t2);
 Texture2D gLeftEyeRawTex : register(t3);
+Texture2D gReflDistTex : register(t4);
 
 static const float PI = 3.141592;
 static const float TWO_PI = PI * 2.0;
@@ -119,11 +120,9 @@ MRT main(VertexOutput vOut)
 	double lower = angleThreshold - halfRange;
 	double upper = angleThreshold + halfRange;
 
-	float depth = gDepthTex.SampleLevel(gLinearSampler, vOut.texC, 0);
-	// todo(Danh) 13:35 07/08: Pass in IPD
-	float angle = abs(2 * atan(0.065 / (2 * depth)) - PI);
+	float reflDist = gReflDistTex.SampleLevel(gLinearSampler, vOut.texC, 0);
 
-	float ratio = saturate((angle - lower) / angleBlendingRange);
+	float ratio = saturate((reflDist - lower) / angleBlendingRange);
 	float invRatio = 1 - ratio;
 	color = invRatio * colorRefl + ratio * colorRaw;
 	normal.w *= ratio;
@@ -131,11 +130,11 @@ MRT main(VertexOutput vOut)
 
 	if (debugColors)
 	{
-		if (angle > upper) // Angle not good enough, redo
+		if (reflDist > upper) // Angle not good enough, redo
 		{
 			color += float4(0.1, 0.0, 0.1, 0);
 		}
-		else if (inRange(angle, lower, upper)) // Blend
+		else if (inRange(reflDist, lower, upper)) // Blend
 		{
 			color += float4(0.1, 0.1, 0, 0);
 		}
