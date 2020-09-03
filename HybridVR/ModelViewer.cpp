@@ -122,6 +122,8 @@ __declspec(align(16)) struct PSConstants
 	uint32_t TileCount[4];
 	uint32_t FirstLightIndex[4];
 	uint32_t FrameIndexMod2;
+
+	int UseSceneLighting;
 };
 
 ByteAddressBuffer g_hitConstantBuffer;
@@ -179,7 +181,6 @@ struct SceneData
 	std::vector<std::string> CutOuts;
 	
 	bool flipUvY;
-	float inverseNormals;
 	bool UseCustom;
 	Vector3 StartingPosition;
 	float StartingHeading;
@@ -189,6 +190,8 @@ struct SceneData
 	float SunOrientation;
 	float SunInclination;
 	float SunIntensity;
+
+	bool ComputeBoundingBoxes;
 };
 
 SceneData g_Scene {};
@@ -221,7 +224,7 @@ void g_CreateScene(Scene Scene)
 		g_Scene.StartingPosition = { -3700, 125, 4000 };
 		g_Scene.UseCustom = true;
 		g_Scene.flipUvY = true;
-		g_Scene.inverseNormals = true;
+		g_Scene.ComputeBoundingBoxes = true;
 	} break;
 	case Scene::kBistroExterior: {
 		g_Scene.Matrix = Matrix4::MakeRotationX(-XM_PIDIV2);
@@ -238,7 +241,7 @@ void g_CreateScene(Scene Scene)
 		g_Scene.StartingPosition = { -3700, 125, 4000 };
 		g_Scene.UseCustom = true;
 		g_Scene.flipUvY = true;
-		g_Scene.inverseNormals = true;
+		g_Scene.ComputeBoundingBoxes = true;
 	} break;
 	case Scene::kSponza:
 	{
@@ -247,13 +250,11 @@ void g_CreateScene(Scene Scene)
 		g_Scene.TextureFolderPath = ASSET_DIRECTORY L"Models/Sponza/Textures/";
 		g_Scene.Reflective = { "floor" };
 		g_Scene.CutOuts = { "thorn", "plant", "chain" };
-		g_Scene.inverseNormals = false;
 		g_Scene.UseCustom = false;
 	} break;
 	default:
 		g_CreateScene(Scene::kSponza);
 		break;
-
 	}
 	g_Scene.InvMatrix = Matrix4(XMMatrixInverse(nullptr, g_Scene.Matrix));
 }
@@ -420,7 +421,7 @@ private:
 
 int wmain(int argc, wchar_t** argv)
 {
-	g_CreateScene(Scene::kBistroExterior);
+	g_CreateScene(Scene::kSponza);
 	
 #if _DEBUG
 	CComPtr<ID3D12Debug> debugInterface;
@@ -1288,7 +1289,7 @@ void D3D12RaytracingMiniEngineSample::Startup(void)
 		g_Scene.Matrix,
 		g_Scene.InvMatrix,
 		g_Scene.flipUvY,
-		g_Scene.inverseNormals);
+		g_Scene.ComputeBoundingBoxes);
 	ASSERT(bModelLoadSuccess, "Failed to load model");
 	ASSERT(m_Model.m_Header.meshCount > 0, "Model contains no meshes");
 
@@ -2228,6 +2229,7 @@ void D3D12RaytracingMiniEngineSample::RenderScene()
 	psConstants.FirstLightIndex[0] = Lighting::m_FirstConeLight;
 	psConstants.FirstLightIndex[1] = Lighting::m_FirstConeShadowedLight;
 	psConstants.FrameIndexMod2 = TemporalEffects::GetFrameIndexMod2();
+	psConstants.UseSceneLighting = Settings::UseSceneLighting;
 
 
 	if (!skipShadowMap)

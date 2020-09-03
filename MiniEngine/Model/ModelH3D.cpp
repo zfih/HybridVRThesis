@@ -23,7 +23,7 @@
 
 #include "../../HybridVR/HlslCompat.h"
 
-bool Model::LoadH3D(const char *filename, Matrix4 &mat, Matrix4& invMat, bool flipUvY, float inverseNormals)
+bool Model::LoadH3D(const char *filename, Matrix4 &mat, Matrix4 &invMat, bool flipUvY, bool computeBoundingBox)
 {
 	FILE *file = nullptr;
 	if(0 != fopen_s(&file, filename, "rb"))
@@ -102,10 +102,15 @@ bool Model::LoadH3D(const char *filename, Matrix4 &mat, Matrix4& invMat, bool fl
 		XMStoreFloat3(&v->n, mat * Vector4(v->n, 0));
 		XMStoreFloat3(&v->t, mat * Vector4(v->t, 0));
 		XMStoreFloat3(&v->b, mat * Vector4(v->b, 0));
-		if (flipUvY)
+		if(flipUvY)
 		{
 			v->uv.y = 1.0 - v->uv.y;
 		}
+	}
+
+	if(computeBoundingBox)
+	{
+		ComputeAllBoundingBoxes();
 	}
 
 	m_VertexBuffer.Create(L"VertexBuffer", m_Header.vertexDataByteSize / m_VertexStride, m_VertexStride, m_pVertexData);
