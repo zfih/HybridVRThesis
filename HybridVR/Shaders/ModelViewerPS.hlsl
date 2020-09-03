@@ -466,10 +466,6 @@ MRT main(VSOutput vsOutput)
 
 	float3 diffuseAlbedo = SAMPLE_TEX(texDiffuse);
 	float3 colorSum = 0;
-	{
-		float ao = texSSAO[pixelPos];
-		colorSum += ApplyAmbientLight(diffuseAlbedo, ao, AmbientColor);
-	}
 
 	float gloss = 128.0;
 	float3 normal;
