@@ -110,6 +110,8 @@ __declspec(align(16)) struct PSConstants
 	uint32_t TileCount[4];
 	uint32_t FirstLightIndex[4];
 	uint32_t FrameIndexMod2;
+
+	int UseSceneLighting;
 };
 
 ByteAddressBuffer g_hitConstantBuffer;
@@ -175,6 +177,8 @@ struct SceneData
 	float SunOrientation;
 	float SunInclination;
 	float SunIntensity;
+
+	bool ComputeBoundingBoxes;
 };
 
 SceneData g_Scene {};
@@ -200,6 +204,7 @@ void g_CreateScene(Scene Scene)
 		g_Scene.StartingPosition = { -3700, 125, 4000 };
 		g_Scene.UseCustom = true;
 		g_Scene.flipUvY = true;
+		g_Scene.ComputeBoundingBoxes = true;
 	} break;
 	case Scene::kBistroExterior: {
 		g_Scene.Matrix = Matrix4::MakeRotationX(-XM_PIDIV2);
@@ -216,6 +221,7 @@ void g_CreateScene(Scene Scene)
 		g_Scene.StartingPosition = { -3700, 125, 4000 };
 		g_Scene.UseCustom = true;
 		g_Scene.flipUvY = true;
+		g_Scene.ComputeBoundingBoxes = true;
 	} break;
 	case Scene::kSponza:
 	{
@@ -375,7 +381,7 @@ private:
 
 int wmain(int argc, wchar_t** argv)
 {
-	g_CreateScene(Scene::kBistroExterior);
+	g_CreateScene(Scene::kSponza);
 	
 #if _DEBUG
 	CComPtr<ID3D12Debug> debugInterface;
@@ -1150,7 +1156,7 @@ void D3D12RaytracingMiniEngineSample::Startup(void)
 
 	
 	TextureManager::Initialize(g_Scene.TextureFolderPath);
-	bool bModelLoadSuccess = m_Model.Load(g_Scene.ModelPath.c_str(), g_Scene.Matrix, g_Scene.InvMatrix, g_Scene.flipUvY);
+	bool bModelLoadSuccess = m_Model.Load(g_Scene.ModelPath.c_str(), g_Scene.Matrix, g_Scene.InvMatrix, g_Scene.flipUvY, g_Scene.ComputeBoundingBoxes);
 	ASSERT(bModelLoadSuccess, "Failed to load model");
 	ASSERT(m_Model.m_Header.meshCount > 0, "Model contains no meshes");
 
@@ -1912,6 +1918,7 @@ void D3D12RaytracingMiniEngineSample::RenderScene()
 	psConstants.FirstLightIndex[0] = Lighting::m_FirstConeLight;
 	psConstants.FirstLightIndex[1] = Lighting::m_FirstConeShadowedLight;
 	psConstants.FrameIndexMod2 = TemporalEffects::GetFrameIndexMod2();
+	psConstants.UseSceneLighting = Settings::UseSceneLighting;
 
 	if(!skipShadowMap)
 	{

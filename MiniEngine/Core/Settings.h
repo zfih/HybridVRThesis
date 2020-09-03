@@ -39,6 +39,8 @@ namespace Settings
 
 	// Lighting Grid
 	extern IntVar LightGridDim;
+	extern BoolVar UseSceneLighting;
+
 	// Lighting Grid
 
 	// FXAA
