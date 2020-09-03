@@ -330,6 +330,27 @@ struct MRT
 	float4 Normal : SV_Target1;
 };
 
+float3 ApplyPointLighting(float3 diffuse, float3 specular, float specularMask, float gloss, float3 normal, float3 viewDir, float3 pos)
+{
+	float3 colorSum;
+	for (int pointLightIndex = 0; pointLightIndex < 128; pointLightIndex++)
+	{
+		LightData lightData = lightBuffer[pointLightIndex];
+		colorSum += ApplyPointLight(
+			diffuse,
+			specular,
+			specularMask,
+			gloss,
+			normal,
+			viewDir,
+			pos,
+			lightData.pos,
+			lightData.radiusSq,
+			lightData.color);
+	}
+	return colorSum;
+}
+
 [RootSignature(ModelViewer_RootSig)]
 MRT main(VSOutput vsOutput)
 {
@@ -369,6 +390,7 @@ MRT main(VSOutput vsOutput)
 	float specularMask = SAMPLE_TEX(texSpecular).g;
 	float3 viewDir = normalize(vsOutput.viewDir);
 	colorSum += ApplyDirectionalLight(diffuseAlbedo, specularAlbedo, specularMask, gloss, normal, viewDir, SunDirection, SunColor, vsOutput.shadowCoord);
+	colorSum += ApplyPointLighting(diffuseAlbedo, specularAlbedo, specularMask, gloss, normal, viewDir, vsOutput.worldPos);
 
 	mrt.Color = ApplySRGBCurve(colorSum);
 
