@@ -69,6 +69,11 @@
 
 #include <iostream>
 #include <fstream>
+#include <iso646.h>
+
+#include <direct.h>
+#include <wincodec.h>
+#include "ScreenGrab12.h"
 
 #include "../MiniEngine/Core/CameraType.h"
 #include "GlobalState.h"
@@ -288,6 +293,8 @@ public:
 
 	virtual void Raytrace(class GraphicsContext&, UINT cam);
 
+	virtual void TakeScreenshot() override;
+
 	void SetCameraToPredefinedPosition(int cameraPosition);
 private:
 	
@@ -395,6 +402,14 @@ private:
 	UINT m_CameraPosArrayCurrentPosition;
 
 	bool m_firstAnimation = true;
+	bool m_takeScreenshot = false;
+
+	const std::string m_SceneNames[3] =
+	{
+		"BistroInterior",
+		"BistroExterior",
+		"Sponza"
+	};
 };
 
 
@@ -1407,6 +1422,10 @@ void D3D12RaytracingMiniEngineSample::Update(float deltaT)
 	else if (GameInput::IsFirstPressed(GameInput::kKey_f4))
 	{
 		LoadCamPos();
+	}
+	else if (GameInput::IsFirstPressed(GameInput::kKey_f5))
+	{
+		m_takeScreenshot = true;
 	}
 
 	if(Settings::SetAnimationFrame)
@@ -2548,6 +2567,40 @@ void D3D12RaytracingMiniEngineSample::Raytrace(class GraphicsContext& gfxContext
 	gfxContext.SetDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, nullptr);
 
 	gfxContext.TransitionResource(g_SceneColorBuffer, D3D12_RESOURCE_STATE_RENDER_TARGET);
+}
+
+void D3D12RaytracingMiniEngineSample::TakeScreenshot()
+{
+	if (m_takeScreenshot)
+	{
+		const std::string sceneName = m_SceneNames[(int)(g_Scene.Scene)];
+		std::string pathName1 = "screenshots\\";
+		std::string pathName2 = "screenshots\\" + sceneName;
+		std::string pathName3 = "screenshots\\" + sceneName + "\\asrp";
+		int res1 = _mkdir(pathName1.c_str());
+		res1 = _mkdir(pathName2.c_str());
+		res1 = _mkdir(pathName3.c_str());
+
+		std::wstring ws1 = L"screenshots\\";
+		std::wstring ws2 = std::wstring(sceneName.begin(), sceneName.end());
+		std::wstring ws3 = L"\\asrp\\asrp_cam";
+		std::wstring ws4 = std::to_wstring(m_CameraPosArrayCurrentPosition);
+		std::wstring ws5 = L".png";
+		std::wstring filename = ws1 + ws2 + ws3 + ws4 + ws5;
+
+		HRESULT res2 = DirectX::SaveWICTextureToFile(
+			g_CommandManager.GetCommandQueue(),
+			g_SceneColorBuffer.GetResource(),
+			GUID_ContainerFormatPng,
+			filename.c_str(),
+			D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE,
+			D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE,
+			nullptr,
+			nullptr,
+			true);
+
+		m_takeScreenshot = false;
+	}
 }
 
 void D3D12RaytracingMiniEngineSample::SaveCamPos()
