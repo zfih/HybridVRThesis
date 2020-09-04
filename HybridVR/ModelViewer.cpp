@@ -2713,14 +2713,14 @@ void D3D12RaytracingMiniEngineSample::TakeScreenshot()
 		const std::string sceneName = m_SceneNames[(int)(g_Scene.Scene)];
 		std::string pathName1 = "screenshots\\";
 		std::string pathName2 = "screenshots\\" + sceneName;
-		std::string pathName3 = "screenshots\\" + sceneName + "\\asrp_plus";
+		std::string pathName3 = "screenshots\\" + sceneName + "\\new_metric";
 		int res1 = _mkdir(pathName1.c_str());
 		res1 = _mkdir(pathName2.c_str());
 		res1 = _mkdir(pathName3.c_str());
 
 		std::wstring ws1 = L"screenshots\\";
 		std::wstring ws2 = std::wstring(sceneName.begin(), sceneName.end());
-		std::wstring ws3 = L"\\asrp_plus\\asrp_plus_cam";
+		std::wstring ws3 = L"\\new_metric\\new_metric_cam";
 		std::wstring ws4 = std::to_wstring(m_CameraPosArrayCurrentPosition);
 		std::wstring ws5 = L".png";
 		std::wstring filename = ws1 + ws2 + ws3 + ws4 + ws5;
