@@ -492,8 +492,8 @@ namespace Settings
 
 	BoolVar ReprojEnable("LOD/Reproject", true);
 	NumVar DepthThreshold("LOD/Depth Threshold", 0.001);
-	NumVar AngleThreshold("LOD/Angle Threshold", 0.1f);
-	NumVar AngleBlendingRange("LOD/Angle Blending Range", 0.02f);
+	NumVar AngleThreshold("LOD/Angle Threshold", 0.0f);
+	NumVar AngleBlendingRange("LOD/Angle Blending Range", 0.0f);
 	BoolVar DebugColors("LOD/Debug Colors", false);
 
 	EnumVar RayTracingMode("Application/Raytracing/RayTraceMode", RTM_DIFFUSE_WITH_SHADOWMAPS, _countof(rayTracingModes), rayTracingModes);
@@ -819,7 +819,7 @@ void D3D12RaytracingMiniEngineSample::InitializeRaytracingStateObjects(
 	                          byte* pShaderTable)
 	{
 		ID3D12StateObjectProperties* stateObjectProperties = nullptr;
-		ThrowIfFailed(pPSO->QueryInterface(IID_PPV_ARGS(&stateObjectProperties)));
+	ThrowIfFailed(pPSO->QueryInterface(IID_PPV_ARGS(&stateObjectProperties)));
 		void* pHitGroupIdentifierData = stateObjectProperties->
 			GetShaderIdentifier(hitGroupExportName);
 		for (UINT i = 0; i < numMeshes; i++)
@@ -1119,7 +1119,7 @@ void D3D12RaytracingMiniEngineSample::Startup(void)
 	ThrowIfFailed(g_Device->QueryInterface(IID_PPV_ARGS(&g_pRaytracingDevice)),
 	              L"Couldn't get DirectX Raytracing interface for the device.\n");
 
-	DXGI_FORMAT normalFormat = DXGI_FORMAT_R8G8B8A8_SNORM;
+	DXGI_FORMAT normalFormat = DXGI_FORMAT_R16G16B16A16_SNORM;
 	g_SceneNormalBuffer.CreateArray(L"Main Normal Buffer", g_SceneColorBuffer.GetWidth(), g_SceneColorBuffer.GetHeight(), 2,
 		normalFormat);
 

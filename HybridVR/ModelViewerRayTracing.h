@@ -49,23 +49,23 @@ cbuffer b1 : register(b1)
 };
 
 
-inline float3 UnprojectPixel(uint2 pixel)
+inline float3 UnprojectPixel(uint2 pixel, float depth)
 {
     float2 xy = pixel + 0.5; // center in the middle of the pixel
-    float2 screenPos = xy / g_dynamic.resolution * 2.0 - 1.0;
+    float2 screenPos = (xy / g_dynamic.resolution) * 2.0 - 1.0;
 
     // Invert Y for DirectX-style coordinates
     screenPos.y = -screenPos.y;
 
     // Unproject into a ray
-    float4 unprojected = mul(g_dynamic.cameraToWorld, float4(screenPos, 0, 1));
-    float3 world = unprojected.xyz / unprojected.w;
-    return world;
+    float4 unprojected = mul(g_dynamic.cameraToWorld, float4(screenPos, depth, 1));
+    float3 result = unprojected.xyz / unprojected.w;
+    return result;
 }
 
-inline void GenerateCameraRay(uint2 index, out float3 origin, out float3 direction)
+inline void GenerateCameraRay(uint2 pixel, out float3 origin, out float3 direction)
 {
-    float3 world = UnprojectPixel(index);
+    float3 world = UnprojectPixel(pixel, 1);
     origin = g_dynamic.worldCameraPosition;
     direction = normalize(world - origin);
 }

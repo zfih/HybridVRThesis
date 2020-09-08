@@ -318,16 +318,10 @@ void Hit(inout RayPayload payload, in BuiltInTriangleIntersectionAttributes attr
         if (!isfinite(lenSq) || lenSq < 1e-6)
             return;
 
-
         normal *= rsqrt(lenSq);
 	}
     
-    float3 outputColor = AmbientColor * diffuseColor;
-    
-    if (!payload.Bounces)
-    {
-        //outputColor *= texSSAO[DispatchRaysIndex().xy];
-    }
+    float3 outputColor = AmbientColor * diffuseColor.rgb;
 
 	float shadow = 1.0;
 	if (UseShadowRays)
@@ -362,7 +356,7 @@ void Hit(inout RayPayload payload, in BuiltInTriangleIntersectionAttributes attr
     
 	const float3 viewDir = WorldRayDirection();
 	outputColor += shadow * ApplyLightCommon(
-        diffuseColor,
+        diffuseColor.rgb,
         specularAlbedo,
         specularMask,
         gloss,
@@ -375,23 +369,25 @@ void Hit(inout RayPayload payload, in BuiltInTriangleIntersectionAttributes attr
     
 	if (payload.Bounces > 0)
 	{
-		outputColor = g_screenOutput[int3(DispatchRaysIndex().xy, g_dynamic.curCam)].rgb * (1 - payload.Reflectivity) + payload.Reflectivity * outputColor;
-	}
+		outputColor = 
+            g_screenOutput[pixel].rgb * (1 - payload.Reflectivity) + 
+            payload.Reflectivity * outputColor;
+    }
     
-	g_screenOutput[int3(DispatchRaysIndex().xy, g_dynamic.curCam)] = float4(outputColor, 1);
+	g_screenOutput[pixel] = float4(outputColor, 1);
     
 	float reflectivity =
         specularMask * pow(1.0 - saturate(dot(-viewDir, normal)), 5.0);
     
     if (Reflective && payload.Bounces < 3)
 	{
-		float3 reflectionDirection = reflect(viewDir, normal);
-		float3 reflectionOrigin = worldPosition + reflectionDirection * 0.1f;
+		float3 direction = reflect(viewDir, normal);
+		float3 origin = worldPosition - viewDir * 0.001;
 		RayDesc rayDesc =
 		{
-			reflectionOrigin,
+			origin,
             0.0f,
-            reflectionDirection,
+            direction,
             FLT_MAX
 		};
 		RayPayload reflectionPayload;
