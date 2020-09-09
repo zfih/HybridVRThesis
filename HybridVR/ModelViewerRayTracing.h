@@ -67,7 +67,7 @@ inline float3 UnprojectPixel(uint2 pixel, float depth)
 
 inline void GenerateCameraRay(uint2 pixel, out float3 origin, out float3 direction)
 {
-    float3 world = UnprojectPixel(pixel, 1);
+    float3 world = UnprojectPixel(pixel, 0);
     origin = g_dynamic.worldCameraPosition;
     direction = normalize(world - origin);
 }
@@ -96,19 +96,19 @@ void GenerateSSRRay(float2 pixel, float depth, float3 normal, float specular,
 
 void FireRay(float3 origin, float3 direction, float bounces, float reflectivity)
 {
-    RayDesc rayDesc;
-    rayDesc.Origin = origin;
-    rayDesc.Direction = direction;
-    rayDesc.TMin = 0;
-    rayDesc.TMax = FLT_MAX;
+	RayDesc rayDesc;
+	rayDesc.Origin = origin;
+	rayDesc.Direction = direction;
+	rayDesc.TMin= 0;
+	rayDesc.TMax = FLT_MAX;
 
-    RayPayload payload;
-    payload.SkipShading = false;
-    payload.RayHitT = FLT_MAX;
-    payload.Bounces = bounces;
-    payload.Reflectivity = reflectivity;
-    TraceRay(
-        g_accel, RAY_FLAG_CULL_BACK_FACING_TRIANGLES,
-        ~0, 0, 1, 0, rayDesc, payload);
+	RayPayload payload;
+	payload.SkipShading = false;
+	payload.RayHitT = FLT_MAX;
+	payload.Bounces = bounces;
+	payload.Reflectivity = reflectivity;
+	TraceRay(
+		g_accel, RAY_FLAG_CULL_BACK_FACING_TRIANGLES, 
+		~0, 0, 1, 0, rayDesc, payload);
 }
 #endif
