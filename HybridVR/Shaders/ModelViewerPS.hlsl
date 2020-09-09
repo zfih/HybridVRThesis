@@ -376,24 +376,6 @@ float3 ApplyConeShadowedLight(
 	);
 }
 
-#define POINT_LIGHT_PARAMS \
-    diffuseAlbedo, \
-    specularAlbedo, \
-    specularMask, \
-    gloss, \
-    normal, \
-    viewDir, \
-    vsOutput.worldPos, \
-    lightData.pos, \
-    lightData.radiusSq, \
-    lightData.color
-
-#define SPOT_LIGHT_PARAMS \
-    POINT_LIGHT_PARAMS,    lightData.coneDir, lightData.coneAngles
-
-#define SHADOWED_LIGHT_PARAMS \
-    SPOT_LIGHT_PARAMS, lightData.shadowTextureMatrix, lightIndex
-
 uint PullNextBit(inout uint bits)
 {
 	uint bitIndex = firstbitlow(bits);
@@ -453,6 +435,27 @@ float3 ApplySceneLights(
 	return colorSum;
 }
 
+float3 GetNormal(
+	float3 normalSample, float3 vsNormal, float3 vsTangent, float3 vsBitangent,
+	inout float inout_gloss, out bool out_success)
+{
+	float3 result = normalSample;
+
+	AntiAliasSpecular(result, inout_gloss);
+	float3x3 tbn = float3x3(vsTangent, vsBitangent, vsNormal);
+	result = mul(result, tbn);
+
+	// Normalize result...
+	float lenSq = dot(result, result);
+
+	// Detect degenerate normals
+	out_success = !(!isfinite(lenSq) || lenSq < 1e-6);
+
+	result *= rsqrt(lenSq);
+	return result;
+}
+
+
 [RootSignature(ModelViewer_RootSig)]
 MRT main(VSOutput vsOutput)
 {
@@ -464,31 +467,19 @@ MRT main(VSOutput vsOutput)
 	uint2 pixelPos = uint2(vsOutput.position.xy);
 #define SAMPLE_TEX(texName) texName.Sample(sampler0, vsOutput.uv)
 
-	float3 diffuseAlbedo = SAMPLE_TEX(texDiffuse);
-	float3 colorSum = 0;
-
 	float gloss = 128.0;
-	float3 normal;
-	{
-		normal = SAMPLE_TEX(texNormal) * 2.0 - 1.0;
-		AntiAliasSpecular(normal, gloss);
-		float3x3 tbn = float3x3(normalize(vsOutput.tangent), normalize(vsOutput.bitangent), normalize(vsOutput.normal));
-		normal = mul(normal, tbn);
-
-		// Normalize result...
-		float lenSq = dot(normal, normal);
-
-		// Some Sponza content appears to have no tangent space provided, resulting in degenerate normal vectors.
-		if(!isfinite(lenSq) || lenSq < 1e-6)
-			return mrt;
-
-		normal *= rsqrt(lenSq);
-	}
+	float3 normalSample = SAMPLE_TEX(texNormal) * 2.0 - 1.0;
+	bool hasValidNormals;
+	float3 normal = GetNormal(
+		normalSample, vsOutput.normal, vsOutput.tangent, vsOutput.bitangent, 
+		gloss, hasValidNormals);
 
     float3 specularAlbedo = float3(0.56, 0.56, 0.56);
     float specularMask = SAMPLE_TEX(texSpecular).g;
     float3 viewDir = normalize(vsOutput.viewDir);
 
+	float3 diffuseAlbedo = SAMPLE_TEX(texDiffuse);
+	float3 colorSum = 0;
     colorSum += ApplyDirectionalLight(diffuseAlbedo, specularAlbedo, specularMask, gloss, normal, viewDir, SunDirection, SunColor, vsOutput.shadowCoord);
     colorSum += ApplyAmbientLight(diffuseAlbedo, 1, AmbientColor);
 	

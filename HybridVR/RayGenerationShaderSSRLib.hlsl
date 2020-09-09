@@ -56,6 +56,4 @@ void RayGen()
     payload.Bounces = 1;
 	payload.Reflectivity = normalData.w;
     TraceRay(g_accel, RAY_FLAG_CULL_BACK_FACING_TRIANGLES, ~0,0,1,0, rayDesc, payload);
-    
-	//g_screenOutput[int3(DispatchRaysIndex().xy, g_dynamic.curCam)] = float4(normalData.w, 0, 0, 1);
 }
