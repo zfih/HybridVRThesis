@@ -67,7 +67,7 @@ inline float3 UnprojectPixel(uint2 pixel, float depth)
 
 inline void GenerateCameraRay(uint2 pixel, out float3 origin, out float3 direction)
 {
-    float3 world = UnprojectPixel(pixel, 0);
+    float3 world = UnprojectPixel(pixel, 1);
     origin = g_dynamic.worldCameraPosition;
     direction = normalize(world - origin);
 }

@@ -397,7 +397,7 @@ void Hit(inout RayPayload payload, in BuiltInTriangleIntersectionAttributes attr
 	// ApplyDirectionalLight.GetShadow
 	float shadow = GetShadowMultiplier(worldPosition, payload.Bounces);
 
-	// ApplyDirectionalLight.(Shadow * )
+	// ApplyDirectionalLight.(Shadow * Light Common)
 	colorSum += shadow * ApplyLightCommon(
 		diffuseColor.rgb,
 		specularAlbedo,
@@ -416,7 +416,6 @@ void Hit(inout RayPayload payload, in BuiltInTriangleIntersectionAttributes attr
 	}
 
 	g_screenOutput[pixel] = float4(colorSum, 1);
-
 
 	float reflectivity = CalculateReflectivity(specularMask, viewDir, normal);
 

@@ -12,11 +12,10 @@
 #define HLSL
 #include "ModelViewerRaytracing.h"
 
-
 Texture2DArray<float> g_depth : register(t12);
 Texture2DArray<float4> g_normals : register(t13);
 
-void ScreenSpaceReflection(float4 normalSpecular, int3 pixel)
+void ScreenSpaceReflection(float3 normal, float specular, int3 pixel)
 {
 	float depth = g_depth[pixel];
 
@@ -25,7 +24,7 @@ void ScreenSpaceReflection(float4 normalSpecular, int3 pixel)
 	float reflectivity;
 
 	GenerateSSRRay(
-		pixel.xy, depth, normalSpecular.xyz, normalSpecular.w,
+		pixel.xy, depth, normal, specular,
 		origin, direction, reflectivity);
 
 	float numBounces = 1;
@@ -44,27 +43,42 @@ void FullTrace(int3 pixel)
 	FireRay(origin, direction, numBounces, reflectivity);
 }
 
+inline bool PixelCanBeReused(float specular, float alpha)
+{
+	return specular == 0.0 && alpha != 0;
+}
+
+inline bool PixelNeedsReflections(float specular, float alpha)
+{
+	return specular != 0 && alpha != 0;
+}
+
+inline bool PixelNeedsFullRaytrace(float alpha)
+{
+	return alpha == 0;
+}
+
 [shader("raygeneration")]
 void RayGen()
 {
 	int3 pixel = int3(DispatchRaysIndex().xy, g_dynamic.curCam);
-	float4 normal = g_normals[pixel];
+
+	float4 normalSpecular = g_normals[pixel];
+	float specular = normalSpecular.w;
+	float3 normal = normalSpecular.xyz;
+
 	float4 color = g_screenOutput[pixel];
 	
-	// Pixel Good - Green
-	if(normal.w == 0.0 && color.a != 0)
+	if(PixelCanBeReused(specular, color.a))
 	{
+		// Do nothing
 	}
-	else if(normal.w != 0.0 && color.a != 0)// Need refl
+	else if(PixelNeedsReflections(specular, color.a))
 	{
-		ScreenSpaceReflection(normal, pixel);
+		ScreenSpaceReflection(normal, specular, pixel);
 	}
-	else if (color.a == 0) // Needs full
+	else if (PixelNeedsFullRaytrace(color.a))
 	{
 		FullTrace(pixel);
-	}
-	else // Should never happen
-	{
-		g_screenOutput[pixel] = float4(1, 0, 1, 1);
 	}
 }
