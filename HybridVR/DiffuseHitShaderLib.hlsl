@@ -260,6 +260,40 @@ float3 GetNormal(
 	return result;
 }
 
+float GetShadowMultiplier(float3 position, int bounces)
+{
+	float shadow = 1.0;
+	if (UseShadowRays)
+	{
+		float3 shadowDirection = SunDirection;
+		float3 shadowOrigin = position;
+		RayDesc rayDesc =
+		{
+			shadowOrigin,
+			0.1f,
+			shadowDirection,
+			FLT_MAX
+		};
+		RayPayload shadowPayload;
+		shadowPayload.SkipShading = true;
+		shadowPayload.RayHitT = FLT_MAX;
+		shadowPayload.Bounces = bounces + 1;
+		TraceRay(g_accel, RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH, ~0, 0, 1, 0, rayDesc, shadowPayload);
+		if (shadowPayload.RayHitT < FLT_MAX)
+		{
+			shadow = 0.0;
+		}
+	}
+	else
+	{
+		// TODO: This could be pre-calculated once per vertex if this mul per pixel was a concern
+		float4 shadowCoord = mul(ModelToShadow, float4(position, 1.0f));
+		shadow = GetShadow(shadowCoord.xyz);
+	}
+
+	return shadow;
+}
+
 [shader("closesthit")]
 void Hit(inout RayPayload payload, in BuiltInTriangleIntersectionAttributes attr)
 {
@@ -340,7 +374,7 @@ void Hit(inout RayPayload payload, in BuiltInTriangleIntersectionAttributes attr
 	//// ACTUAL SHADING
 
 	float gloss = 128.0;
-	bool hasValidNormal = false;
+	bool hasValidNormal;
 	float3 normal = GetNormal(
 		uv, ddx, ddy, vsNormal, vsTangent, vsBitangent, gloss, hasValidNormal);
 
@@ -349,43 +383,22 @@ void Hit(inout RayPayload payload, in BuiltInTriangleIntersectionAttributes attr
 		return;
 	}
 
-	float3 specularAlbedo = float3(0.56, 0.56, 0.56);
-	float specularMask = SAMPLE_TEX(g_localSpecular).g;
+	const float3 specularAlbedo = float3(0.56, 0.56, 0.56);
+	const float specularMask = SAMPLE_TEX(g_localSpecular).g;
+	const float3 viewDir = WorldRayDirection();
 
 	const float3 diffuseColor = SAMPLE_TEX(g_localTexture).rgb;
-	float3 outputColor = AmbientColor * diffuseColor.rgb;
 
-	float shadow = 1.0;
-	if (UseShadowRays)
-	{
-		float3 shadowDirection = SunDirection;
-		float3 shadowOrigin = worldPosition;
-		RayDesc rayDesc =
-		{
-			shadowOrigin,
-			0.1f,
-			shadowDirection,
-			FLT_MAX
-		};
-		RayPayload shadowPayload;
-		shadowPayload.SkipShading = true;
-		shadowPayload.RayHitT = FLT_MAX;
-		shadowPayload.Bounces = payload.Bounces + 1;
-		TraceRay(g_accel, RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH, ~0, 0, 1, 0, rayDesc, shadowPayload);
-		if (shadowPayload.RayHitT < FLT_MAX)
-		{
-			shadow = 0.0;
-		}
-	}
-	else
-	{
-		// TODO: This could be pre-calculated once per vertex if this mul per pixel was a concern
-		float4 shadowCoord = mul(ModelToShadow, float4(worldPosition, 1.0f));
-		shadow = GetShadow(shadowCoord.xyz);
-	}
+	float3 colorSum = 0;
 
-	const float3 viewDir = WorldRayDirection();
-	outputColor += shadow * ApplyLightCommon(
+	// ApplyAmbientLight
+	colorSum += AmbientColor * diffuseColor.rgb;
+
+	// ApplyDirectionalLight.GetShadow
+	float shadow = GetShadowMultiplier(worldPosition, payload.Bounces);
+
+	// ApplyDirectionalLight.(Shadow * )
+	colorSum += shadow * ApplyLightCommon(
 		diffuseColor.rgb,
 		specularAlbedo,
 		specularMask,
@@ -395,39 +408,25 @@ void Hit(inout RayPayload payload, in BuiltInTriangleIntersectionAttributes attr
 		SunDirection,
 		SunColor);
 
-	outputColor = ApplySRGBCurve(outputColor);
+	colorSum = ApplySRGBCurve(colorSum);
 
 	if (payload.Bounces > 0)
 	{
-		outputColor =
-			g_screenOutput[pixel].rgb * (1 - payload.Reflectivity) +
-			payload.Reflectivity * outputColor;
+		colorSum = g_screenOutput[pixel].rgb * (1 - payload.Reflectivity) + payload.Reflectivity * colorSum;
 	}
 
-	g_screenOutput[pixel] = float4(outputColor, 1);
+	g_screenOutput[pixel] = float4(colorSum, 1);
 
 
-	float reflectivity =
-		specularMask * pow(1.0 - saturate(dot(-viewDir, normal)), 5.0);
+	float reflectivity = CalculateReflectivity(specularMask, viewDir, normal);
 
+	// TODO: Revert to 3 bounces when done debugging
 	if (Reflective && payload.Bounces < 1)
 	{
-		float3 direction = reflect(viewDir, normal);
-		float3 origin = worldPosition - viewDir * 0.001;
-
-
-		RayDesc rayDesc =
-		{
-			origin,
-			0.0f,
-			direction,
-			FLT_MAX
-		};
-		RayPayload reflectionPayload;
-		reflectionPayload.SkipShading = false;
-		reflectionPayload.RayHitT = FLT_MAX;
-		reflectionPayload.Bounces = payload.Bounces + 1;
-		reflectionPayload.Reflectivity = reflectivity * payload.Reflectivity;
-		TraceRay(g_accel, RAY_FLAG_CULL_BACK_FACING_TRIANGLES, ~0, 0, 1, 0, rayDesc, reflectionPayload);
+		float3 origin;
+		float3 direction;
+		GenerateReflectionRay(
+			worldPosition, viewDir, normal, origin, direction);
+		FireRay(worldPosition, direction, payload.Bounces + 1, payload.Reflectivity * reflectivity);
 	}
 }

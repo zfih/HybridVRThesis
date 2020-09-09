@@ -12,43 +12,23 @@
 #define HLSL
 #include "ModelViewerRaytracing.h"
 
+
 Texture2DArray<float> g_depth : register(t12);
 Texture2DArray<float4> g_normals : register(t13);
 
-void FireRay(float3 origin, float3 direction, float bounces, float reflectivity)
-{
-	RayDesc rayDesc =
-	{
-		origin,
-		0.0f,
-		direction,
-		FLT_MAX
-	};
-
-	RayPayload payload;
-	payload.SkipShading = false;
-	payload.RayHitT = FLT_MAX;
-	payload.Bounces = bounces;
-	payload.Reflectivity = reflectivity;
-	TraceRay(g_accel, RAY_FLAG_CULL_BACK_FACING_TRIANGLES, ~0, 0, 1, 0, rayDesc, payload);
-	
-    //g_screenOutput[int3(DispatchRaysIndex().xy, g_dynamic.curCam)] = float4(reflectivity, 0, 0, 1);
-}
-
-void ScreenSpaceReflection(float4 normal, int3 pixel)
+void ScreenSpaceReflection(float4 normalSpecular, int3 pixel)
 {
 	float depth = g_depth[pixel];
 
-	float3 pixelInWorld = UnprojectPixel(pixel.xy, depth);
+	float3 origin;
+	float3 direction;
+	float reflectivity;
 
-	float3 primaryRayDirection = normalize(pixelInWorld - g_dynamic.worldCameraPosition);
+	GenerateSSRRay(
+		pixel.xy, depth, normalSpecular.xyz, normalSpecular.w,
+		origin, direction, reflectivity);
 
-	float3 direction = reflect(primaryRayDirection, normal.xyz);
-
-	// Step back along ray to get out of surface
-	float3 origin = pixelInWorld - primaryRayDirection * 0.001f;
 	float numBounces = 1;
-	float reflectivity = normal.w;
 
 	FireRay(origin, direction, numBounces, reflectivity);
 }
@@ -78,7 +58,6 @@ void RayGen()
 	else if(normal.w != 0.0 && color.a != 0)// Need refl
 	{
 		ScreenSpaceReflection(normal, pixel);
-		
 	}
 	else if (color.a == 0) // Needs full
 	{
