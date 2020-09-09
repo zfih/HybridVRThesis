@@ -62,6 +62,7 @@ cbuffer PSConstants : register(b0)
     uint4 TileCount;
     uint4 FirstLightIndex;
     uint FrameIndexMod2;
+    int UseSceneLighting;
 }
 
 cbuffer MaterialInfo : register(b1)
@@ -330,6 +331,49 @@ struct MRT
 	float4 Normal : SV_Target1;
 };
 
+float3 ApplySceneLights(
+    float3 diffuse, float3 specular, float specularMask, float gloss,
+    float3 normal, float3 viewDir, float3 pos)
+{
+    float3 colorSum;
+    for (int pointLightIndex = 0; pointLightIndex < 128; pointLightIndex++)
+    {
+        LightData lightData = lightBuffer[pointLightIndex];
+        if (lightData.type == 0)
+        {
+            colorSum += ApplyPointLight(
+                diffuse,
+                specular,
+                specularMask,
+                gloss,
+                normal,
+                viewDir,
+                pos,
+                lightData.pos,
+                lightData.radiusSq,
+                lightData.color);
+        }
+        // WONTFIX We don't know what this 'lightIndex' is, so we're just leaving it out. We could
+        //   perhaps read it as a point light or a cone light instead.
+        else if (lightData.type == 1 || lightData.type == 2)
+        {
+            colorSum += ApplyConeLight(
+                diffuse, specular, specularMask, gloss, normal, viewDir, pos, lightData.pos,
+                lightData.radiusSq, lightData.color, lightData.coneDir, lightData.coneAngles);
+        }
+        else if (lightData.type == 2)
+        {
+            /*colorSum += ApplyConeShadowedLight(
+                diffuse, specular, specularMask, gloss, normal, viewDir, pos,
+                lightData.pos, lightData.radiusSq, lightData.color, lightData.coneDir,
+                lightData.coneAngles, lightData.shadowTextureMatrix, lightIndex);
+                */
+        }
+    }
+    return colorSum;
+}
+
+
 [RootSignature(ModelViewer_RootSig)]
 MRT main(VSOutput vsOutput)
 {
@@ -369,9 +413,14 @@ MRT main(VSOutput vsOutput)
 	float specularMask = SAMPLE_TEX(texSpecular).g;
 	float3 viewDir = normalize(vsOutput.viewDir);
 	colorSum += ApplyDirectionalLight(diffuseAlbedo, specularAlbedo, specularMask, gloss, normal, viewDir, SunDirection, SunColor, vsOutput.shadowCoord);
+    if (UseSceneLighting)
+    {
+        colorSum += ApplySceneLights(
+            diffuseAlbedo, specularAlbedo, specularMask, gloss, normal, viewDir,
+            vsOutput.worldPos);
+    }
 
 	mrt.Color = ApplySRGBCurve(colorSum);
-
 	if (AreNormalsNeeded)
 	{
 		float reflection = specularMask * pow(1.0 - saturate(dot(-viewDir, normal)), 5.0);

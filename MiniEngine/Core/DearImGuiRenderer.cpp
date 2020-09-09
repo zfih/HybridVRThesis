@@ -150,7 +150,9 @@ void ImGui::BuildGUI(Math::Camera* cam, GameCore::CameraController* controller)
             float sunori    = Settings::SunOrientation;
             float suninc    = Settings::SunInclination;
             float sunint    = log2f(Settings::SunLightIntensity);
+            bool useSceneLighting = Settings::UseSceneLighting;
         	
+
             ImGui::SliderFloat("Ambient Intensity Exponent", &amb, -16.0f, 16.0f, "%.2f");
             ImGui::SliderFloat("Shadow Dim X", &shadx, 1000.0f, 10000.0f, "%.1f");
             ImGui::SliderFloat("Shadow Dim Y", &shady, 1000.0f, 10000.0f, "%.1f");
@@ -158,6 +160,7 @@ void ImGui::BuildGUI(Math::Camera* cam, GameCore::CameraController* controller)
             ImGui::SliderFloat("Sun Orientation", &sunori, -5.0f, 5.0f, "%.2f");
             ImGui::SliderFloat("Sun Light Intensity Exponent", &sunint, 0.0f, 16.0f, "%.2f");
             ImGui::SliderFloat("Sun Inclination", &suninc, 0.0f, 1.0f, "%.2f");
+            ImGui::Checkbox("Use Scene Lighting", &useSceneLighting);
 
             Settings::AmbientIntensity  = exp2f(amb);
             Settings::ShadowDimX        = shadx;
@@ -166,6 +169,7 @@ void ImGui::BuildGUI(Math::Camera* cam, GameCore::CameraController* controller)
             Settings::SunOrientation    = sunori;
             Settings::SunInclination    = suninc;
             Settings::SunLightIntensity = exp2f(sunint);
+            Settings::UseSceneLighting = useSceneLighting;
 
         	
             // ===================
