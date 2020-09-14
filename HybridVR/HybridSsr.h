@@ -20,6 +20,7 @@ enum class RootParam
 	kConstants,
 	kTextures,
 	kRenderTarget,
+	kNormals,
 	
 	kCount,
 };
@@ -35,10 +36,10 @@ enum class TextureType
 {
 	kMainBuffer,
 	kDepthBuffer,
-	kNormalBuffer,
 	kAlbedoBuffer,
 	
-	kCount
+	kCount,
+	kNormalBuffer //This is used as a UAV, so we don't count it
 };
 
 void InitializeResources();

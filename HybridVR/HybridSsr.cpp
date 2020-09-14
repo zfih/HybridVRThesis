@@ -48,6 +48,7 @@ void InitializeResources()
 	g_RS[(int)RootParam::kTextures].InitAsDescriptorRange(
 		D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 0, (int)TextureType::kCount);
 	g_RS[(int)RootParam::kRenderTarget].InitAsDescriptorRange(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 0, 1);
+	g_RS[(int)RootParam::kNormals].InitAsDescriptorRange(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 1, 1);
 	g_RS.Finalize(L"HybridSsr Root Signature");
 
 	g_ConstantBuffer.Create(L"HybridSsr Constant Buffer", 1, sizeof(HybridSsrConstantBuffer));
@@ -83,7 +84,7 @@ void ComputeHybridSsr(
 	// Transition resources
 	ctx.TransitionResource(Color, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 	ctx.TransitionResource(Depth, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-	ctx.TransitionResource(Normal, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+	ctx.TransitionResource(Normal, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 
 	// Setup pipeline
 	ctx.SetRootSignature(g_RS);
@@ -103,13 +104,12 @@ void ComputeHybridSsr(
 		(int)TextureType::kDepthBuffer, Depth.GetSubSRV(CamType));
 	ctx.SetDynamicDescriptor(
 		(int)RootParam::kTextures,
-		(int)TextureType::kNormalBuffer, Normal.GetSubSRV(CamType));
-	ctx.SetDynamicDescriptor(
-		(int)RootParam::kTextures,
 		(int)TextureType::kAlbedoBuffer, Color.GetSubSRV(CamType));
 	// Render target UAV
 	ctx.SetDynamicDescriptor(
 		(int)RootParam::kRenderTarget, 0, Color.GetSubUAV(CamType));
+	ctx.SetDynamicDescriptor(
+		(int)RootParam::kNormals, 0, Normal.GetSubUAV(CamType));
 
 	const int numThreadsX = width / 8 + 1;
 	const int numThreadsY = height / 8 + 1;

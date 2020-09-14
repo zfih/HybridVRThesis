@@ -61,14 +61,12 @@ Texture2D<float4> mainBuffer: register(t0);
 // Depth buffer texture
 Texture2D<float> depthBuffer : register(t1);
 
-// Normal + reflection buffer
-Texture2D<float4> normalReflectiveBuffer: register(t2);
-
 // Color
 Texture2D<float4> albedoBuffer: register(t3);
 
-
 /// UAVs
+// Normal + reflection buffer
+RWTexture2D<float4> normalReflectiveBuffer: register(u1);
 
 // Output
 RWTexture2D<float4> outputRT : register(u0);
@@ -200,9 +198,15 @@ void CSMain(uint3 Gid : SV_GroupID, uint3 DTid : SV_DispatchThreadID, uint3 GTid
 
 	float3 F = Fresnel(specularColor, L, H);
 
-	//outputRT[screenPos] = float4(LineariseDepth(depth, cb.NearPlaneZ, cb.FarPlaneZ),0,0,1); 
-	//outputRT[screenPos] = float4(result.rgb * (F * cb.SSRScale) + mainRT.rgb, 1);
-	outputRT[screenPos] = float4(result.rgb, 1);
+	//outputRT[screenPos] = float4(LineariseDepth(depth, cb.NearPlaneZ, cb.FarPlaneZ),0,0,1);
+	float weight = F * cb.SSRScale;
+	outputRT[screenPos] = float4(result.rgb * weight + mainRT.rgb * (1 - weight), 1);
+	//outputRT[screenPos] = float4(result.rgb, 1);
+
+	if (intersection)
+	{
+		normalReflectiveBuffer[screenPos] = float4(normalReflectiveBuffer[screenPos].xyz, 0);
+	}
 }
 
 bool TraceScreenSpaceRay(
