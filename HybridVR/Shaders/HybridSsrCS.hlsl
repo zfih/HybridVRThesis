@@ -185,7 +185,8 @@ void CSMain(uint3 Gid : SV_GroupID, uint3 DTid : SV_DispatchThreadID, uint3 GTid
 
 	// move hit pixel from pixel position to UVs;
 	if(hitPixel.x > cb.RenderTargetSize.x || hitPixel.x < 0.0f ||
-		hitPixel.y > cb.RenderTargetSize.y || hitPixel.y < 0.0f)
+		hitPixel.y > cb.RenderTargetSize.y || hitPixel.y < 0.0f ||
+		hitPoint.z > 0.999)
 	{
 		intersection = false;
 	}
