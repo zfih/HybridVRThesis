@@ -164,7 +164,7 @@ void CSMain(uint3 Gid : SV_GroupID, uint3 DTid : SV_DispatchThreadID, uint3 GTid
 	float4 viewPos = mul(cb.InvProjection, clipPos);
 	viewPos.xyz /= viewPos.w;
 
-	float3 rayOrigin = viewPos.xyz * 0.99;//+ normalVS * 0.01;
+	float3 rayOrigin = viewPos.xyz * 0.9;//+ normalVS * 0.01;
 	float3 toPosition = normalize(rayOrigin.xyz);
 
 	/*
@@ -350,7 +350,7 @@ bool IntersectsDepthBuffer(float z, float minZ, float maxZ)
 	*/
 	//float depthScale = min(1.0f, z * StrideZCutoff);
 	//z += ZThickness + lerp(0.0f, 2.0f, depthScale);
-	return (maxZ >= z) && (minZ - cb.ZThickness <= z);
+	return (maxZ + cb.ZThickness >= z) && (minZ <= z);
 }
 
 void Swap(inout float a, inout float b)

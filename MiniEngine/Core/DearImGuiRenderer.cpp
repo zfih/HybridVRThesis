@@ -652,7 +652,7 @@ void ImGui::BuildGUI(Math::Camera* cam, GameCore::CameraController* controller)
 
     {// Temp variables, should be put somewhere else
 	    ImGui::SliderFloat("SSRScale", &HybridSsr::g_SsrScale, 0, 2);
-	    ImGui::SliderFloat("ZThickness", &HybridSsr::g_ZThickness, 0, 1);
+	    ImGui::SliderFloat("ZThickness", &HybridSsr::g_ZThickness, 0, 20);
 	    ImGui::SliderFloat("MaxSteps", &HybridSsr::g_MaxSteps, 0, 1000);
 	    ImGui::SliderFloat("Stride", &HybridSsr::g_Stride, 1, 5);
 	    ImGui::SliderFloat("MaxDistance", &HybridSsr::g_MaxDistance, 0, 1000);
