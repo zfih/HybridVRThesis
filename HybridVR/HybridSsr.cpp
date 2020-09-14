@@ -23,8 +23,8 @@ static ComputePSO g_PSO;
 static RootSignature g_RS;
 
 float HybridSsr::g_SsrScale = 1;
-float HybridSsr::g_ZThickness = 10.0f;
-float HybridSsr::g_Stride = 1;
+float HybridSsr::g_ZThickness = 3.0f;
+float HybridSsr::g_Stride = 4.5f;
 float HybridSsr::g_MaxSteps = 400;
 float HybridSsr::g_MaxDistance = 200;
 float HybridSsr::g_StrideZCutoff = 0;

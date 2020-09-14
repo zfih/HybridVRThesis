@@ -49,10 +49,10 @@ void RayGen()
     float4 unprojected = mul(g_dynamic.cameraToWorld, float4(screenPos, sceneDepth, 1));
     float3 world = unprojected.xyz / unprojected.w;
 
-    float3 primaryRayDirection = normalize(g_dynamic.worldCameraPosition - world);
+	float3 primaryRayDirection = normalize(world - g_dynamic.worldCameraPosition);
 
     // R
-    float3 direction = normalize(-primaryRayDirection - 2 * dot(-primaryRayDirection, normal) * normal);
+	float3 direction = reflect(primaryRayDirection, normal);
     float3 origin = world - primaryRayDirection * 0.1f;     // Lift off the surface a bit
 
     RayDesc rayDesc = { origin,
@@ -63,6 +63,8 @@ void RayGen()
     RayPayload payload;
     payload.SkipShading = false;
     payload.RayHitT = FLT_MAX;
+    payload.Bounces = 1;
+	payload.Reflectivity = normalData.w;
     TraceRay(g_accel, RAY_FLAG_CULL_BACK_FACING_TRIANGLES, ~0,0,1,0, rayDesc, payload);
 }
 

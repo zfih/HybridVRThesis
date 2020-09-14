@@ -182,9 +182,9 @@ public:
     ByteAddressBuffer m_IndexBufferDepth;
     uint32_t m_VertexStrideDepth;
 
-    virtual bool Load(const char* filename)
+    virtual bool Load(const char* filename, Matrix4 &mat, Matrix4 &invMat, bool flipUvY)
     {
-        return LoadH3D(filename);
+        return LoadH3D(filename, mat, invMat, flipUvY);
     }
 
     const BoundingBox& GetBoundingBox() const
@@ -199,7 +199,7 @@ public:
 
 protected:
 
-    bool LoadH3D(const char *filename);
+    bool LoadH3D(const char *filename, Matrix4 &mat, Matrix4& invMat, bool flipUvY);
     bool SaveH3D(const char *filename) const;
 
     void ComputeMeshBoundingBox(unsigned int meshIndex, BoundingBox &bbox) const;

@@ -20,7 +20,6 @@ namespace GameCore
 namespace Settings
 {
     BoolVar UseImGui = { "Use ImGui", true };
-    CpuTimer g_ImGUITimer(true, "ImGuiBuild");
 }
 
 namespace Graphics
@@ -79,7 +78,7 @@ void ImGui::BuildGUI(Math::Camera* cam, GameCore::CameraController* controller)
 
     ImGui::Text("Application average %3.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
     ImGui::Text("Application average %3.3f ms/frame render (no sync)", Settings::g_NoSyncTimer.GetAverageTimeMilliseconds());
-    ImGui::Text("ImGui build and render average %3.3f ms/frame", Settings::g_ImGUITimer.GetAverageTimeMilliseconds());
+    ImGui::Text("Framecount: %i", Graphics::GetFrameCount());
     ImGui::Text("Longest frame %3.3f ms/frame : Shortest frame %3.3f ms/frame",
         Settings::g_NoSyncTimer.GetLongestTickToMilliseconds(), Settings::g_NoSyncTimer.GetShortestTickToMilliseconds());
 	
@@ -631,6 +630,23 @@ void ImGui::BuildGUI(Math::Camera* cam, GameCore::CameraController* controller)
         // ===================
         ImGui::Indent(-indent);
     } // VR
+
+    if (ImGui::CollapsingHeader("LOD", ImGuiTreeNodeFlags_CollapsingHeader | ImGuiTreeNodeFlags_Framed))
+    { // LOD
+        ImGui::Indent(indent);
+        // ==================
+
+        bool checkbox = Settings::SetAnimationFrame;
+        ImGui::Checkbox("Set Animation Frame", &checkbox);
+        Settings::SetAnimationFrame = checkbox;
+
+        int val = Settings::AnimationFrame;
+        ImGui::DragInt("Animation Frame Number", &val, 1, 0, 10000);
+        Settings::AnimationFrame = val;
+
+        // ===================
+        ImGui::Indent(-indent);
+    } // LOD
 	
     { // Other
 

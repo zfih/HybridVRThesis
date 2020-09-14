@@ -92,6 +92,7 @@
     <ClCompile Include="ForwardPlusLighting.cpp" />
     <ClCompile Include="HybridSsr.cpp" />
     <ClCompile Include="ModelViewer.cpp" />
+    <ClCompile Include="ScreenGrab12.cpp" />
     <ClCompile Include="stdafx.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -299,6 +300,7 @@
     <ClInclude Include="Raytracing.h" />
     <ClInclude Include="RayTracingHlslCompat.h" />
     <ClInclude Include="Shaders\HybridSsrCSCompat.h" />
+    <ClInclude Include="ScreenGrab12.h" />
     <ClInclude Include="stdafx.h" />
   </ItemGroup>
   <ItemGroup>

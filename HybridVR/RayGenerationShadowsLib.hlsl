@@ -43,18 +43,16 @@ void RayGen()
         0.1f,
         direction,
         FLT_MAX };
-    RayPayload payload = { false, FLT_MAX };
+	RayPayload payload = { false, FLT_MAX, 0, 0 };
     TraceRay(g_accel, RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH, ~0,0,1,0, rayDesc, payload);
 
     if (payload.RayHitT < FLT_MAX)
     {
-        g_screenOutput[int3(DispatchRaysIndex().xy, 0)] = float4(0, 0, 0, 1);
-        g_screenOutput[int3(DispatchRaysIndex().xy, 1)] = float4(0, 0, 0, 1); // TODO: Do second view differently
+        g_screenOutput[int3(DispatchRaysIndex().xy, g_dynamic.curCam)] = float4(0, 0, 0, 1);
     }
     else
     {
-        g_screenOutput[int3(DispatchRaysIndex().xy, 0)] = float4(1, 1, 1, 1);
-        g_screenOutput[int3(DispatchRaysIndex().xy, 1)] = float4(1, 1, 1, 1); // TODO: Do second view differently
+        g_screenOutput[int3(DispatchRaysIndex().xy, g_dynamic.curCam)] = float4(1, 1, 1, 1);
     }
 }
 

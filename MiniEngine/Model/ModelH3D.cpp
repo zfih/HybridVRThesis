@@ -21,7 +21,9 @@
 #include "CommandContext.h"
 #include <stdio.h>
 
-bool Model::LoadH3D(const char *filename)
+#include "../../HybridVR/HlslCompat.h"
+
+bool Model::LoadH3D(const char *filename, Matrix4 &mat, Matrix4& invMat, bool flipUvY)
 {
 	FILE *file = nullptr;
 	if(0 != fopen_s(&file, filename, "rb"))
@@ -82,12 +84,37 @@ bool Model::LoadH3D(const char *filename)
 	if(m_Header.indexDataByteSize > 0)
 		if(1 != fread(m_pIndexDataDepth, m_Header.indexDataByteSize, 1, file)) goto h3d_load_fail;
 
+	struct Vertex
+	{
+		XMFLOAT3 p;
+		XMFLOAT2 uv;
+		XMFLOAT3 n;
+		XMFLOAT3 t;
+		XMFLOAT3 b;
+	};
+
+	const UINT numVertices = m_Header.vertexDataByteSize / m_VertexStride;
+	for(UINT vertexIndex = 0; vertexIndex < numVertices; vertexIndex++)
+	{
+		Vertex *v = (Vertex*)(m_pVertexData + m_VertexStride * vertexIndex);
+
+		XMStoreFloat3(&v->p, mat * Vector4(v->p, 1));
+		XMStoreFloat3(&v->n, mat * Vector4(v->n, 0));
+		XMStoreFloat3(&v->t, mat * Vector4(v->t, 0));
+		XMStoreFloat3(&v->b, mat * Vector4(v->b, 0));
+		if (flipUvY)
+		{
+			v->uv.y = 1.0 - v->uv.y;
+		}
+	}
+
 	m_VertexBuffer.Create(L"VertexBuffer", m_Header.vertexDataByteSize / m_VertexStride, m_VertexStride, m_pVertexData);
 	m_IndexBuffer.Create(L"IndexBuffer", m_Header.indexDataByteSize / sizeof(uint16_t), sizeof(uint16_t), m_pIndexData);
 	delete [] m_pVertexData;
 	m_pVertexData = nullptr;
 	delete [] m_pIndexData;
 	m_pIndexData = nullptr;
+
 
 	m_VertexBufferDepth.Create(L"VertexBufferDepth", m_Header.vertexDataByteSizeDepth / m_VertexStrideDepth,
 	                           m_VertexStrideDepth, m_pVertexDataDepth);
@@ -164,9 +191,9 @@ void Model::ReleaseTextures()
 	*/
 }
 
-static Texture* g_DefaultTexture;
+static Texture *g_DefaultTexture;
 
-Texture* g_CreateDefaultTexture()
+Texture *g_CreateDefaultTexture()
 {
 	// Create a ZERO texture
 	const int textureWidth = 16;
@@ -177,7 +204,7 @@ Texture* g_CreateDefaultTexture()
 
 	Texture *result = new Texture;
 	result->Create(
-		textureWidth, textureHeight, 
+		textureWidth, textureHeight,
 		DXGI_FORMAT_B8G8R8A8_UNORM, zeroBufferData);
 	return result;
 }
@@ -187,14 +214,15 @@ void Model::LoadTextures(void)
 	ReleaseTextures();
 
 	g_DefaultTexture = g_CreateDefaultTexture();
-	
+
 	m_SRVs = new D3D12_CPU_DESCRIPTOR_HANDLE[m_Header.materialCount * 6];
 
 	ZeroMemory(m_SRVs, sizeof(D3D12_CPU_DESCRIPTOR_HANDLE) * m_Header.materialCount * 6);
 
 	const ManagedTexture *MatTextures[6] = {};
 
-	auto load_texture = [&](UINT TexType, const std::string &Primary, const std::string& Second, const std::string& Default, bool SRgb)
+	auto load_texture = [&](UINT TexType, const std::string &Primary, const std::string &Second,
+	                        const std::string &Default, bool SRgb)
 	{
 		auto try_load_texture = [&](const std::string &Path)
 		{
@@ -206,7 +234,7 @@ void Model::LoadTextures(void)
 		{
 			return MatTextures[TexType]->GetSRV();
 		}
-		
+
 		if(try_load_texture(Second))
 		{
 			return MatTextures[TexType]->GetSRV();
@@ -218,7 +246,7 @@ void Model::LoadTextures(void)
 		}
 
 		std::cout << "Could not import asset: \"" << Primary << "\". Using default\n";
-		
+
 		return g_DefaultTexture->GetSRV();
 	};
 
@@ -226,22 +254,25 @@ void Model::LoadTextures(void)
 	for(uint32_t materialIdx = 0; materialIdx < m_Header.materialCount; ++materialIdx)
 	{
 		const Material &pMaterial = m_pMaterial[materialIdx];
-		
+
 		const int base = materialIdx * 6;
 
 		// NOTE: The engine only uses Diffuse, Specular, and Reflection textures, so rest are irrelevant
-		
+
 		// Diffuse
-		m_SRVs[base + 0] = load_texture(0, pMaterial.texDiffusePath, std::string(pMaterial.texDiffusePath) + "_diffuse", "default", true);
+		m_SRVs[base + 0] = load_texture(0, pMaterial.texDiffusePath, std::string(pMaterial.texDiffusePath) + "_diffuse",
+		                                "default", true);
 
 		// Specular
-		m_SRVs[base + 1] = load_texture(1, pMaterial.texSpecularPath, std::string(pMaterial.texDiffusePath) + "_specular", "default_specular", true);
+		m_SRVs[base + 1] = load_texture(1, pMaterial.texSpecularPath,
+		                                std::string(pMaterial.texDiffusePath) + "_specular", "default_specular", true);
 
 		// Emissive
 		m_SRVs[base + 2] = MatTextures[0]->GetSRV();
 
 		// Normal
-		m_SRVs[base + 3] = load_texture(3, pMaterial.texNormalPath, std::string(pMaterial.texDiffusePath) + "_normal", "default_normal", false);
+		m_SRVs[base + 3] = load_texture(3, pMaterial.texNormalPath, std::string(pMaterial.texDiffusePath) + "_normal",
+		                                "default_normal", false);
 
 		// Lightmap
 		m_SRVs[base + 4] = MatTextures[0]->GetSRV();
