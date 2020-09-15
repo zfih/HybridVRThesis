@@ -38,8 +38,7 @@ enum class TextureType
 	kDepthBuffer,
 	kAlbedoBuffer,
 	
-	kCount,
-	kNormalBuffer //This is used as a UAV, so we don't count it
+	kCount
 };
 
 void InitializeResources();

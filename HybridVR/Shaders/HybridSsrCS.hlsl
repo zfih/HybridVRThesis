@@ -62,7 +62,7 @@ Texture2D<float4> mainBuffer: register(t0);
 Texture2D<float> depthBuffer : register(t1);
 
 // Color
-Texture2D<float4> albedoBuffer: register(t3);
+Texture2D<float4> albedoBuffer: register(t2);
 
 /// UAVs
 // Normal + reflection buffer
@@ -189,22 +189,20 @@ void CSMain(uint3 Gid : SV_GroupID, uint3 DTid : SV_DispatchThreadID, uint3 GTid
 		intersection = false;
 	}
 
-	float4 result = intersection ? mainBuffer[hitPixel] : 0;
-
-	//calculate fresnel for the world point/pixel we are shading
-	float3 L = rayDirection.xyz;
-	float3 H = normalize(-toPosition + L);
-	float3 specularColor = lerp(0.04f, albedo.rgb, reflectiveness);
-
-	float3 F = Fresnel(specularColor, L, H);
-
-	//outputRT[screenPos] = float4(LineariseDepth(depth, cb.NearPlaneZ, cb.FarPlaneZ),0,0,1);
-	float weight = F * cb.SSRScale;
-	outputRT[screenPos] = float4(result.rgb * weight + mainRT.rgb * (1 - weight), 1);
-	//outputRT[screenPos] = float4(result.rgb, 1);
 
 	if (intersection)
 	{
+		//calculate fresnel for the world point/pixel we are shading
+		float3 L = rayDirection.xyz;
+		float3 H = normalize(-toPosition + L);
+		float3 specularColor = lerp(0.04f, albedo.rgb, reflectiveness);
+
+		float3 F = Fresnel(specularColor, L, H);
+
+		//outputRT[screenPos] = float4(LineariseDepth(depth, cb.NearPlaneZ, cb.FarPlaneZ),0,0,1);
+		float weight = F * cb.SSRScale;
+		outputRT[screenPos] = float4(mainBuffer[hitPixel].rgb * weight + mainRT.rgb * (1 - weight), 1);
+		//outputRT[screenPos] = float4(result.rgb, 1);
 		normalReflectiveBuffer[screenPos] = float4(normalReflectiveBuffer[screenPos].xyz, 0);
 	}
 }
