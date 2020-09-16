@@ -47,6 +47,7 @@ struct VSOutput
     float3 normal : Normal;
     float3 tangent : Tangent;
     float3 bitangent : Bitangent;
+    float3 campos : CamPos;
 #if ENABLE_TRIANGLE_ID
     uint vertexID : TexCoord3;
 #endif
@@ -63,7 +64,7 @@ VSOutput main(VSInput vsInput, uint vertexID : SV_VertexID)
     vsOutput.uv = vsInput.texcoord0;
     vsOutput.viewDir = vsInput.position - ViewerPos;
     vsOutput.shadowCoord = mul(modelToShadow, float4(vsInput.position, 1.0)).xyz;
-
+    vsOutput.campos = ViewerPos;
     vsOutput.normal = vsInput.normal;
     vsOutput.tangent = vsInput.tangent;
     vsOutput.bitangent = vsInput.bitangent;
