@@ -408,9 +408,10 @@ MRT main(VSOutput vsOutput)
 	float specularMask = SAMPLE_TEX(texSpecular).g;
 	float3 viewDir = normalize(vsOutput.viewDir);
 	
+    colorSum += ApplyAmbientLight(diffuseAlbedo, 1, AmbientColor);
 	colorSum += ApplyDirectionalLight(
-		diffuseAlbedo, specularAlbedo, specularMask, gloss, normal, viewDir, SunDirection,
-		SunColor, vsOutput.shadowCoord);
+		diffuseAlbedo, specularAlbedo, specularMask, gloss, normal, viewDir,
+		SunDirection, SunColor, vsOutput.shadowCoord);
 
 	if(UseSceneLighting)
 	{
@@ -418,8 +419,6 @@ MRT main(VSOutput vsOutput)
 			diffuseAlbedo, specularAlbedo, specularMask, gloss, normal, viewDir,
 			vsOutput.worldPos);
 	}
-    colorSum += ApplyDirectionalLight(diffuseAlbedo, specularAlbedo, specularMask, gloss, normal, viewDir, SunDirection, SunColor, vsOutput.shadowCoord);
-    colorSum += ApplyAmbientLight(diffuseAlbedo, 1, AmbientColor);
 	mrt.Color = float4(ApplySRGBCurve(colorSum), 1);
 
 	if(AreNormalsNeeded)
