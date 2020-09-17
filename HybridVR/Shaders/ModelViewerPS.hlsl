@@ -413,6 +413,7 @@ MRT main(VSOutput vsOutput)
 	mrt.Color = float4(ApplySRGBCurve(colorSum), 1);
 	mrt.ColorRaw = mrt.Color;
 
+	
 
 	if (AreNormalsNeeded)
 	{
