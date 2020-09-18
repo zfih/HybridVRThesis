@@ -489,7 +489,7 @@ namespace Settings
 	BoolVar ShowWaveTileCounts("Application/Forward+/Show Wave Tile Counts", false);
 
 	BoolVar ReprojEnable("LOD/Reproject", true);
-	NumVar DepthThreshold("LOD/Depth Threshold", 0.001);
+	NumVar DepthThreshold("LOD/Depth Threshold", 0.0005);
 
 	EnumVar RayTracingMode("Application/Raytracing/RayTraceMode", RTM_DIFFUSE_WITH_SHADOWMAPS, _countof(rayTracingModes), rayTracingModes);
 
