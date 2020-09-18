@@ -425,7 +425,8 @@ void Hit(inout RayPayload payload, in BuiltInTriangleIntersectionAttributes attr
 
 	float reflectivity = CalculateReflectivity(specularMask, viewDir, normal);
 
-	if (Reflective && payload.Bounces < 3)
+	// TODO: Revert to 3 bounces when done debugging
+	if (Reflective && payload.Bounces < 1)
 	{
 		float3 origin;
 		float3 direction;

@@ -20,24 +20,29 @@ void RayGen()
 {
 	uint3 pixel = float3(DispatchRaysIndex().xy, g_dynamic.curCam);
 
+	// Read depth and normal
 	float depth = depths[pixel];
 
 	float4 normalSpecular = normals[pixel];
 	float3 normal = normalSpecular.xyz;
 	float specular = normalSpecular.w;
 
-
-	float3 origin;
-	float3 direction;
 	float reflectivity;
+	RayDesc rayDesc;
+	rayDesc.TMin = 0;
+	rayDesc.TMax = FLT_MAX;
+
 	GenerateSSRRay(
 		pixel.xy, depth, normal, specular,
-		origin, direction, reflectivity);
-	
+		rayDesc.Origin, rayDesc.Direction, reflectivity);
+
 	if (reflectivity == 0.0)
 		return;
 
-	const int numBounces = 1;
-	FireRay(origin, direction, numBounces, reflectivity);
-	
+	RayPayload payload;
+	payload.SkipShading = false;
+	payload.RayHitT = FLT_MAX;
+	payload.Bounces = 1;
+	payload.Reflectivity = reflectivity;
+	TraceRay(g_accel, RAY_FLAG_CULL_BACK_FACING_TRIANGLES, ~0, 0, 1, 0, rayDesc, payload);
 }
