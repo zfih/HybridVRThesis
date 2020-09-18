@@ -491,7 +491,7 @@ namespace Settings
 	BoolVar ShowWaveTileCounts("Application/Forward+/Show Wave Tile Counts", false);
 
 	BoolVar ReprojEnable("LOD/Reproject", true);
-	NumVar DepthThreshold("LOD/Depth Threshold", 0.001);
+	NumVar DepthThreshold("LOD/Depth Threshold", 0.0005);
 	NumVar AngleThreshold("LOD/Angle Threshold", 1.0f);
 	NumVar AngleBlendingRange("LOD/Angle Blending Range", 0.5f);
 	BoolVar DebugColors("LOD/Debug Colors", false);
