@@ -244,14 +244,7 @@ float3 GetNormal(
 	float3 vsNormal, float3 vsTangent, float3 vsBitangent,
 	inout float inout_gloss, out bool out_success)
 {
-	float2 xy = SAMPLE_TEX(g_localNormal).xy * 2.0 - 1.0;
-	// Length = sqrt(x*x, y*y, z*z);
-	// Length*Length = x*x + y*y + z*z;
-	// z*z = Length*Length - x*x - y*y;
-	// z = sqrt(Length*Length - x*x - y*y)
-	// z = sqrt(1 - x*x - y*y)
-	float z = sqrt(1 - xy.x * xy.x - xy.y * xy.y);
-	float3 result = float3(xy, z);
+	float3 result = SAMPLE_TEX(g_localNormal).rgb * 2.0 - 1.0;
 
 	AntiAliasSpecular(result, inout_gloss);
 	float3x3 tbn = float3x3(vsTangent, vsBitangent, vsNormal);
@@ -393,6 +386,7 @@ void Hit(inout RayPayload payload, in BuiltInTriangleIntersectionAttributes attr
 	const float3 specularAlbedo = float3(0.56, 0.56, 0.56);
 	const float specularMask = SAMPLE_TEX(g_localSpecular).g;
 	const float3 viewDir = WorldRayDirection();
+
 	const float3 diffuseColor = SAMPLE_TEX(g_localTexture).rgb;
 
 	float3 colorSum = 0;

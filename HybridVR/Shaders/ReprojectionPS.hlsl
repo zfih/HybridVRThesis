@@ -87,51 +87,55 @@ bool equalsEpsilon(float4 a, float4 b, float epsilon)
 	return diff.x < epsilon && diff.y < epsilon && diff.z < epsilon && diff.w < epsilon;
 }
 
-bool inRangeI(float n, float min, float max)
+bool inRange(float n, float min, float max)
 {
-	return min <= n && n <= max;
-}
-
-
-float CalculateReflectivity(float specular, float3 viewDir, float3 normal)
-{
-	float result = specular * pow(1.0 - saturate(dot(-viewDir, normal)), 5.0);
-	return result;
+	return min < n && n < max;
 }
 
 MRT main(VertexOutput vOut)
 {
+
 	// Discard if depth difference too big.
 	if(vOut.occFlag > depthThreshold)
 	{
 		discard;
 	}
 
-	const float4 colorRefl = float4(gLeftEyeTex.SampleLevel(gLinearSampler, vOut.texC, 0).rgb, 1);	
-	const float4 colorRaw = float4(gLeftEyeRawTex.SampleLevel(gLinearSampler, vOut.texC, 0).rgb, 1);
-	const float4 normalSpecular = gLeftEyeNormalTex.SampleLevel(gLinearSampler, vOut.texC, 0);
-	const float3 normal = normalSpecular.xyz;
-	float specular = normalSpecular.w;
-	
-	const double halfRange = angleBlendingRange / 2;
-	const double lower = angleThreshold - halfRange;
-	const double upper = angleThreshold + halfRange;
+	float4 color;
 
-	const float depth = gDepthTex.SampleLevel(gLinearSampler, vOut.texC, 0);
-	const float ipd = 0.065;
-	const float angle = abs(2 * atan(ipd / (2 * depth)) - PI);
+	float4 colorRefl = float4(gLeftEyeTex.SampleLevel(gLinearSampler, vOut.texC, 0).rgb, 1);
+	
+	float4 colorRaw = float4(gLeftEyeRawTex.SampleLevel(gLinearSampler, vOut.texC, 0).rgb, 1);
+	
+	float4 normal = gLeftEyeNormalTex.SampleLevel(gLinearSampler, vOut.texC, 0);
+	MRT mrt;
+	mrt.Color = float4(0, 0, 0, 0);
+	mrt.Normal  = float4(0, 0, 0, 0);
+	
+	// Normalize result...
+	float lenSq = dot(normal, normal);
+
+	double halfRange = angleBlendingRange / 2;
+	double lower = angleThreshold - halfRange;
+	double upper = angleThreshold + halfRange;
+
+	float depth = gDepthTex.SampleLevel(gLinearSampler, vOut.texC, 0);
+	// todo(Danh) 13:35 07/08: Pass in IPD
+	float angle = abs(2 * atan(0.065 / (2 * depth)) - PI);
 
 	float ratio = saturate((angle - lower) / angleBlendingRange);
-	float4 color = lerp(colorRefl, colorRaw, ratio);
-	
-	
+	float invRatio = 1 - ratio;
+	color = invRatio * colorRefl + ratio * colorRaw;
+	normal.w *= ratio;
+
+
 	if (debugColors)
 	{
 		if (angle > upper) // Angle not good enough, redo
 		{
 			color += float4(0.1, 0.0, 0.1, 0);
 		}
-		else if (inRangeI(angle, lower, upper)) // Blend
+		else if (inRange(angle, lower, upper)) // Blend
 		{
 			color += float4(0.1, 0.1, 0, 0);
 		}
@@ -141,8 +145,7 @@ MRT main(VertexOutput vOut)
 		}
 	}
 
-	MRT mrt;
 	mrt.Color = color;
-	mrt.Normal = float4(normal.xy, specular, ratio);
+	mrt.Normal = normal;
 	return mrt;
 }
