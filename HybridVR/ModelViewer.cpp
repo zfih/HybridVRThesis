@@ -1176,7 +1176,7 @@ void D3D12RaytracingMiniEngineSample::Startup(void)
 	if(g_RayTraceSupport)
 	{
 		CreateRayTraceAccelerationStructures(numMeshes);
-		Settings::RayTracingMode = Settings::RTM_REFLECTIONS;
+		Settings::RayTracingMode = Settings::RTM_HYBRID_SSR;
 		OutputDebugStringW(L"DXR support present on Device");
 	}
 	else
