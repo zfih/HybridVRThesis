@@ -161,5 +161,6 @@ namespace Settings
 
 	// Reprojection
 	extern BoolVar ReprojEnable;
+	extern NumVar DepthThreshold;
 	// Reprojection
 }

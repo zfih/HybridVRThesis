@@ -25,6 +25,7 @@ Texture2D gDepthTex : register(t0);
 cbuffer ReprojInput : register(b0)
 {
     float4x4 reprojectionMat;
+    float depthThreshold;
 };
 
 struct HS_Constant_Output

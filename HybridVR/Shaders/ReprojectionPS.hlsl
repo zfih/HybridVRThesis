@@ -28,7 +28,12 @@ struct VertexOutput
 SamplerState gLinearSampler : register(s0);
 Texture2D gLeftEyeTex : register(t1);
 
-static float gThreshold = 0.001; // TODO: Do we want to be able to change this? // This was 0.008
+cbuffer ReprojInput : register(b0)
+{
+    float4x4 reprojectionMat;
+    float depthThreshold;
+};
+
 static float3 gClearColor = float3(0, 0, 0);
 
 float4 main(VertexOutput vOut) : SV_TARGET
@@ -46,13 +51,13 @@ float4 main(VertexOutput vOut) : SV_TARGET
     color = float4(1, 1, 1, 1);
 #endif
 #ifdef _SHOWDISOCCLUSION
-        if (vOut.occFlag > gThreshold)
+        if (vOut.occFlag > depthThreshold)
         {
             //color = float4(1, 0, 0, 0);
             color = float4(gLeftEyeTex.SampleLevel(gLinearSampler, vOut.texC, 0).rgb, 1);
         }
 #else
-    if (vOut.occFlag > gThreshold)
+    if (vOut.occFlag > depthThreshold)
     {
         discard;
     }

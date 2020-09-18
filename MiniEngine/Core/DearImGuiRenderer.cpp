@@ -645,6 +645,10 @@ void ImGui::BuildGUI(Math::Camera* cam, GameCore::CameraController* controller)
 	    ImGui::Checkbox("Reproject", &checkbox);
 	    Settings::ReprojEnable = checkbox;
 
+        float depthThreshold = Settings::DepthThreshold;
+        ImGui::DragFloat("Depth Threshold", &depthThreshold, 0.00001f, 0, 0.1, "%.5f");
+        Settings::DepthThreshold = depthThreshold;
+
         bool animation = Settings::SetAnimationFrame;
         ImGui::Checkbox("Set Animation Frame", &animation);
         Settings::SetAnimationFrame = animation;

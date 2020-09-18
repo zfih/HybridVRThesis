@@ -489,6 +489,7 @@ namespace Settings
 	BoolVar ShowWaveTileCounts("Application/Forward+/Show Wave Tile Counts", false);
 
 	BoolVar ReprojEnable("LOD/Reproject", true);
+	NumVar DepthThreshold("LOD/Depth Threshold", 0.001);
 
 	EnumVar RayTracingMode("Application/Raytracing/RayTraceMode", RTM_DIFFUSE_WITH_SHADOWMAPS, _countof(rayTracingModes), rayTracingModes);
 
@@ -1332,7 +1333,7 @@ void D3D12RaytracingMiniEngineSample::Startup(void)
     Settings::FXAA_Enable = false;
 	Settings::EnableHDR = false;//true;
 	Settings::EnableAdaptation = false;//true;
-    Settings::SSAO_Enable = true;
+	Settings::SSAO_Enable = true;
 
     Lighting::CreateRandomLights(m_Model.GetBoundingBox().min, m_Model.GetBoundingBox().max);
 
@@ -1867,13 +1868,15 @@ void D3D12RaytracingMiniEngineSample::ReprojectScene()
 	struct ReprojInput
 	{
 		XMMATRIX reprojectionMat;
+		float depthThreshold;
 	};
 
 	ReprojInput ri{
 		// TODO: FIX ENUM
 		//XMMatrixIdentity()
 		XMMatrixTranspose(m_Camera[1]->GetViewProjMatrix()) * 
-		XMMatrixTranspose(XMMatrixInverse(nullptr, m_Camera[0]->GetViewProjMatrix()))
+		XMMatrixTranspose(XMMatrixInverse(nullptr, m_Camera[0]->GetViewProjMatrix())),
+		Settings::DepthThreshold
 	};
 	reprojectContext.SetDynamicConstantBufferView(2, sizeof(ri), &ri);
 	
