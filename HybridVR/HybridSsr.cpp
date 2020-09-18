@@ -22,7 +22,7 @@ static StructuredBuffer g_ConstantBuffer;
 static ComputePSO g_PSO;
 static RootSignature g_RS;
 
-float HybridSsr::g_SsrScale = 0.5f;
+float HybridSsr::g_SsrScale = 0.35f;
 float HybridSsr::g_ZThickness = 3.0f;
 float HybridSsr::g_Stride = 5.0f;
 float HybridSsr::g_MaxSteps = 380;
