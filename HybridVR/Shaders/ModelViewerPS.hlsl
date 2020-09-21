@@ -413,11 +413,13 @@ MRT main(VSOutput vsOutput)
 	mrt.Color = float4(ApplySRGBCurve(colorSum), 1);
 	mrt.ColorRaw = mrt.Color;
 
+	
 
 	if (AreNormalsNeeded)
 	{
 		mrt.Normal = float4(normal, specularMask);
 	}
+
 	return mrt;
 }
 

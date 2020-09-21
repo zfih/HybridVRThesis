@@ -109,6 +109,7 @@ __declspec(align(16)) struct HitShaderConstants
 	Matrix4 modelToShadow;
 	UINT32 IsReflection;
 	UINT32 UseShadowRays;
+	float NormalTextureStrength;
 };
 
 __declspec(align(16)) struct PSConstants
@@ -122,6 +123,7 @@ __declspec(align(16)) struct PSConstants
 	uint32_t TileCount[4];
 	uint32_t FirstLightIndex[4];
 	uint32_t FrameIndexMod2;
+	float NormalTextureStrength;
 
 	int UseSceneLighting;
 };
@@ -165,6 +167,7 @@ enum class Scene
 	kBistroInterior = 0,
 	kBistroExterior,
 	kSponza,
+	kRuggedSurface,
 	
 	kCount,
 	kUnknown
@@ -252,6 +255,15 @@ void g_CreateScene(Scene Scene)
 		g_Scene.CutOuts = { "thorn", "plant", "chain" };
 		g_Scene.UseCustom = false;
 	} break;
+	case Scene::kRuggedSurface:
+	{
+		g_Scene.Matrix = Matrix4::MakeRotationX(-XM_PIDIV2) * Matrix4::MakeScale(200);
+		g_Scene.ModelPath = ASSET_DIRECTORY "Models/RuggedSurfaceTest/RuggedSurfaceTest.h3d";
+		g_Scene.TextureFolderPath = ASSET_DIRECTORY L"Models/RuggedSurfaceTest/";
+		g_Scene.Reflective = { "checker" };
+		g_Scene.flipUvY = true;
+		g_Scene.ComputeBoundingBoxes = true;
+	}break;
 	default:
 		g_CreateScene(Scene::kSponza);
 		break;
@@ -410,18 +422,19 @@ private:
 	bool m_firstAnimation = true;
 	bool m_takeScreenshot = false;
 
-	const std::string m_SceneNames[3] =
+	const std::string m_SceneNames[4] =
 	{
 		"BistroInterior",
 		"BistroExterior",
-		"Sponza"
+		"Sponza",
+		"RuggedSurface"
 	};
 };
 
 
 int wmain(int argc, wchar_t** argv)
 {
-	g_CreateScene(Scene::kSponza);
+	g_CreateScene(Scene::kRuggedSurface);
 	
 #if _DEBUG
 	CComPtr<ID3D12Debug> debugInterface;
@@ -508,6 +521,8 @@ namespace Settings
 	CpuTimer g_ShadowRenderTimer(true, "ShadowRender");
 	CpuTimer g_ReprojectTimer(true, "Reproject");
 	CpuTimer g_HolefillingTimer(true, "HoleFilling");
+
+	NumVar NormalTextureStrength("NormalTextureStrength", 0.5, 0, 1);
 }
 
 std::unique_ptr<DescriptorHeapStack> g_pRaytracingDescriptorHeap;

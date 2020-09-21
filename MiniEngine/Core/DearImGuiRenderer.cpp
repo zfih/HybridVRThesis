@@ -683,6 +683,11 @@ void ImGui::BuildGUI(Math::Camera* cam, GameCore::CameraController* controller)
     	// Load/Save Settings
 
 
+        float normalTextureStrength = Settings::NormalTextureStrength;
+    	
+        ImGui::DragFloat("Normal Texture Strength", &normalTextureStrength, 0.05, 0, 1);
+    	
+        Settings::NormalTextureStrength = normalTextureStrength;
     	
 		{ // use imgui
 	        bool checkbox = Settings::UseImGui;

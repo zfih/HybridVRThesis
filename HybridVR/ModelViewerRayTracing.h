@@ -65,6 +65,32 @@ inline float3 UnprojectPixel(uint2 pixel, float depth)
     return result;
 }
 
+
+void AntiAliasSpecular(inout float3 texNormal, inout float gloss)
+{
+    float normalLenSq = dot(texNormal, texNormal);
+    float invNormalLen = rsqrt(normalLenSq);
+    texNormal *= invNormalLen;
+    gloss = lerp(1, gloss, rcp(invNormalLen));
+}
+
+
+float3 GetNormal(float3 sample, float3 vertNormal, float3 vertTangent, float3 vertBitangent, out float out_gloss)
+{
+    AntiAliasSpecular(sample, out_gloss);
+    float3x3 tbn = float3x3(vertTangent, vertBitangent, vertNormal);
+    result = mul(result, tbn);
+
+    // Normalize result...
+    float lenSq = dot(result, result);
+
+    // Detect degenerate normals
+    out_success = !(!isfinite(lenSq) || lenSq < 1e-6);
+
+    result *= rsqrt(lenSq);
+    return result;
+}
+
 inline void GenerateCameraRay(uint2 pixel, out float3 origin, out float3 direction)
 {
     float3 world = UnprojectPixel(pixel, 0);
@@ -81,7 +107,7 @@ void GenerateReflectionRay(float3 position, float3 incidentDirection, float3 nor
 float CalculateReflectivity(float specular, float3 viewDir, float3 normal)
 {
 	float result = specular * pow(1.0 - saturate(dot(-viewDir, normal)), 5.0);
-    return result;
+    return 0.5;
 }
 
 void GenerateSSRRay(float2 pixel, float depth, float3 normal, float specular,
