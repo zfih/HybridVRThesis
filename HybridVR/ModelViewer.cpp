@@ -492,8 +492,8 @@ namespace Settings
 
 	BoolVar ReprojEnable("LOD/Reproject", true);
 	NumVar DepthThreshold("LOD/Depth Threshold", 0.0005);
-	NumVar AngleThreshold("LOD/Angle Threshold", 1.0f);
-	NumVar AngleBlendingRange("LOD/Angle Blending Range", 0.5f);
+	NumVar AngleThreshold("LOD/Angle Threshold", 1.5f);
+	NumVar AngleBlendingRange("LOD/Angle Blending Range", 0.0f);
 	BoolVar DebugColors("LOD/Debug Colors", false);
 
 	EnumVar RayTracingMode("Application/Raytracing/RayTraceMode", RTM_DIFFUSE_WITH_SHADOWMAPS, _countof(rayTracingModes), rayTracingModes);
@@ -2562,6 +2562,7 @@ void D3D12RaytracingMiniEngineSample::RaytraceReflections(
 	context.TransitionResource(normals, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 	context.TransitionResource(g_hitConstantBuffer, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER);
 	context.TransitionResource(colorTarget, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+	context.TransitionResource(g_SceneReflectionDistBuffer, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 	context.FlushResourceBarriers();
 
 	context.ClearUAV(g_SceneReflectionDistBuffer);
