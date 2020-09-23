@@ -342,7 +342,7 @@ private:
 
 	enum eObjectFilter { kOpaque = 0x1, kCutout = 0x2, kTransparent = 0x4, kAll = 0xF, kNone = 0x0 };
 	void RenderObjects(GraphicsContext& Context, UINT CurCam, const Matrix4& ViewProjMat, eObjectFilter Filter = kAll);
-	void RaytraceDiffuse(GraphicsContext& context,  ColorBuffer& colorTarget);
+	void RaytraceDiffuse(GraphicsContext& context,  ColorBuffer& colorTarget, bool refl);
 	void RaytraceShadows(GraphicsContext& context, ColorBuffer& colorTarget,
 	                     DepthBuffer& depth);
 	void RaytraceReflections(GraphicsContext& context, ColorBuffer& colorTarget,
@@ -421,7 +421,7 @@ private:
 
 int wmain(int argc, wchar_t** argv)
 {
-	g_CreateScene(Scene::kSponza);
+	g_CreateScene(Scene::kBistroExterior);
 	
 #if _DEBUG
 	CComPtr<ID3D12Debug> debugInterface;
@@ -2201,7 +2201,7 @@ void D3D12RaytracingMiniEngineSample::RenderScene()
 		Settings::g_HolefillingTimer.Start();
 		g_initialize_dynamicCb(gfxContext, m_Camera, Cam::kRight,
 			g_SceneColorBuffer, g_dynamicConstantBuffer);
-		RaytraceDiffuse(gfxContext, g_SceneColorBuffer);
+		RaytraceDiffuse(gfxContext, g_SceneColorBuffer, true);
 		gfxContext.Finish();
 		Settings::g_HolefillingTimer.Stop();
 	}
@@ -2419,7 +2419,8 @@ void D3D12RaytracingMiniEngineSample::RaytraceShadows(
 
 void D3D12RaytracingMiniEngineSample::RaytraceDiffuse(
 	GraphicsContext& context,
-	ColorBuffer& colorTarget)
+	ColorBuffer& colorTarget,
+	bool refl)
 {
 	ScopedTimer _p0(L"RaytracingWithHitShader", context);
 
@@ -2430,7 +2431,7 @@ void D3D12RaytracingMiniEngineSample::RaytraceDiffuse(
 	hitShaderConstants.ambientLight = Vector3(1.0f, 1.0f, 1.0f) * Settings::AmbientIntensity;
 	hitShaderConstants.ShadowTexelSize[0] = 1.0f / g_ShadowBuffer.GetWidth();
 	hitShaderConstants.modelToShadow = Transpose(m_SunShadow.GetShadowMatrix());
-	hitShaderConstants.IsReflection = false;
+	hitShaderConstants.IsReflection = refl;
 	hitShaderConstants.UseShadowRays = Settings::RayTracingMode == Settings::RTM_DIFFUSE_WITH_SHADOWRAYS;
 	context.WriteBuffer(g_hitConstantBuffer, 0, &hitShaderConstants, sizeof(hitShaderConstants));
 
@@ -2565,7 +2566,7 @@ void D3D12RaytracingMiniEngineSample::Raytrace(class GraphicsContext& gfxContext
 
 	case Settings::RTM_DIFFUSE_WITH_SHADOWMAPS:
 	case Settings::RTM_DIFFUSE_WITH_SHADOWRAYS:
-		RaytraceDiffuse(gfxContext, g_SceneColorBuffer);
+		RaytraceDiffuse(gfxContext, g_SceneColorBuffer, false);
 		break;
 
 	case Settings::RTM_REFLECTIONS:
