@@ -63,6 +63,7 @@ float4 InvTileDim;
 uint4 TileCount;
 uint4 FirstLightIndex;
 uint FrameIndexMod2;
+float NormalTextureStrength;
 int UseSceneLighting;
 }
 
@@ -358,15 +359,19 @@ float3 ApplySceneLights(
 }
 
 #define SAMPLE_TEX(texName) texName.Sample(sampler0, uv)
-float3 GetNormal(
-	float2 uv, float3 vsNormal, float3 vsTangent, float3 vsBitangent,
-	inout float inout_gloss, out bool out_success)
-{
-	float3 result = SAMPLE_TEX(texNormal) * 2.0 - 1.0;
 
-	AntiAliasSpecular(result, inout_gloss);
-	float3x3 tbn = float3x3(vsTangent, vsBitangent, vsNormal);
-	result = mul(result, tbn);
+float3 GetNormal(
+	float3 normalTexture,
+	float3 vertNormal,
+	float3 vertTangent,
+	float3 vertBitangent,
+	float normalTextureStrength,
+	inout float out_gloss,
+	out bool out_success)
+{
+	AntiAliasSpecular(normalTexture, out_gloss);
+	float3x3 tbn = float3x3(vertTangent, vertBitangent, vertNormal);
+	float3 result = mul(normalTexture, tbn);
 
 	// Normalize result...
 	float lenSq = dot(result, result);
@@ -375,9 +380,11 @@ float3 GetNormal(
 	out_success = !(!isfinite(lenSq) || lenSq < 1e-6);
 
 	result *= rsqrt(lenSq);
+
+	result = lerp(vertNormal, result, normalTextureStrength);
+
 	return result;
 }
-
 
 [RootSignature(ModelViewer_RootSig)]
 MRT main(VSOutput vsOutput)
@@ -390,9 +397,17 @@ MRT main(VSOutput vsOutput)
 	float2 uv = vsOutput.uv;
 	float gloss = 128.0;
 	bool hasValidNormals;
+
+	float3 normalTexture = SAMPLE_TEX(texNormal) * 2.0 - 1.0;
+		
 	float3 normal = GetNormal(
-		uv, vsOutput.normal, vsOutput.tangent, vsOutput.bitangent, 
-		gloss, hasValidNormals);
+		normalTexture, 
+		vsOutput.normal,
+		vsOutput.tangent, 
+		vsOutput.bitangent, 
+		NormalTextureStrength,
+		gloss,
+		hasValidNormals);
 
     const float3 specularAlbedo = float3(0.56, 0.56, 0.56);
     const float specularMask = SAMPLE_TEX(texSpecular).g;

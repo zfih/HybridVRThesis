@@ -86,14 +86,6 @@ float2 GetUVAttribute(uint byteOffset)
 	return asfloat(g_attributes.Load2(byteOffset));
 }
 
-void AntiAliasSpecular(inout float3 texNormal, inout float gloss)
-{
-	float normalLenSq = dot(texNormal, texNormal);
-	float invNormalLen = rsqrt(normalLenSq);
-	texNormal *= invNormalLen;
-	gloss = lerp(1, gloss, rcp(invNormalLen));
-}
-
 // Apply fresnel to modulate the specular albedo
 void FSchlick(inout float3 specular, inout float3 diffuse, float3 lightDir, float3 halfVec)
 {
@@ -239,26 +231,7 @@ float3 ApplySRGBCurve(float3 x)
 #define SAMPLE_TEX(texName) (texName.SampleLevel(g_s0, uv, 0))
 #endif
 
-float3 GetNormal(
-	float2 uv, float2 ddx, float2 ddy,
-	float3 vsNormal, float3 vsTangent, float3 vsBitangent,
-	inout float inout_gloss, out bool out_success)
-{
-	float3 result = SAMPLE_TEX(g_localNormal).rgb * 2.0 - 1.0;
 
-	AntiAliasSpecular(result, inout_gloss);
-	float3x3 tbn = float3x3(vsTangent, vsBitangent, vsNormal);
-	result = mul(result, tbn);
-
-	// Normalize result...
-	float lenSq = dot(result, result);
-
-	// Detect degenerate normals
-	out_success = !(!isfinite(lenSq) || lenSq < 1e-6);
-
-	result *= rsqrt(lenSq);
-	return result;
-}
 
 float GetShadowMultiplier(float3 position, int bounces)
 {
@@ -298,7 +271,6 @@ float GetShadowMultiplier(float3 position, int bounces)
 void Hit(inout RayPayload payload, in BuiltInTriangleIntersectionAttributes attr)
 {
 	int3 pixel = int3(DispatchRaysIndex().xy, g_dynamic.curCam);
-
 
 	payload.RayHitT = RayTCurrent();
 	if (payload.SkipShading)
@@ -374,9 +346,16 @@ void Hit(inout RayPayload payload, in BuiltInTriangleIntersectionAttributes attr
 	//// ACTUAL SHADING
 
 	float gloss = 128.0;
-	bool hasValidNormal;
+	bool hasValidNormal = true;
+	float3 normalTexture = SAMPLE_TEX(g_localNormal).rgb * 2.0 - 1.0;
 	float3 normal = GetNormal(
-		uv, ddx, ddy, vsNormal, vsTangent, vsBitangent, gloss, hasValidNormal);
+		normalTexture,
+		vsNormal,
+		vsTangent,
+		vsBitangent,
+		g_dynamic.normalTextureStrength,
+		gloss, 
+		hasValidNormal);
 
 	if (!hasValidNormal)
 	{

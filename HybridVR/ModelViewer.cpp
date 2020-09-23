@@ -258,8 +258,8 @@ void g_CreateScene(Scene Scene)
 	case Scene::kRuggedSurface:
 	{
 		g_Scene.Matrix = Matrix4::MakeRotationX(-XM_PIDIV2) * Matrix4::MakeScale(200);
-		g_Scene.ModelPath = ASSET_DIRECTORY "Models/RuggedSurfaceTest/RuggedSurfaceTest.h3d";
-		g_Scene.TextureFolderPath = ASSET_DIRECTORY L"Models/RuggedSurfaceTest/";
+		g_Scene.ModelPath = ASSET_DIRECTORY "Models/RuggedSurface/RuggedSurface.h3d";
+		g_Scene.TextureFolderPath = ASSET_DIRECTORY L"Models/RuggedSurface/";
 		g_Scene.Reflective = { "checker" };
 		g_Scene.flipUvY = true;
 		g_Scene.ComputeBoundingBoxes = true;
@@ -2245,6 +2245,7 @@ void D3D12RaytracingMiniEngineSample::RenderScene()
 	psConstants.FirstLightIndex[1] = Lighting::m_FirstConeShadowedLight;
 	psConstants.FrameIndexMod2 = TemporalEffects::GetFrameIndexMod2();
 	psConstants.UseSceneLighting = Settings::UseSceneLighting;
+	psConstants.NormalTextureStrength = Settings::NormalTextureStrength;
 
 
 	if (!skipShadowMap)
@@ -2361,6 +2362,12 @@ void g_initialize_dynamicCb(
 	Context.WriteBuffer(Buffer, 0, &inputs, sizeof(inputs));
 }
 
+void g_set_common_hitCb(HitShaderConstants& cb)
+{
+	cb.NormalTextureStrength = Settings::NormalTextureStrength;
+}
+
+
 void Raytracebarycentrics(
 	CommandContext& context,
 	ColorBuffer& colorTarget)
@@ -2369,6 +2376,7 @@ void Raytracebarycentrics(
 
 	// Create hit constants
 	HitShaderConstants hitShaderConstants = {};
+	g_set_common_hitCb(hitShaderConstants);
 	hitShaderConstants.IsReflection = false;
 	context.WriteBuffer(g_hitConstantBuffer, 0, &hitShaderConstants, sizeof(hitShaderConstants));
 
@@ -2412,6 +2420,7 @@ void RaytracebarycentricsSSR(
 	ScopedTimer _p0(L"Raytracing SSR barycentrics", context);
 
 	HitShaderConstants hitShaderConstants = {};
+	g_set_common_hitCb(hitShaderConstants);
 	hitShaderConstants.IsReflection = false;
 	context.WriteBuffer(g_hitConstantBuffer, 0, &hitShaderConstants, sizeof(hitShaderConstants));
 
@@ -2455,6 +2464,7 @@ void D3D12RaytracingMiniEngineSample::RaytraceShadows(
 	ScopedTimer _p0(L"Raytracing Shadows", context);
 
 	HitShaderConstants hitShaderConstants = {};
+	g_set_common_hitCb(hitShaderConstants);
 	hitShaderConstants.sunDirection = m_SunDirection;
 	hitShaderConstants.sunLight = Vector3(1.0f, 1.0f, 1.0f) * Settings::SunLightIntensity;
 	hitShaderConstants.ambientLight = Vector3(1.0f, 1.0f, 1.0f) * Settings::AmbientIntensity;
@@ -2504,6 +2514,7 @@ void D3D12RaytracingMiniEngineSample::RaytraceDiffuse(
 
 
 	HitShaderConstants hitShaderConstants = {};
+	g_set_common_hitCb(hitShaderConstants);
 	hitShaderConstants.sunDirection = m_SunDirection;
 	hitShaderConstants.sunLight = Vector3(1.0f, 1.0f, 1.0f) * Settings::SunLightIntensity;
 	hitShaderConstants.ambientLight = Vector3(1.0f, 1.0f, 1.0f) * Settings::AmbientIntensity;
@@ -2552,6 +2563,7 @@ void D3D12RaytracingMiniEngineSample::RaytraceReflections(
 
 
 	HitShaderConstants hitShaderConstants = {};
+	g_set_common_hitCb(hitShaderConstants);
 	hitShaderConstants.sunDirection = m_SunDirection;
 	hitShaderConstants.sunLight = Vector3(1.0f, 1.0f, 1.0f) * Settings::SunLightIntensity;
 	hitShaderConstants.ambientLight = Vector3(1.0f, 1.0f, 1.0f) * Settings::AmbientIntensity;
@@ -2603,6 +2615,7 @@ void D3D12RaytracingMiniEngineSample::RaytraceAsrpPlus(
 
 
 	HitShaderConstants hitShaderConstants = {};
+	g_set_common_hitCb(hitShaderConstants);
 	hitShaderConstants.sunDirection = m_SunDirection;
 	hitShaderConstants.sunLight = Vector3(1.0f, 1.0f, 1.0f) * Settings::SunLightIntensity;
 	hitShaderConstants.ambientLight = Vector3(1.0f, 1.0f, 1.0f) * Settings::AmbientIntensity;

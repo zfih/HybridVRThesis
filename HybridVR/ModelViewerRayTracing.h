@@ -24,6 +24,7 @@ struct DynamicCB
     uint     padding;
     float2   resolution;
 	uint     curCam;
+    float normalTextureStrength;
 };
 #ifdef HLSL
 #ifndef SINGLE
@@ -75,11 +76,18 @@ void AntiAliasSpecular(inout float3 texNormal, inout float gloss)
 }
 
 
-float3 GetNormal(float3 sample, float3 vertNormal, float3 vertTangent, float3 vertBitangent, out float out_gloss)
+float3 GetNormal(
+    float3 normalTexture,
+    float3 vertNormal, 
+    float3 vertTangent, 
+    float3 vertBitangent, 
+    float normalTextureStrength, 
+    inout float out_gloss, 
+    out bool out_success)
 {
-    AntiAliasSpecular(sample, out_gloss);
+    AntiAliasSpecular(normalTexture, out_gloss);
     float3x3 tbn = float3x3(vertTangent, vertBitangent, vertNormal);
-    result = mul(result, tbn);
+    float3 result = mul(normalTexture, tbn);
 
     // Normalize result...
     float lenSq = dot(result, result);
@@ -88,6 +96,11 @@ float3 GetNormal(float3 sample, float3 vertNormal, float3 vertTangent, float3 ve
     out_success = !(!isfinite(lenSq) || lenSq < 1e-6);
 
     result *= rsqrt(lenSq);
+
+
+    result = lerp(vertNormal, result, normalTextureStrength);
+
+
     return result;
 }
 
