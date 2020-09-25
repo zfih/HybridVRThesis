@@ -46,7 +46,7 @@ enum { kMinLightGridDim = 8 };
 namespace Settings
 {
     IntVar LightGridDim("Application/Forward+/Light Grid Dim", 16, kMinLightGridDim, 32, 8);
-    BoolVar UseSceneLighting("Application/Lighting/Use Scene Lighting", false);
+    BoolVar UseSceneLighting("Application/Lighting/Use Scene Lighting", true);
 }
 
 namespace Lighting
