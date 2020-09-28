@@ -22,6 +22,7 @@ struct DynamicCB
     uint     padding;
     float2   resolution;
 	uint     curCam;
+    uint     padding2;
     uint     useSceneLighting;
 };
 #ifdef HLSL
