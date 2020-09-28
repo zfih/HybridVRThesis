@@ -123,9 +123,9 @@ __declspec(align(16)) struct PSConstants
 	uint32_t TileCount[4];
 	uint32_t FirstLightIndex[4];
 	uint32_t FrameIndexMod2;
-	float NormalTextureStrength;
 
 	int UseSceneLighting;
+	float NormalTextureStrength;
 };
 
 ByteAddressBuffer g_hitConstantBuffer;
@@ -261,7 +261,7 @@ void g_CreateScene(Scene Scene)
 		g_Scene.ModelPath = ASSET_DIRECTORY "Models/RuggedSurface/RuggedSurface.h3d";
 		g_Scene.TextureFolderPath = ASSET_DIRECTORY L"Models/RuggedSurface/";
 		g_Scene.Reflective = { "checker" };
-		g_Scene.flipUvY = true;
+		g_Scene.flipUvY = false;
 		g_Scene.ComputeBoundingBoxes = true;
 	}break;
 	default:
@@ -434,7 +434,7 @@ private:
 
 int wmain(int argc, wchar_t** argv)
 {
-	g_CreateScene(Scene::kRuggedSurface);
+	g_CreateScene(Scene::kSponza);
 	
 #if _DEBUG
 	CComPtr<ID3D12Debug> debugInterface;
@@ -834,7 +834,7 @@ void D3D12RaytracingMiniEngineSample::InitializeRaytracingStateObjects(
 	                          byte* pShaderTable)
 	{
 		ID3D12StateObjectProperties* stateObjectProperties = nullptr;
-	ThrowIfFailed(pPSO->QueryInterface(IID_PPV_ARGS(&stateObjectProperties)));
+		ThrowIfFailed(pPSO->QueryInterface(IID_PPV_ARGS(&stateObjectProperties)));
 		void* pHitGroupIdentifierData = stateObjectProperties->
 			GetShaderIdentifier(hitGroupExportName);
 		for (UINT i = 0; i < numMeshes; i++)

@@ -24,7 +24,6 @@ struct DynamicCB
     uint     padding;
     float2   resolution;
 	uint     curCam;
-    float normalTextureStrength;
 };
 #ifdef HLSL
 #ifndef SINGLE
@@ -44,6 +43,7 @@ cbuffer HitShaderConstants : register(b0)
     float4x4 ModelToShadow;
     uint IsReflection;
     uint UseShadowRays;
+    float NormalTextureStrength;
 }
 
 cbuffer b1 : register(b1)
@@ -51,56 +51,45 @@ cbuffer b1 : register(b1)
     DynamicCB g_dynamic;
 };
 
+/**
+ * Creates a three dimensional normal vector from XY coordinates. This is done
+ * by isolating the Z component in the formula for vector length. The sign of Z
+ * is calculated by dotting with the view direction. If the dot product is
+ * positive, they are pointing the same way, meaning that the normal Z must be
+ * flipped.
+ *
+ * Formula for length:
+ *      l = Sqrt(x^2 + y^2 + z^2)
+ *
+ * Isolate z:
+ *    l^2 = x^2 + y^2 + z^2
+ *    l^2 = x^2 - y^2 = z^2  
+ *    l^2 = l^2 - x^2 - y^2
+ *      z = sqrt(l^2 - x^2 - y^2)
+ *
+ * We know L is 1
+ *      z = sqrt(1 -x^2 - y^2)
+ */
+float3 GetNormalFromXY(float2 xy, float3 viewDir)
+{
+    const float z = sqrt(1 - (xy.x * xy.x) - (xy.y * xy.y));
+    float3 result = float3(xy, z);
+    const float signCorrection = -sign(dot(result, viewDir));
+    result.z *= signCorrection;
+    return result;
+}
 
 inline float3 UnprojectPixel(uint2 pixel, float depth)
 {
     float2 xy = pixel + 0.5; // center in the middle of the pixel
     float2 screenPos = (xy / g_dynamic.resolution) * 2.0 - 1.0;
 
-    // Invert Y for DirectX-style coordinates
+    // Invert ý for DirectX-style coordinates
     screenPos.y = -screenPos.y;
 
     // Unproject into a ray
     float4 unprojected = mul(g_dynamic.cameraToWorld, float4(screenPos, depth, 1));
     float3 result = unprojected.xyz / unprojected.w;
-    return result;
-}
-
-
-void AntiAliasSpecular(inout float3 texNormal, inout float gloss)
-{
-    float normalLenSq = dot(texNormal, texNormal);
-    float invNormalLen = rsqrt(normalLenSq);
-    texNormal *= invNormalLen;
-    gloss = lerp(1, gloss, rcp(invNormalLen));
-}
-
-
-float3 GetNormal(
-    float3 normalTexture,
-    float3 vertNormal, 
-    float3 vertTangent, 
-    float3 vertBitangent, 
-    float normalTextureStrength, 
-    inout float out_gloss, 
-    out bool out_success)
-{
-    AntiAliasSpecular(normalTexture, out_gloss);
-    float3x3 tbn = float3x3(vertTangent, vertBitangent, vertNormal);
-    float3 result = mul(normalTexture, tbn);
-
-    // Normalize result...
-    float lenSq = dot(result, result);
-
-    // Detect degenerate normals
-    out_success = !(!isfinite(lenSq) || lenSq < 1e-6);
-
-    result *= rsqrt(lenSq);
-
-
-    result = lerp(vertNormal, result, normalTextureStrength);
-
-
     return result;
 }
 
@@ -120,17 +109,18 @@ void GenerateReflectionRay(float3 position, float3 incidentDirection, float3 nor
 float CalculateReflectivity(float specular, float3 viewDir, float3 normal)
 {
 	float result = specular * pow(1.0 - saturate(dot(-viewDir, normal)), 5.0);
-    return 0.5;
+    return result;
 }
 
-void GenerateSSRRay(float2 pixel, float depth, float3 normal, float specular,
-    out float3 out_origin, out float3 out_direction, out float out_reflectivity)
+void GenerateSSRRay(float2 pixel, float depth, float2 normalXY, float specular,
+    out float3 out_origin, out float3 out_direction, out float out_reflectivity, out float3 out_normal)
 {
     float3 pixelInWorld = UnprojectPixel(pixel.xy, depth);
 
     float3 viewDir = normalize(pixelInWorld - g_dynamic.worldCameraPosition);
-    out_reflectivity = CalculateReflectivity(specular, viewDir, normal);
-    GenerateReflectionRay(pixelInWorld, viewDir, normal, out_origin, out_direction);
+    out_normal = GetNormalFromXY(normalXY, viewDir);
+    out_reflectivity = CalculateReflectivity(specular, viewDir, out_normal);
+    GenerateReflectionRay(pixelInWorld, viewDir, out_normal, out_origin, out_direction);
 }
 
 void FireRay(float3 origin, float3 direction, float bounces, float reflectivity)

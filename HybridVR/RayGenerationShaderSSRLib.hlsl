@@ -22,22 +22,25 @@ void RayGen()
 
 	float depth = depths[pixel];
 
-	float4 normalSpecular = normals[pixel];
-	float3 normal = normalSpecular.xyz;
-	float specular = normalSpecular.w;
+	float4 normalXY_Ratio_Specular = normals[pixel];
+	float2 normalXY = normalXY_Ratio_Specular.xy;
+	float ratio = normalXY_Ratio_Specular.z;
+	float specular = normalXY_Ratio_Specular.w;
 
-
+	if (ratio == 0.0)
+		return;
+	
 	float3 origin;
 	float3 direction;
 	float reflectivity;
+	float3 normal;
 	GenerateSSRRay(
-		pixel.xy, depth, normal, specular,
-		origin, direction, reflectivity);
+		pixel.xy, depth, normalXY, specular,
+		origin, direction, reflectivity, normal);
 	
-	if (reflectivity == 0.0)
-		return;
 
 	const int numBounces = 1;
+
 	FireRay(origin, direction, numBounces, reflectivity);
 	
 }
