@@ -24,7 +24,9 @@ struct DynamicCB
     uint     padding;
     float2   resolution;
 	uint     curCam;
+    uint     useSceneLighting;
 };
+
 #ifdef HLSL
 #ifndef SINGLE
 static const float FLT_MAX = asfloat(0x7F7FFFFF);
