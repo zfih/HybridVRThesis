@@ -14,6 +14,21 @@
 #define HLSL
 #include "ModelViewerRaytracing.h"
 #include "RayTracingHlslCompat.h"
+//#include "LightGrid.hlsli" // dxc does not like this :(
+
+struct LightData
+{
+	float3 pos;
+	float radiusSq;
+
+	float3 color;
+	uint type;
+
+	float3 coneDir;
+	float2 coneAngles; // x = 1.0f / (cos(coneInner) - cos(coneOuter)), y = cos(coneOuter)
+
+	float4x4 shadowTextureMatrix;
+};
 
 cbuffer Material : register(b3)
 {
@@ -34,6 +49,7 @@ Texture2D<float4> g_localNormal : register(t7);
 Texture2D<float4> g_localSpecular : register(t8);
 
 Texture2DArray<float4> normals : register(t13);
+StructuredBuffer<LightData> lightBuffer : register(t14);
 
 RWTexture2D<float> reflectionDistance : register(u3);
 
@@ -125,6 +141,123 @@ float3 ApplyLightCommon(
 	float nDotL = saturate(dot(normal, lightDir));
 
 	return nDotL * lightColor * (diffuseColor + specularFactor * specularColor);
+}
+
+float3 ApplyPointLight(
+	float3 diffuseColor, // Diffuse albedo
+	float3 specularColor, // Specular albedo
+	float specularMask, // Where is it shiny or dingy?
+	float gloss, // Specular power
+	float3 normal, // World-space normal
+	float3 viewDir, // World-space vector from eye to point
+	float3 worldPos, // World-space fragment position
+	float3 lightPos, // World-space light position
+	float lightRadiusSq,
+	float3 lightColor // Radiance of directional light
+)
+{
+	float3 lightDir = lightPos - worldPos;
+	float lightDistSq = dot(lightDir, lightDir);
+	float invLightDist = rsqrt(lightDistSq);
+	lightDir *= invLightDist;
+
+	// modify 1/d^2 * R^2 to fall off at a fixed radius
+	// (R/d)^2 - d/R = [(1/d^2) - (1/R^2)*(d/R)] * R^2
+	float distanceFalloff = lightRadiusSq * (invLightDist * invLightDist);
+	distanceFalloff = max(0, distanceFalloff - rsqrt(distanceFalloff));
+
+	return distanceFalloff * ApplyLightCommon(
+		diffuseColor,
+		specularColor,
+		specularMask,
+		gloss,
+		normal,
+		viewDir,
+		lightDir,
+		lightColor
+	);
+}
+
+float3 ApplyConeLight(
+	float3 diffuseColor, // Diffuse albedo
+	float3 specularColor, // Specular albedo
+	float specularMask, // Where is it shiny or dingy?
+	float gloss, // Specular power
+	float3 normal, // World-space normal
+	float3 viewDir, // World-space vector from eye to point
+	float3 worldPos, // World-space fragment position
+	float3 lightPos, // World-space light position
+	float lightRadiusSq,
+	float3 lightColor, // Radiance of directional light
+	float3 coneDir,
+	float2 coneAngles
+)
+{
+	float3 lightDir = lightPos - worldPos;
+	float lightDistSq = dot(lightDir, lightDir);
+	float invLightDist = rsqrt(lightDistSq);
+	lightDir *= invLightDist;
+
+	// modify 1/d^2 * R^2 to fall off at a fixed radius
+	// (R/d)^2 - d/R = [(1/d^2) - (1/R^2)*(d/R)] * R^2
+	float distanceFalloff = lightRadiusSq * (invLightDist * invLightDist);
+	distanceFalloff = max(0, distanceFalloff - rsqrt(distanceFalloff));
+
+	float coneFalloff = dot(-lightDir, coneDir);
+	coneFalloff = saturate((coneFalloff - coneAngles.y) * coneAngles.x);
+
+	return (coneFalloff * distanceFalloff) * ApplyLightCommon(
+		diffuseColor,
+		specularColor,
+		specularMask,
+		gloss,
+		normal,
+		viewDir,
+		lightDir,
+		lightColor
+	);
+}
+
+float3 ApplySceneLights(
+	float3 diffuse, float3 specular, float specularMask, float gloss,
+	float3 normal, float3 viewDir, float3 pos)
+{
+	float3 colorSum;
+	for (int pointLightIndex = 0; pointLightIndex < 128; pointLightIndex++)
+	{
+		LightData lightData = lightBuffer[pointLightIndex];
+		if (lightData.type == 0)
+		{
+			colorSum += ApplyPointLight(
+				diffuse,
+				specular,
+				specularMask,
+				gloss,
+				normal,
+				viewDir,
+				pos,
+				lightData.pos,
+				lightData.radiusSq,
+				lightData.color);
+		}
+		// WONTFIX We don't know what this 'lightIndex' is, so we're just leaving it out. We could
+		//   perhaps read it as a point light or a cone light instead.
+		else if (lightData.type == 1 || lightData.type == 2)
+		{
+			colorSum += ApplyConeLight(
+				diffuse, specular, specularMask, gloss, normal, viewDir, pos, lightData.pos,
+				lightData.radiusSq, lightData.color, lightData.coneDir, lightData.coneAngles);
+		}
+		else if (lightData.type == 2)
+		{
+			/*colorSum += ApplyConeShadowedLight(
+				diffuse, specular, specularMask, gloss, normal, viewDir, pos,
+				lightData.pos, lightData.radiusSq, lightData.color, lightData.coneDir,
+				lightData.coneAngles, lightData.shadowTextureMatrix, lightIndex);
+				*/
+		}
+	}
+	return colorSum;
 }
 
 float3 RayPlaneIntersection(float3 planeOrigin, float3 planeNormal, float3 rayOrigin, float3 rayDirection)
@@ -409,6 +542,15 @@ void Hit(inout RayPayload payload, in BuiltInTriangleIntersectionAttributes attr
 		viewDir,
 		SunDirection,
 		SunColor);
+
+#if 0
+	//if (g_dynamic.useSceneLighting) // Wontfix: This causes reflections to be purple
+	{
+		colorSum += ApplySceneLights(
+			diffuseColor.rgb, specularAlbedo, specularMask, gloss, normal,
+			viewDir, worldPosition);
+	}
+#endif
 
 	colorSum = ApplySRGBCurve(colorSum);
 

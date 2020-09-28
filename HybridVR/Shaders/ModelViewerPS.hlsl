@@ -54,16 +54,16 @@ ByteAddressBuffer lightGridBitMask : register(t69);
 
 cbuffer PSConstants : register(b0)
 {
-float3 SunDirection;
-float3 SunColor;
-float3 AmbientColor;
-float4 ShadowTexelSize;
+    float3 SunDirection;
+    float3 SunColor;
+    float3 AmbientColor;
+    float4 ShadowTexelSize;
 
-float4 InvTileDim;
-uint4 TileCount;
-uint4 FirstLightIndex;
-uint FrameIndexMod2;
-int UseSceneLighting;
+    float4 InvTileDim;
+    uint4 TileCount;
+    uint4 FirstLightIndex;
+    uint FrameIndexMod2;
+    int UseSceneLighting;
 }
 
 cbuffer MaterialInfo : register(b1)
@@ -412,7 +412,6 @@ MRT main(VSOutput vsOutput)
 
 	mrt.Color = float4(ApplySRGBCurve(colorSum), 1);
 	mrt.ColorRaw = mrt.Color;
-
 
 	if (AreNormalsNeeded)
 	{
