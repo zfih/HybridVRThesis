@@ -5,7 +5,8 @@
 #endif
 
 struct HybridSsrConstantBuffer
-{
+{	
+	// (Width, Height, 1 / Width, 1 / Height)
 	float4 RenderTargetSize;
 	
 	float4x4 View;
@@ -14,10 +15,8 @@ struct HybridSsrConstantBuffer
 	
 	float NearPlaneZ;
 	float FarPlaneZ;
-	
-	// (Width, Height, 1 / Width, 1 / Height)
 
-	// Unclear
+	// Strength of reflections
 	float SSRScale;
 	
 	// Thickness to ascribe to each pixel in the depth buffer
@@ -40,4 +39,7 @@ struct HybridSsrConstantBuffer
      * the camera.
 	 */
 	float StrideZCutoff;
+
+	float FadeStart;
+	float FadeEnd;
 };

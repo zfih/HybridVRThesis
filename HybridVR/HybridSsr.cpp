@@ -28,6 +28,8 @@ float HybridSsr::g_Stride = 5.0f;
 float HybridSsr::g_MaxSteps = 380;
 float HybridSsr::g_MaxDistance = 200;
 float HybridSsr::g_StrideZCutoff = 0;
+float HybridSsr::g_FadeStart = 0.8;
+float HybridSsr::g_FadeEnd = 1.0;
 
 
 void CopyVectorToFloat3(float3 &Dst, Math::Vector3 Src);
@@ -150,6 +152,8 @@ void CreateConstantBuffer(
 	data.MaxSteps = g_MaxSteps;
 	data.MaxDistance = g_MaxDistance;
 	data.StrideZCutoff = g_StrideZCutoff;
+	data.FadeStart = g_FadeStart;
+	data.FadeEnd = g_FadeEnd;
 
 	Ctx.WriteBuffer(
 		g_ConstantBuffer, 0,

@@ -123,6 +123,25 @@ bool zero(float4x4 mat)
 	return false;
 }
 
+float calculateFade(float2 hitPixel, float3 toPosition, float3 rayDirection)
+{
+	// fade rays close to screen edge
+	float2 raySS = hitPixel.xy * cb.RenderTargetSize.zw;
+	float2 boundary = abs(raySS.xy - float2(0.5f, 0.5f)) * 2.0f;
+	const float fadeDiffRcp = 1.0f / (cb.FadeEnd - cb.FadeStart);
+	float fadeOnBorder = 
+		1.0f - saturate((boundary.x - cb.FadeStart) * fadeDiffRcp);
+	fadeOnBorder *= 1.0f - saturate((boundary.y - cb.FadeStart) * fadeDiffRcp);
+	fadeOnBorder = smoothstep(0.0f, 1.0f, fadeOnBorder);
+	float fadeOnDistance = 
+		LineariseDepth(depthBuffer[hitPixel], cb.NearPlaneZ, cb.FarPlaneZ);
+	float reflDotView = dot(toPosition, rayDirection);
+	float fadeOnPerpendicular = 
+		saturate(lerp(0.0f, 1.0f, saturate(reflDotView * 4.0f)));
+	float remainingAlpha = 1.0 - mainBuffer[hitPixel].a;
+	return fadeOnPerpendicular * fadeOnBorder * fadeOnDistance * 
+		(1.0f - saturate(remainingAlpha));
+}
 
 #define THREADX 8
 #define THREADY 8
@@ -157,7 +176,7 @@ void CSMain(uint3 Gid : SV_GroupID, uint3 DTid : SV_DispatchThreadID, uint3 GTid
 	clipPos.y = -clipPos.y;
 
 	// Convert normal to view space to find the correct reflection vector
-	float3 normalVS = mul(cb.View, normal);
+	float3 normalVS = normalize(mul(cb.View, normal));
 
 	float4 viewPos = mul(cb.InvProjection, clipPos);
 	viewPos.xyz /= viewPos.w;
@@ -189,6 +208,7 @@ void CSMain(uint3 Gid : SV_GroupID, uint3 DTid : SV_DispatchThreadID, uint3 GTid
 		intersection = false;
 	}
 
+	float totalFade = calculateFade(hitPixel, toPosition, rayDirection);
 
 	if (intersection)
 	{
@@ -200,11 +220,11 @@ void CSMain(uint3 Gid : SV_GroupID, uint3 DTid : SV_DispatchThreadID, uint3 GTid
 		float3 F = Fresnel(specularColor, L, H);
 
 		//outputRT[screenPos] = float4(LineariseDepth(depth, cb.NearPlaneZ, cb.FarPlaneZ),0,0,1);
-		float weight = F * cb.SSRScale;
+		float weight = F * cb.SSRScale * totalFade;
 		outputRT[screenPos] = float4(mainBuffer[hitPixel].rgb * weight + mainRT.rgb * (1 - weight), 1);
 		//outputRT[screenPos] = float4(result.rgb, 1);
-		normalReflectiveBuffer[screenPos] = float4(normalReflectiveBuffer[screenPos].xyz, 0);
 	}
+	normalReflectiveBuffer[screenPos] = float4(normalReflectiveBuffer[screenPos].xyz, 0);
 }
 
 bool TraceScreenSpaceRay(
