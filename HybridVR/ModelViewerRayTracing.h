@@ -14,6 +14,7 @@ struct RayPayload
 #endif
 
 #define RENDER(x) g_screenOutput[pixel] = x;return
+#define EPSILON 0.00001
 
 #pragma once
 // Volatile part (can be split into its own CBV). 
@@ -63,19 +64,23 @@ cbuffer b1 : register(b1)
  *
  * Isolate z:
  *    l^2 = x^2 + y^2 + z^2
- *    l^2 = x^2 - y^2 = z^2  
- *    l^2 = l^2 - x^2 - y^2
+ *    z^2 = l^2 - x^2 - y^2
  *      z = sqrt(l^2 - x^2 - y^2)
  *
- * We know L is 1
- *      z = sqrt(1 -x^2 - y^2)
+ * We know length l is 1
+ *      z = sqrt(1 - x^2 - y^2)
  */
 float3 GetNormalFromXY(float2 xy, float3 viewDir)
 {
-    const float z = sqrt(1 - (xy.x * xy.x) - (xy.y * xy.y));
+    float len = 1 + EPSILON;
+    const float z = sqrt(len - (xy.x * xy.x) - (xy.y * xy.y));
+    
     float3 result = float3(xy, z);
-    const float signCorrection = -sign(dot(result, viewDir));
+    
+    float ndotv = dot(result, viewDir);
+    const float signCorrection = -sign(ndotv);
     result.z *= signCorrection;
+    
     return result;
 }
 
@@ -84,7 +89,7 @@ inline float3 UnprojectPixel(uint2 pixel, float depth)
     float2 xy = pixel + 0.5; // center in the middle of the pixel
     float2 screenPos = (xy / g_dynamic.resolution) * 2.0 - 1.0;
 
-    // Invert ý for DirectX-style coordinates
+    // Invert y for DirectX-style coordinates
     screenPos.y = -screenPos.y;
 
     // Unproject into a ray
@@ -102,7 +107,7 @@ inline void GenerateCameraRay(uint2 pixel, out float3 origin, out float3 directi
 
 void GenerateReflectionRay(float3 position, float3 incidentDirection, float3 normal, out float3 out_origin, out float3 out_direction)
 {
-    out_direction = reflect(incidentDirection, normal);
+    out_direction = normalize(reflect(incidentDirection, normal));
     out_origin = position - incidentDirection * 0.001f;
 }
 
@@ -112,15 +117,22 @@ float CalculateReflectivity(float specular, float3 viewDir, float3 normal)
     return result;
 }
 
-void GenerateSSRRay(float2 pixel, float depth, float2 normalXY, float specular,
-    out float3 out_origin, out float3 out_direction, out float out_reflectivity, out float3 out_normal)
+void GenerateSSRRay(
+    float2 pixel, 
+    float depth,
+    float2 normalXY, 
+    float specular,
+    out float3 out_origin,
+    out float3 out_direction, 
+    out float out_reflectivity)
 {
     float3 pixelInWorld = UnprojectPixel(pixel.xy, depth);
 
     float3 viewDir = normalize(pixelInWorld - g_dynamic.worldCameraPosition);
-    out_normal = GetNormalFromXY(normalXY, viewDir);
-    out_reflectivity = CalculateReflectivity(specular, viewDir, out_normal);
-    GenerateReflectionRay(pixelInWorld, viewDir, out_normal, out_origin, out_direction);
+    float3 normal = GetNormalFromXY(normalXY, viewDir);
+    out_reflectivity = CalculateReflectivity(specular, viewDir, normal);
+    GenerateReflectionRay(pixelInWorld, viewDir, normal, 
+        out_origin, out_direction);
 }
 
 void FireRay(float3 origin, float3 direction, float bounces, float reflectivity)

@@ -19,7 +19,7 @@ Texture2DArray<float4> normals : register(t13);
 void RayGen()
 {
 	uint3 pixel = float3(DispatchRaysIndex().xy, g_dynamic.curCam);
-
+	
 	float depth = depths[pixel];
 
 	float4 normalXY_Ratio_Specular = normals[pixel];
@@ -27,20 +27,30 @@ void RayGen()
 	float ratio = normalXY_Ratio_Specular.z;
 	float specular = normalXY_Ratio_Specular.w;
 
-	if (ratio == 0.0)
+	if(ratio == 0)
+	{
 		return;
-	
+	}
+
 	float3 origin;
 	float3 direction;
 	float reflectivity;
-	float3 normal;
+
 	GenerateSSRRay(
-		pixel.xy, depth, normalXY, specular,
-		origin, direction, reflectivity, normal);
-	
+		pixel.xy,
+		depth,
+		normalXY,
+		specular,
+		origin,
+		direction,
+		reflectivity);
+
+	if (reflectivity == 0.0)
+	{
+		return;
+	}
 
 	const int numBounces = 1;
 
 	FireRay(origin, direction, numBounces, reflectivity);
-	
 }

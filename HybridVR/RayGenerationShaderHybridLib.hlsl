@@ -22,11 +22,10 @@ void ScreenSpaceReflection(float2 normalXY, float specular, int3 pixel, float ra
 	float3 origin;
 	float3 direction;
 	float reflectivity;
-	float3 normal;
 
 	GenerateSSRRay(
 		pixel.xy, depth, normalXY, specular,
-		origin, direction, reflectivity, normal);
+		origin, direction, reflectivity);
 
 	float numBounces = 1;
 
@@ -64,11 +63,11 @@ void RayGen()
 {
 	int3 pixel = int3(DispatchRaysIndex().xy, g_dynamic.curCam);
 
-	float4 normalSpecular = g_normals[pixel];
-	float2 normalXY = normalSpecular.xy;
+	float4 normalXY_Ratio_Specular = g_normals[pixel];
+	float2 normalXY = normalXY_Ratio_Specular.xy;
 
-	float ratio = normalSpecular.z;
-	float specular = normalSpecular.w;
+	float ratio = normalXY_Ratio_Specular.z;
+	float specular = normalXY_Ratio_Specular.w;
 
 	float4 color = g_screenOutput[pixel];
 

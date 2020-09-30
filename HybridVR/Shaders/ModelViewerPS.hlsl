@@ -81,12 +81,20 @@ float3 ApplySRGBCurve(float3 x)
 	return x < 0.0031308 ? 12.92 * x : 1.055 * pow(x, 1.0 / 2.4) - 0.055;
 }
 
+void AntiAliasSpecular(float3 texNormal, inout float gloss)
+{
+	// TODO(freemedude 11:05 30-09): Make sure result is the same as:
+	/*
 void AntiAliasSpecular(inout float3 texNormal, inout float gloss)
 {
 	float normalLenSq = dot(texNormal, texNormal);
 	float invNormalLen = rsqrt(normalLenSq);
 	texNormal *= invNormalLen;
 	gloss = lerp(1, gloss, rcp(invNormalLen));
+}
+	 */
+	float len = length(texNormal);
+	gloss = lerp(1, gloss, len);
 }
 
 // Apply fresnel to modulate the specular albedo
@@ -363,19 +371,26 @@ float3 GetNormal(
 	float2 uv, float3 vsNormal, float3 vsTangent, float3 vsBitangent,
 	inout float inout_gloss, out bool out_success)
 {
-	float3 result = SAMPLE_TEX(texNormal) * 2.0 - 1.0;
+	float3 textureNormal = SAMPLE_TEX(texNormal) * 2.0 - 1.0;
+	AntiAliasSpecular(textureNormal, inout_gloss);
+	textureNormal = normalize(textureNormal);
+	vsNormal = normalize(vsNormal);
 
-	AntiAliasSpecular(result, inout_gloss);
-	float3x3 tbn = float3x3(vsTangent, vsBitangent, vsNormal);
-	result = mul(result, tbn);
-
-	// Normalize result...
-	float lenSq = dot(result, result);
+	// Convert texture normal to world space
+	{
+		float3x3 tbn = float3x3(vsTangent, vsBitangent, vsNormal);
+		textureNormal = mul(textureNormal, tbn);
+	}
 
 	// Detect degenerate normals
+	float lenSq = dot(textureNormal, textureNormal);
 	out_success = !(!isfinite(lenSq) || lenSq < 1e-6);
-	result *= rsqrt(lenSq);
-	result = lerp(vsNormal, result, NormalTextureStrength);
+
+	// Apply normal texture based on strength
+	float3 result = lerp(vsNormal, textureNormal, NormalTextureStrength);
+	
+	result = normalize(result);
+
 	return result;
 }
 
@@ -398,7 +413,6 @@ MRT main(VSOutput vsOutput)
     const float3 specularAlbedo = float3(0.56, 0.56, 0.56);
     const float specularMask = SAMPLE_TEX(texSpecular).g;
     const float3 viewDir = normalize(vsOutput.viewDir);
-
 	float3 diffuseAlbedo = SAMPLE_TEX(texDiffuse);
 	float3 colorSum = 0;
     colorSum += ApplyAmbientLight(diffuseAlbedo, 1, AmbientColor);
@@ -413,12 +427,9 @@ MRT main(VSOutput vsOutput)
 
 	mrt.Color = float4(ApplySRGBCurve(colorSum), 1);
 	mrt.ColorRaw = mrt.Color;
-
-	
-
 	if (AreNormalsNeeded)
 	{
-		mrt.Normal = float4(normal, specularMask);
+		mrt.Normal = float4(normal.xy, 1, specularMask);
 	}
 
 	return mrt;

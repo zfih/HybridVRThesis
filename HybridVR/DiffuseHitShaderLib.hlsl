@@ -256,9 +256,10 @@ float3 GetNormal(
 	// Detect degenerate normals
 	out_success = !(!isfinite(lenSq) || lenSq < 1e-6);
 
-	result *= rsqrt(lenSq);
 
 	result = lerp(vsNormal, result, NormalTextureStrength);
+
+	result = normalize(result);
 	return result;
 }
 
@@ -413,7 +414,6 @@ void Hit(inout RayPayload payload, in BuiltInTriangleIntersectionAttributes attr
 		SunColor);
 
 	colorSum = ApplySRGBCurve(colorSum);
-
 	if (payload.Bounces > 0)
 	{
 		colorSum = g_screenOutput[pixel].rgb * (1 - payload.Reflectivity) + payload.Reflectivity * colorSum;

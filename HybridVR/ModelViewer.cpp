@@ -251,7 +251,7 @@ void g_CreateScene(Scene Scene)
 		g_Scene.Matrix = Matrix4(XMMatrixIdentity());
 		g_Scene.ModelPath = ASSET_DIRECTORY "Models/Sponza/sponza.h3d";
 		g_Scene.TextureFolderPath = ASSET_DIRECTORY L"Models/Sponza/Textures/";
-		g_Scene.Reflective = { "floor" };
+		g_Scene.Reflective = { "floor", "column" };
 		g_Scene.CutOuts = { "thorn", "plant", "chain" };
 		g_Scene.UseCustom = false;
 	} break;
