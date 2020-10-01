@@ -382,6 +382,7 @@ void Hit(inout RayPayload payload, in BuiltInTriangleIntersectionAttributes attr
 	float3 normal = GetNormal(
 		uv, ddx, ddy, vsNormal, vsTangent, vsBitangent, gloss, hasValidNormal);
 
+
 	if (!hasValidNormal)
 	{
 		return;
@@ -422,13 +423,15 @@ void Hit(inout RayPayload payload, in BuiltInTriangleIntersectionAttributes attr
 	g_screenOutput[pixel] = float4(colorSum, 1);
 
 	float reflectivity = CalculateReflectivity(specularMask, viewDir, normal);
-
+	
 	if (Reflective && payload.Bounces < 3)
 	{
 		float3 origin;
 		float3 direction;
 		GenerateReflectionRay(
 			worldPosition, viewDir, normal, origin, direction);
+		RENDER_AND_RETURN(normal.xyzz);
+
 		FireRay(worldPosition, direction, payload.Bounces + 1, payload.Reflectivity * reflectivity);
 	}
 }

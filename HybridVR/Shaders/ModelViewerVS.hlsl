@@ -18,6 +18,7 @@ cbuffer VSConstants : register(b0)
 {
     float4x4 modelToProjection;
     float4x4 modelToShadow;
+    float4x4 modelToView;
     float3 ViewerPos;
 	uint curCam;
 };

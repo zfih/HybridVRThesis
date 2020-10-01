@@ -257,7 +257,8 @@ void g_CreateScene(Scene Scene)
 	} break;
 	case Scene::kRuggedSurface:
 	{
-		g_Scene.Matrix = Matrix4::MakeRotationX(-XM_PIDIV2) * Matrix4::MakeScale(200);
+		// TRS = 
+		g_Scene.Matrix = Matrix4::MakeRotationX(-XM_PIDIV2) * Matrix4::MakeScale(5);
 		g_Scene.ModelPath = ASSET_DIRECTORY "Models/RuggedSurface/RuggedSurface.h3d";
 		g_Scene.TextureFolderPath = ASSET_DIRECTORY L"Models/RuggedSurface/";
 		g_Scene.Reflective = { "checker" };
@@ -434,7 +435,7 @@ private:
 
 int wmain(int argc, wchar_t** argv)
 {
-	g_CreateScene(Scene::kSponza);
+	g_CreateScene(Scene::kRuggedSurface);
 	
 #if _DEBUG
 	CComPtr<ID3D12Debug> debugInterface;
@@ -1531,6 +1532,7 @@ void D3D12RaytracingMiniEngineSample::RenderObjects(GraphicsContext& gfxContext,
 	{
 		Matrix4 modelToProjection;
 		Matrix4 modelToShadow;
+		Matrix4 modelToView;
 		XMFLOAT3 viewerPos;
 		UINT curCam;
 	};
@@ -1538,6 +1540,8 @@ void D3D12RaytracingMiniEngineSample::RenderObjects(GraphicsContext& gfxContext,
 	VSConstants constants;
 
 	constants.modelToProjection = ViewProjMat;
+	constants.modelToView = m_Camera[curCam]->GetViewMatrix();
+
 	constants.curCam = curCam;
 
 	constants.modelToShadow = m_SunShadow.GetShadowMatrix();
@@ -2348,17 +2352,19 @@ void g_initialize_dynamicCb(
 	DynamicCB inputs = {};
 
 	inputs.curCam = CurCam;
-
+	
 	const Matrix4 mvp = Camera[CurCam]->GetViewProjMatrix();
 	const Matrix4 transInvMvp = Transpose(Invert(mvp));
 	memcpy(&inputs.cameraToWorld, &transInvMvp, sizeof(inputs.cameraToWorld));
+
+	const Matrix4 transViewMat = Transpose(Camera[CurCam]->GetViewMatrix());
+	memcpy(&inputs.worldToView, &transViewMat, sizeof(inputs.worldToView));
 
 	Vector3 position = Camera[CurCam]->GetPosition();
 	memcpy(&inputs.worldCameraPosition, &position, sizeof(inputs.worldCameraPosition));
 	
 	inputs.resolution.x = (float)ColorTarget.GetWidth();
 	inputs.resolution.y = (float)ColorTarget.GetHeight();
-
 	Context.WriteBuffer(Buffer, 0, &inputs, sizeof(inputs));
 }
 

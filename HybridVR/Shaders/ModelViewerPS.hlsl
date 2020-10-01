@@ -394,7 +394,6 @@ float3 GetNormal(
 	return result;
 }
 
-
 [RootSignature(ModelViewer_RootSig)]
 MRT main(VSOutput vsOutput)
 {
@@ -425,12 +424,15 @@ MRT main(VSOutput vsOutput)
 			vsOutput.worldPos);
 	}
 
-	mrt.Color = float4(ApplySRGBCurve(colorSum), 1);
-	mrt.ColorRaw = mrt.Color;
 	if (AreNormalsNeeded)
 	{
 		mrt.Normal = float4(normal.xy, 1, specularMask);
 	}
+
+	mrt.Color = float4(0, 0, 0, 0);//float4(ApplySRGBCurve(colorSum), 1);
+	mrt.ColorRaw = mrt.Color;
+
+
 
 	return mrt;
 }

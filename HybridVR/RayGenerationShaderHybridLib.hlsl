@@ -23,12 +23,12 @@ void ScreenSpaceReflection(float2 normalXY, float specular, int3 pixel, float ra
 	float3 direction;
 	float reflectivity;
 
-	GenerateSSRRay(
+	float3 normal = GenerateSSRRay(
 		pixel.xy, depth, normalXY, specular,
 		origin, direction, reflectivity);
 
+	RENDER_AND_RETURN(normal.xyzz);
 	float numBounces = 1;
-
 	FireRay(origin, direction, numBounces, reflectivity * ratio);
 }
 

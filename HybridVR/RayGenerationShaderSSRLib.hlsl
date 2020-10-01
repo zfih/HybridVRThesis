@@ -36,7 +36,7 @@ void RayGen()
 	float3 direction;
 	float reflectivity;
 
-	GenerateSSRRay(
+	float3 normal = GenerateSSRRay(
 		pixel.xy,
 		depth,
 		normalXY,
@@ -49,7 +49,7 @@ void RayGen()
 	{
 		return;
 	}
-
+	RENDER_AND_RETURN(normal.xyzz);
 	const int numBounces = 1;
 
 	FireRay(origin, direction, numBounces, reflectivity);

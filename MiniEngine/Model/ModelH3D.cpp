@@ -104,7 +104,7 @@ bool Model::LoadH3D(const char *filename, Matrix4 &mat, Matrix4 &invMat, bool fl
 		XMStoreFloat3(&v->b, Normalize(mat * Vector4(v->b, 0)));
 		if(flipUvY)
 		{
-			v->uv.y = 1.0 - v->uv.y;
+			v->uv.y = 1.0f - v->uv.y;
 		}
 	}
 

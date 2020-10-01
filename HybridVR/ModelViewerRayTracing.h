@@ -13,14 +13,16 @@ struct RayPayload
 
 #endif
 
-#define RENDER(x) g_screenOutput[pixel] = x;return
-#define EPSILON 0.00001
+#define RENDER(x) g_screenOutput[pixel] = x;
+#define RENDER_AND_RETURN(x) g_screenOutput[pixel] = x;return
+#define EPSILON 0.01
 
 #pragma once
 // Volatile part (can be split into its own CBV). 
 struct DynamicCB
 {
     float4x4 cameraToWorld;
+    float4x4 worldToView;
     float3   worldCameraPosition;
     uint     padding;
     float2   resolution;
@@ -76,12 +78,15 @@ float3 GetNormalFromXY(float2 xy, float3 viewDir)
     const float z = sqrt(len - (xy.x * xy.x) - (xy.y * xy.y));
     
     float3 result = float3(xy, z);
-    
-    float ndotv = dot(result, viewDir);
+
+    // Get angle between produced normal and view direction
+    const float ndotv = dot(result, viewDir);
+
+    // If ndotv is positive, we need to swap
     const float signCorrection = -sign(ndotv);
-    result.z *= signCorrection;
+    result *= signCorrection;
     
-    return result;
+    return float3(result.x, signCorrection, result.z);
 }
 
 inline float3 UnprojectPixel(uint2 pixel, float depth)
@@ -114,10 +119,10 @@ void GenerateReflectionRay(float3 position, float3 incidentDirection, float3 nor
 float CalculateReflectivity(float specular, float3 viewDir, float3 normal)
 {
 	float result = specular * pow(1.0 - saturate(dot(-viewDir, normal)), 5.0);
-    return result;
+    return 0.5;
 }
 
-void GenerateSSRRay(
+float3 GenerateSSRRay(
     float2 pixel, 
     float depth,
     float2 normalXY, 
@@ -129,10 +134,12 @@ void GenerateSSRRay(
     float3 pixelInWorld = UnprojectPixel(pixel.xy, depth);
 
     float3 viewDir = normalize(pixelInWorld - g_dynamic.worldCameraPosition);
-    float3 normal = GetNormalFromXY(normalXY, viewDir);
+    float3 normalButNotReally = GetNormalFromXY(normalXY, viewDir);
+    float3 normal = float3(normalButNotReally.x, normalXY.y, normalButNotReally.z);
     out_reflectivity = CalculateReflectivity(specular, viewDir, normal);
     GenerateReflectionRay(pixelInWorld, viewDir, normal, 
         out_origin, out_direction);
+    return normalButNotReally;
 }
 
 void FireRay(float3 origin, float3 direction, float bounces, float reflectivity)
