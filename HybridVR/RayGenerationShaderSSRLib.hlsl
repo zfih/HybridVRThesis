@@ -16,7 +16,6 @@
 
 Texture2DArray<float> depths : register(t12);
 Texture2DArray<float4> normals : register(t13);
-Texture2DArray<float> ratios : register(t14);
 
 [shader("raygeneration")]
 void RayGen()
@@ -25,9 +24,9 @@ void RayGen()
 	
 	float depth = depths[pixel];
 
-	float4 normalXYZ_specular = normals[pixel];
-	float3 normal = normalXYZ_specular.xyz;
-	float ratio = normalXYZ_specular.w;
+	float4 normalXYZ_ratio = normals[pixel];
+	float3 normal = normalXYZ_ratio.xyz;
+	float ratio = normalXYZ_ratio.w;
 	
 	float specular = g_screenOutput[pixel].a;
 

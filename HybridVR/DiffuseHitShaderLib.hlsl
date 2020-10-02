@@ -260,6 +260,7 @@ float3 GetNormal(
 	result = lerp(vsNormal, result, NormalTextureStrength);
 
 	result = normalize(result);
+	
 	return result;
 }
 
@@ -382,12 +383,10 @@ void Hit(inout RayPayload payload, in BuiltInTriangleIntersectionAttributes attr
 	float3 normal = GetNormal(
 		uv, ddx, ddy, vsNormal, vsTangent, vsBitangent, gloss, hasValidNormal);
 
-
 	if (!hasValidNormal)
 	{
 		return;
 	}
-
 
 	const float3 specularAlbedo = float3(0.56, 0.56, 0.56);
 	const float specularMask = SAMPLE_TEX(g_localSpecular).g;
@@ -415,12 +414,24 @@ void Hit(inout RayPayload payload, in BuiltInTriangleIntersectionAttributes attr
 		SunColor);
 
 	colorSum = ApplySRGBCurve(colorSum);
+	float4 pixelColor = g_screenOutput[pixel];
+
+
+	if(payload.Bounces == 1)
+	{
+		//RENDER_AND_RETURN(normal.xyzz);
+	}
+	
+	//RENDER_AND_RETURN(0);
+
 	if (payload.Bounces > 0)
 	{
-		colorSum = g_screenOutput[pixel].rgb * (1 - payload.Reflectivity) + payload.Reflectivity * colorSum;
+		colorSum = pixelColor.rgb * (1 - payload.Reflectivity) + payload.Reflectivity * colorSum;
 	}
 
-	g_screenOutput[pixel] = float4(colorSum, 1);
+
+	
+	g_screenOutput[pixel] = float4(colorSum, pixelColor.a);
 
 	float reflectivity = CalculateReflectivity(specularMask, viewDir, normal);
 	

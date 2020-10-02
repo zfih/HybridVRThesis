@@ -99,9 +99,21 @@ bool Model::LoadH3D(const char *filename, Matrix4 &mat, Matrix4 &invMat, bool fl
 		Vertex *v = (Vertex*)(m_pVertexData + m_VertexStride * vertexIndex);
 
 		XMStoreFloat3(&v->p, mat * Vector4(v->p, 1));
-		XMStoreFloat3(&v->n, Normalize(mat * Vector4(v->n, 0)));
-		XMStoreFloat3(&v->t, Normalize(mat * Vector4(v->t, 0)));
-		XMStoreFloat3(&v->b, Normalize(mat * Vector4(v->b, 0)));
+		bool invertNormals = false;
+		if(invertNormals)
+		{
+			XMStoreFloat3(&v->n, Normalize(invMat * Vector4(v->n, 0)));
+			XMStoreFloat3(&v->t, Normalize(invMat * Vector4(v->t, 0)));
+			XMStoreFloat3(&v->b, Normalize(invMat * Vector4(v->b, 0)));				
+		}
+		else
+		{
+			XMStoreFloat3(&v->n, Normalize(mat * Vector4(v->n, 0)));
+			XMStoreFloat3(&v->t, Normalize(mat * Vector4(v->t, 0)));
+			XMStoreFloat3(&v->b, Normalize(mat * Vector4(v->b, 0)));
+			
+		}
+		
 		if(flipUvY)
 		{
 			v->uv.y = 1.0f - v->uv.y;

@@ -81,20 +81,12 @@ float3 ApplySRGBCurve(float3 x)
 	return x < 0.0031308 ? 12.92 * x : 1.055 * pow(x, 1.0 / 2.4) - 0.055;
 }
 
-void AntiAliasSpecular(float3 texNormal, inout float gloss)
+void AntiAliasSpecular(inout float3 inout_texNormal, inout float gloss)
 {
-	// TODO(freemedude 11:05 30-09): Make sure result is the same as:
-	/*
-void AntiAliasSpecular(inout float3 texNormal, inout float gloss)
-{
-	float normalLenSq = dot(texNormal, texNormal);
+	float normalLenSq = dot(inout_texNormal, inout_texNormal);
 	float invNormalLen = rsqrt(normalLenSq);
-	texNormal *= invNormalLen;
+	inout_texNormal *= invNormalLen;
 	gloss = lerp(1, gloss, rcp(invNormalLen));
-}
-	 */
-	float len = length(texNormal);
-	gloss = lerp(1, gloss, len);
 }
 
 // Apply fresnel to modulate the specular albedo
@@ -160,7 +152,7 @@ float3 ApplyLightCommon(
 	float3 halfVec = normalize(lightDir - viewDir);
 	float nDotH = saturate(dot(halfVec, normal));
 
-    FSchlick(specularColor, diffuseColor, lightDir, halfVec);
+	FSchlick(specularColor, diffuseColor, lightDir, halfVec);
 
 	float specularFactor = specularMask * pow(nDotH, gloss) * (gloss + 2) / 8;
 
@@ -322,7 +314,6 @@ struct MRT
 	float4 Color : SV_Target0;
 	float4 ColorRaw : SV_Target1;
 	float4 Normal : SV_Target2;
-	float Ratio : SV_Target3;
 };
 
 float3 ApplySceneLights(
@@ -355,53 +346,25 @@ float3 ApplySceneLights(
 				diffuse, specular, specularMask, gloss, normal, viewDir, pos, lightData.pos,
 				lightData.radiusSq, lightData.color, lightData.coneDir, lightData.coneAngles);
 		}
-		else if(lightData.type == 2)
-		{
-			/*colorSum += ApplyConeShadowedLight(
-				diffuse, specular, specularMask, gloss, normal, viewDir, pos,
-				lightData.pos, lightData.radiusSq, lightData.color, lightData.coneDir,
-				lightData.coneAngles, lightData.shadowTextureMatrix, lightIndex);
-				*/
-		}
 	}
 	return colorSum;
 }
 
-#define scale (65530.0)
-#define cp (256.0 * 256.0)
-
-float Pack(float a, float b)
-{
-	int x1 = (int)(a * scale);
-	int y1 = (int)(b * scale);
-
-	float result = (y1 * cp) + x1;
-	return result;
-}
-
-void Unpack(float v, out float out_a, out float out_b)
-{
-	double dy = floor(v / cp);
-	double dx = v - floor(dy * cp);
-	out_a = (float)(dx / scale);
-	out_b = (float)(dy / scale);
-}
-
 #define SAMPLE_TEX(texName) texName.Sample(sampler0, uv)
+
 float3 GetNormal(
 	float2 uv, float3 vsNormal, float3 vsTangent, float3 vsBitangent,
 	inout float inout_gloss, out bool out_success)
 {
 	float3 textureNormal = SAMPLE_TEX(texNormal) * 2.0 - 1.0;
 	AntiAliasSpecular(textureNormal, inout_gloss);
-	textureNormal = normalize(textureNormal);
 	vsNormal = normalize(vsNormal);
 
 	// Convert texture normal to world space
-	{
-		float3x3 tbn = float3x3(vsTangent, vsBitangent, vsNormal);
-		textureNormal = mul(textureNormal, tbn);
-	}
+
+	float3x3 tbn = float3x3(vsTangent, vsBitangent, vsNormal);
+	textureNormal = mul(textureNormal, tbn);
+
 
 	// Detect degenerate normals
 	float lenSq = dot(textureNormal, textureNormal);
@@ -409,7 +372,7 @@ float3 GetNormal(
 
 	// Apply normal texture based on strength
 	float3 result = lerp(vsNormal, textureNormal, NormalTextureStrength);
-	
+
 	result = normalize(result);
 
 	return result;
@@ -418,26 +381,27 @@ float3 GetNormal(
 [RootSignature(ModelViewer_RootSig)]
 MRT main(VSOutput vsOutput)
 {
-    MRT mrt;
+	MRT mrt;
 	mrt.Color = float4(0, 0, 0, 0);
 	mrt.ColorRaw = float4(0, 0, 0, 0);
-    mrt.Normal = 0.0;
+	mrt.Normal = 0.0;
 
 	float2 uv = vsOutput.uv;
 	float gloss = 128.0;
 	bool hasValidNormals;
 	float3 normal = GetNormal(
-		uv, vsOutput.normal, vsOutput.tangent, vsOutput.bitangent, 
+		uv, vsOutput.normal, vsOutput.tangent, vsOutput.bitangent,
 		gloss, hasValidNormals);
 
-    const float3 specularAlbedo = float3(0.56, 0.56, 0.56);
-    const float specularMask = SAMPLE_TEX(texSpecular).g;
-    const float3 viewDir = normalize(vsOutput.viewDir);
+	const float3 specularAlbedo = float3(0.56, 0.56, 0.56);
+	const float specularMask = SAMPLE_TEX(texSpecular).g;
+	const float3 viewDir = normalize(vsOutput.viewDir);
 	float3 diffuseAlbedo = SAMPLE_TEX(texDiffuse);
 	float3 colorSum = 0;
-    colorSum += ApplyAmbientLight(diffuseAlbedo, 1, AmbientColor);
-    colorSum += ApplyDirectionalLight(diffuseAlbedo, specularAlbedo, specularMask, gloss, normal, viewDir, SunDirection, SunColor, vsOutput.shadowCoord);
-	
+	colorSum += ApplyAmbientLight(diffuseAlbedo, 1, AmbientColor);
+	colorSum += ApplyDirectionalLight(diffuseAlbedo, specularAlbedo, specularMask, gloss, normal, viewDir, SunDirection,
+	                                  SunColor, vsOutput.shadowCoord);
+
 	if(UseSceneLighting)
 	{
 		colorSum += ApplySceneLights(
@@ -446,15 +410,11 @@ MRT main(VSOutput vsOutput)
 	}
 
 	float ratio = 1;
-	
+	mrt.Normal = float4(normal, ratio) * AreNormalsNeeded;
+
 	mrt.Color = float4(ApplySRGBCurve(colorSum), 0);
-	
-	if (AreNormalsNeeded)
-	{
-		mrt.Normal = float4(normal, ratio);
-		mrt.Color.w = specularMask;
-	}
-	
+	//mrt.Color = mrt.Normal;
+	mrt.Color.w = specularMask * AreNormalsNeeded;
 	mrt.ColorRaw = mrt.Color;
 
 	return mrt;

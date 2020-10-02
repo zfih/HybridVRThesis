@@ -54,41 +54,6 @@ cbuffer b1 : register(b1)
     DynamicCB g_dynamic;
 };
 
-/**
- * Creates a three dimensional normal vector from XY coordinates. This is done
- * by isolating the Z component in the formula for vector length. The sign of Z
- * is calculated by dotting with the view direction. If the dot product is
- * positive, they are pointing the same way, meaning that the normal Z must be
- * flipped.
- *
- * Formula for length:
- *      l = Sqrt(x^2 + y^2 + z^2)
- *
- * Isolate z:
- *    l^2 = x^2 + y^2 + z^2
- *    z^2 = l^2 - x^2 - y^2
- *      z = sqrt(l^2 - x^2 - y^2)
- *
- * We know length l is 1
- *      z = sqrt(1 - x^2 - y^2)
- */
-float3 GetNormalFromXY(float2 xy, float3 viewDir)
-{
-    float len = 1 + EPSILON;
-    const float z = sqrt(len - (xy.x * xy.x) - (xy.y * xy.y));
-    
-    float3 result = float3(xy, z);
-
-    // Get angle between produced normal and view direction
-    const float ndotv = dot(result, viewDir);
-
-    // If ndotv is positive, we need to swap
-    const float signCorrection = -sign(ndotv);
-    result *= signCorrection;
-    
-    return float3(result.x, signCorrection, result.z);
-}
-
 inline float3 UnprojectPixel(uint2 pixel, float depth)
 {
     float2 xy = pixel + 0.5; // center in the middle of the pixel

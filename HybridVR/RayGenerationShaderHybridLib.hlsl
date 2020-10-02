@@ -14,7 +14,6 @@
 
 Texture2DArray<float> g_depth : register(t12);
 Texture2DArray<float4> g_normals : register(t13);
-Texture2DArray<float> g_ratios : register(t14);
 
 void ScreenSpaceReflection(int3 pixel, float3 normal, float specular, float ratio)
 {
@@ -69,12 +68,7 @@ void RayGen()
 	
 	float4 color_specular = g_screenOutput[pixel];
 	float specular = color_specular.w;
-
-	if(PixelCanBeReused(ratio, specular))
-	{
-		// Do nothing
-	}
-	else if(PixelNeedsReflections(ratio, specular))
+	if(PixelNeedsReflections(ratio, specular))
 	{
 		ScreenSpaceReflection(pixel, normal, specular, ratio);
 	}
@@ -82,4 +76,5 @@ void RayGen()
 	{
 		FullTrace(pixel);
 	}
+	
 }
