@@ -29,6 +29,7 @@ struct MRT
 {
 	float4 Color : SV_Target0;
 	float4 Normal : SV_Target1;
+	float4 Ratio : SV_Target2;
 };
 
 cbuffer ReprojInput : register(b0)
@@ -101,13 +102,11 @@ MRT main(VertexOutput vOut)
 		discard;
 	}
 
-	float4 color;
-
+	float4 color = 0;
 	float4 colorRefl = float4(gLeftEyeTex.SampleLevel(gLinearSampler, vOut.texC, 0).rgb, 1);
-	
 	float4 colorRaw = float4(gLeftEyeRawTex.SampleLevel(gLinearSampler, vOut.texC, 0).rgb, 1);
+	float4 normal_ratio = gLeftEyeNormalTex.SampleLevel(gLinearSampler, vOut.texC, 0);
 	
-	float4 normal = gLeftEyeNormalTex.SampleLevel(gLinearSampler, vOut.texC, 0);
 	MRT mrt;
 	mrt.Color = float4(0, 0, 0, 0);
 	mrt.Normal  = float4(0, 0, 0, 0);
@@ -121,7 +120,6 @@ MRT main(VertexOutput vOut)
 
 	float ratio = saturate((angle - lower) / angleBlendingRange);
 	color = lerp(colorRefl, colorRaw, ratio);
-
 
 	if (debugColors)
 	{
@@ -140,6 +138,7 @@ MRT main(VertexOutput vOut)
 	}
 
 	mrt.Color = color;
-	mrt.Normal = float4(normal.xy, ratio, normal.w);
+	mrt.Normal = normal_ratio;
+	mrt.Normal.w = ratio;
 	return mrt;
 }

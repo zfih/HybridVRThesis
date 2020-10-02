@@ -119,13 +119,13 @@ void GenerateReflectionRay(float3 position, float3 incidentDirection, float3 nor
 float CalculateReflectivity(float specular, float3 viewDir, float3 normal)
 {
 	float result = specular * pow(1.0 - saturate(dot(-viewDir, normal)), 5.0);
-    return 0.5;
+    return result;
 }
 
-float3 GenerateSSRRay(
+void GenerateSSRRay(
     float2 pixel, 
     float depth,
-    float2 normalXY, 
+    float3 normal, 
     float specular,
     out float3 out_origin,
     out float3 out_direction, 
@@ -134,12 +134,9 @@ float3 GenerateSSRRay(
     float3 pixelInWorld = UnprojectPixel(pixel.xy, depth);
 
     float3 viewDir = normalize(pixelInWorld - g_dynamic.worldCameraPosition);
-    float3 normalButNotReally = GetNormalFromXY(normalXY, viewDir);
-    float3 normal = float3(normalButNotReally.x, normalXY.y, normalButNotReally.z);
     out_reflectivity = CalculateReflectivity(specular, viewDir, normal);
     GenerateReflectionRay(pixelInWorld, viewDir, normal, 
         out_origin, out_direction);
-    return normalButNotReally;
 }
 
 void FireRay(float3 origin, float3 direction, float bounces, float reflectivity)

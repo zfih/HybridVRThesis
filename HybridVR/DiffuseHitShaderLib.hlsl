@@ -430,7 +430,6 @@ void Hit(inout RayPayload payload, in BuiltInTriangleIntersectionAttributes attr
 		float3 direction;
 		GenerateReflectionRay(
 			worldPosition, viewDir, normal, origin, direction);
-		RENDER_AND_RETURN(normal.xyzz);
 
 		FireRay(worldPosition, direction, payload.Bounces + 1, payload.Reflectivity * reflectivity);
 	}

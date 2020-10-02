@@ -322,6 +322,7 @@ struct MRT
 	float4 Color : SV_Target0;
 	float4 ColorRaw : SV_Target1;
 	float4 Normal : SV_Target2;
+	float Ratio : SV_Target3;
 };
 
 float3 ApplySceneLights(
@@ -364,6 +365,26 @@ float3 ApplySceneLights(
 		}
 	}
 	return colorSum;
+}
+
+#define scale (65530.0)
+#define cp (256.0 * 256.0)
+
+float Pack(float a, float b)
+{
+	int x1 = (int)(a * scale);
+	int y1 = (int)(b * scale);
+
+	float result = (y1 * cp) + x1;
+	return result;
+}
+
+void Unpack(float v, out float out_a, out float out_b)
+{
+	double dy = floor(v / cp);
+	double dx = v - floor(dy * cp);
+	out_a = (float)(dx / scale);
+	out_b = (float)(dy / scale);
 }
 
 #define SAMPLE_TEX(texName) texName.Sample(sampler0, uv)
@@ -424,15 +445,17 @@ MRT main(VSOutput vsOutput)
 			vsOutput.worldPos);
 	}
 
+	float ratio = 1;
+	
+	mrt.Color = float4(ApplySRGBCurve(colorSum), 0);
+	
 	if (AreNormalsNeeded)
 	{
-		mrt.Normal = float4(normal.xy, 1, specularMask);
+		mrt.Normal = float4(normal, ratio);
+		mrt.Color.w = specularMask;
 	}
-
-	mrt.Color = float4(0, 0, 0, 0);//float4(ApplySRGBCurve(colorSum), 1);
+	
 	mrt.ColorRaw = mrt.Color;
-
-
 
 	return mrt;
 }

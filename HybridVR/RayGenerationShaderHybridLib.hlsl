@@ -14,8 +14,9 @@
 
 Texture2DArray<float> g_depth : register(t12);
 Texture2DArray<float4> g_normals : register(t13);
+Texture2DArray<float> g_ratios : register(t14);
 
-void ScreenSpaceReflection(float2 normalXY, float specular, int3 pixel, float ratio)
+void ScreenSpaceReflection(int3 pixel, float3 normal, float specular, float ratio)
 {
 	float depth = g_depth[pixel];
 
@@ -23,11 +24,10 @@ void ScreenSpaceReflection(float2 normalXY, float specular, int3 pixel, float ra
 	float3 direction;
 	float reflectivity;
 
-	float3 normal = GenerateSSRRay(
-		pixel.xy, depth, normalXY, specular,
+	GenerateSSRRay(
+		pixel.xy, depth, normal, specular,
 		origin, direction, reflectivity);
 
-	RENDER_AND_RETURN(normal.xyzz);
 	float numBounces = 1;
 	FireRay(origin, direction, numBounces, reflectivity * ratio);
 }
@@ -43,19 +43,19 @@ void FullTrace(int3 pixel)
 	FireRay(origin, direction, numBounces, reflectivity);
 }
 
-inline bool PixelCanBeReused(float ratio, float alpha)
+inline bool PixelCanBeReused(float ratio, float specular)
 {
-	return ratio == 0.0 && alpha != 0;
+	return ratio == 0.0 && specular != 0;
 }
 
-inline bool PixelNeedsReflections(float ratio, float alpha)
+inline bool PixelNeedsReflections(float ratio, float specular)
 {
-	return ratio != 0 && alpha != 0;
+	return ratio != 0 && specular != 0;
 }
 
-inline bool PixelNeedsFullRaytrace(float alpha)
+inline bool PixelNeedsFullRaytrace(float specular)
 {
-	return alpha == 0;
+	return specular == 0;
 }
 
 [shader("raygeneration")]
@@ -63,23 +63,22 @@ void RayGen()
 {
 	int3 pixel = int3(DispatchRaysIndex().xy, g_dynamic.curCam);
 
-	float4 normalXY_Ratio_Specular = g_normals[pixel];
-	float2 normalXY = normalXY_Ratio_Specular.xy;
+	float4 normalXYZ_ratio = g_normals[pixel];
+	float3 normal = normalXYZ_ratio.xyz;
+	float ratio = normalXYZ_ratio.w;
+	
+	float4 color_specular = g_screenOutput[pixel];
+	float specular = color_specular.w;
 
-	float ratio = normalXY_Ratio_Specular.z;
-	float specular = normalXY_Ratio_Specular.w;
-
-	float4 color = g_screenOutput[pixel];
-
-	if(PixelCanBeReused(ratio, color.a))
+	if(PixelCanBeReused(ratio, specular))
 	{
 		// Do nothing
 	}
-	else if(PixelNeedsReflections(ratio, color.a))
+	else if(PixelNeedsReflections(ratio, specular))
 	{
-		ScreenSpaceReflection(normalXY, specular, pixel, ratio);
+		ScreenSpaceReflection(pixel, normal, specular, ratio);
 	}
-	else if (PixelNeedsFullRaytrace(color.a))
+	else if (PixelNeedsFullRaytrace(specular))
 	{
 		FullTrace(pixel);
 	}
