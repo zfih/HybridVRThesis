@@ -33,6 +33,7 @@ extern float g_MaxDistance;
 extern float g_StrideZCutoff;
 extern float g_FadeStart;
 extern float g_FadeEnd;
+extern bool g_DoFading;
 
 enum class TextureType
 {

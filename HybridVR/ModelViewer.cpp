@@ -2269,7 +2269,10 @@ void D3D12RaytracingMiniEngineSample::RaytraceHybridSSR(GraphicsContext& Ctx, Ca
 		Ctx, m_Camera,
 		Cam, 
 		g_SceneColorBuffer, g_SceneDepthBuffer, g_SceneNormalBuffer);
-	RaytraceReflections(Ctx, Colors, Depths, Normals);
+	if (!HybridSsr::g_DoFading)
+	{
+		RaytraceReflections(Ctx, Colors, Depths, Normals);
+	}
 }
 
 void D3D12RaytracingMiniEngineSample::TakeScreenshot()

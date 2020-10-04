@@ -40,6 +40,7 @@ struct HybridSsrConstantBuffer
 	 */
 	float StrideZCutoff;
 
+	int DoFading;
 	float FadeStart;
 	float FadeEnd;
 };

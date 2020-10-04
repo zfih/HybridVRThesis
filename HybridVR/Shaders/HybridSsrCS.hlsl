@@ -208,7 +208,7 @@ void CSMain(uint3 Gid : SV_GroupID, uint3 DTid : SV_DispatchThreadID, uint3 GTid
 		intersection = false;
 	}
 
-	float totalFade = calculateFade(hitPixel, toPosition, rayDirection);
+	float totalFade = cb.DoFading ? calculateFade(hitPixel, toPosition, rayDirection) : 1;
 
 	if (intersection)
 	{
@@ -223,8 +223,8 @@ void CSMain(uint3 Gid : SV_GroupID, uint3 DTid : SV_DispatchThreadID, uint3 GTid
 		float weight = F * cb.SSRScale * totalFade;
 		outputRT[screenPos] = float4(mainBuffer[hitPixel].rgb * weight + mainRT.rgb * (1 - weight), 1);
 		//outputRT[screenPos] = float4(result.rgb, 1);
+		normalReflectiveBuffer[screenPos] = float4(normalReflectiveBuffer[screenPos].xyz, 0);
 	}
-	normalReflectiveBuffer[screenPos] = float4(normalReflectiveBuffer[screenPos].xyz, 0);
 }
 
 bool TraceScreenSpaceRay(
