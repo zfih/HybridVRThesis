@@ -97,7 +97,7 @@ VRCamera::VRCamera()
 
 void VRCamera::Update()
 {
-    if (VR::GetHMD()) // TODO: Have setting for this we can check
+    if (VR::GetHMD())
     {
         m_HMDPoseMat = VR::GetHMDPos();
 
@@ -142,7 +142,7 @@ Matrix4 customProj(vr::EVREye eye, float nearFloat, float farFloat)
 void VRCamera::Setup(bool reverseZ)
 {
     VROffset = Vector3(0, 0, 0);
-	if (VR::GetHMD()) // TODO: Have setting for this we can check
+	if (VR::GetHMD())
 	{
 		m_HMDPoseMat = VR::GetHMDPos();
 

@@ -133,7 +133,7 @@ namespace Math
         // By using these functions, we rederive an orthogonal transform.
         SetLookDirection(-xform.GetZ(), xform.GetY());
 		float posModifier;
-		if (VR::GetHMD()) // TODO: Have setting for this we can check
+		if (VR::GetHMD())
 		{
 			posModifier = 100.0f;
 		}

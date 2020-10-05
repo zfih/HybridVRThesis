@@ -1615,7 +1615,7 @@ void D3D12RaytracingMiniEngineSample::CreateRayTraceAccelerationStructures(UINT 
 		UINT descriptorIndex = g_pRaytracingDescriptorHeap->AllocateBufferUav(*bottomLevelStructure);
 
 
-		XMStoreFloat3x4((XMFLOAT3X4 *)instanceDesc.Transform, XMMatrixIdentity()); // TODO: This seems redundant
+		XMStoreFloat3x4((XMFLOAT3X4 *)instanceDesc.Transform, XMMatrixIdentity());
 
 		instanceDesc.AccelerationStructure = g_bvh_bottomLevelAccelerationStructures[i]->GetGPUVirtualAddress();
 		instanceDesc.Flags = 0;
