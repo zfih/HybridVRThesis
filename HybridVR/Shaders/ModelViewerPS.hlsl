@@ -54,17 +54,18 @@ ByteAddressBuffer lightGridBitMask : register(t69);
 
 cbuffer PSConstants : register(b0)
 {
-float3 SunDirection;
-float3 SunColor;
-float3 AmbientColor;
-float4 ShadowTexelSize;
+    float3 SunDirection;
+    float3 SunColor;
+    float3 AmbientColor;
+    float4 ShadowTexelSize;
 
-float4 InvTileDim;
-uint4 TileCount;
-uint4 FirstLightIndex;
-uint FrameIndexMod2;
-int UseSceneLighting;
-float NormalTextureStrength;
+    float4 InvTileDim;
+    uint4 TileCount;
+    uint4 FirstLightIndex;
+    uint FrameIndexMod2;
+    int UseSceneLighting;
+	float NormalTextureStrength;
+    int FlipNormal;
 }
 
 cbuffer MaterialInfo : register(b1)
@@ -362,7 +363,10 @@ float3 GetNormal(
 
 	// Convert texture normal to world space
 
-	float3x3 tbn = float3x3(vsTangent, vsBitangent, vsNormal);
+	float3x3 tbn = float3x3(
+		FlipNormal * vsTangent,
+		FlipNormal * vsBitangent,
+		FlipNormal * vsNormal);
 	textureNormal = mul(textureNormal, tbn);
 
 
@@ -408,12 +412,11 @@ MRT main(VSOutput vsOutput)
 			diffuseAlbedo, specularAlbedo, specularMask, gloss, normal, viewDir,
 			vsOutput.worldPos);
 	}
-
+	
 	float ratio = 1;
 	mrt.Normal = float4(normal, ratio) * AreNormalsNeeded;
 
 	mrt.Color = float4(ApplySRGBCurve(colorSum), 0);
-	//mrt.Color = mrt.Normal;
 	mrt.Color.w = specularMask * AreNormalsNeeded;
 	mrt.ColorRaw = mrt.Color;
 

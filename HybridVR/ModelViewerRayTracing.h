@@ -47,6 +47,7 @@ cbuffer HitShaderConstants : register(b0)
     uint IsReflection;
     uint UseShadowRays;
     float NormalTextureStrength;
+    int FlipNormals;
 }
 
 cbuffer b1 : register(b1)

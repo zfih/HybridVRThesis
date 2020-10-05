@@ -44,7 +44,7 @@ void FullTrace(int3 pixel)
 
 inline bool PixelCanBeReused(float ratio, float specular)
 {
-	return ratio == 0.0 && specular != 0;
+	return ratio != 0 || specular != 0;
 }
 
 inline bool PixelNeedsReflections(float ratio, float specular)
@@ -52,9 +52,9 @@ inline bool PixelNeedsReflections(float ratio, float specular)
 	return ratio != 0 && specular != 0;
 }
 
-inline bool PixelNeedsFullRaytrace(float specular)
+inline bool PixelNeedsFullRaytrace(float ratio, float specular)
 {
-	return specular == 0;
+	return ratio == 0 && specular == 0;
 }
 
 [shader("raygeneration")]
@@ -68,13 +68,13 @@ void RayGen()
 
 	float4 color_specular = g_screenOutput[pixel];
 	float specular = color_specular.w;
+	
 	if(PixelNeedsReflections(ratio, specular))
 	{
 		ScreenSpaceReflection(pixel, normal, specular, ratio);
 	}
-	else if (PixelNeedsFullRaytrace(specular))
+	else if (PixelNeedsFullRaytrace(ratio, specular))
 	{
 		FullTrace(pixel);
 	}
-	
 }

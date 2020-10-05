@@ -110,6 +110,7 @@ __declspec(align(16)) struct HitShaderConstants
 	UINT32 IsReflection;
 	UINT32 UseShadowRays;
 	float NormalTextureStrength;
+	INT32 FlipNormals;
 };
 
 __declspec(align(16)) struct PSConstants
@@ -126,6 +127,7 @@ __declspec(align(16)) struct PSConstants
 
 	int UseSceneLighting;
 	float NormalTextureStrength;
+	int FlipNormals;
 };
 
 ByteAddressBuffer g_hitConstantBuffer;
@@ -195,6 +197,7 @@ struct SceneData
 	float SunIntensity;
 
 	bool ComputeBoundingBoxes;
+	int FlipNormals;
 };
 
 SceneData g_Scene{};
@@ -210,66 +213,56 @@ void g_CreateScene(Scene Scene)
 {
 	g_Scene.Scene = Scene;
 
-	switch(Scene)
+	switch (Scene)
 	{
-	case Scene::kBistroInterior:
-		{
-			g_Scene.Matrix = Matrix4::MakeRotationX(-XM_PIDIV2);
-			g_Scene.ModelPath = ASSET_DIRECTORY "Models/Bistro/BistroInterior.h3d";
-			g_Scene.TextureFolderPath = ASSET_DIRECTORY L"Models/Bistro/";
-			g_Scene.Reflective = {"floor", "glass", "metal"};
-			g_Scene.CutOuts = {"leaf", "leaves"};
-			g_Scene.AmbientIntensity = 1.0;
-			g_Scene.SunIntensity = 2.0;
-			g_Scene.SunOrientation = -0.5;
-			g_Scene.SunInclination = 0.75;
-			g_Scene.StartingHeading = 0;
-			g_Scene.StartingPitch = -0.2;
-			g_Scene.StartingPosition = {-3700, 125, 4000};
-			g_Scene.UseCustom = true;
-			g_Scene.flipUvY = true;
-			g_Scene.ComputeBoundingBoxes = true;
-		}
-		break;
-	case Scene::kBistroExterior:
-		{
-			g_Scene.Matrix = Matrix4::MakeRotationX(-XM_PIDIV2);
-			g_Scene.ModelPath = ASSET_DIRECTORY "Models/Bistro/BistroExterior.h3d";
-			g_Scene.TextureFolderPath = ASSET_DIRECTORY L"Models/Bistro/";
-			g_Scene.Reflective = {"floor", "glass", "metal", "cobble", "brick"};
-			g_Scene.CutOuts = {"leaf", "leaves", "foliage"};
-			g_Scene.AmbientIntensity = 1.0;
-			g_Scene.SunIntensity = 2.0;
-			g_Scene.SunOrientation = -0.5;
-			g_Scene.SunInclination = 0.75;
-			g_Scene.StartingHeading = 0;
-			g_Scene.StartingPitch = -0.2;
-			g_Scene.StartingPosition = {-3700, 125, 4000};
-			g_Scene.UseCustom = true;
-			g_Scene.flipUvY = true;
-			g_Scene.ComputeBoundingBoxes = true;
-		}
-		break;
+	case Scene::kBistroInterior: {
+		g_Scene.Matrix = Matrix4::MakeRotationX(-XM_PIDIV2);
+		g_Scene.ModelPath = ASSET_DIRECTORY "Models/Bistro/BistroInterior.h3d";
+		g_Scene.TextureFolderPath = ASSET_DIRECTORY L"Models/Bistro/";
+		g_Scene.Reflective = { "floor", "glass", "metal" };
+		g_Scene.CutOuts = {  "leaf", "leaves"};
+		g_Scene.AmbientIntensity = 1.0;
+		g_Scene.SunIntensity = 2.0;
+		g_Scene.SunOrientation = -0.5;
+		g_Scene.SunInclination = 0.75;
+		g_Scene.StartingHeading = 0;
+		g_Scene.StartingPitch = -0.2;
+		g_Scene.StartingPosition = { -3700, 125, 4000 };
+		g_Scene.UseCustom = true;
+		g_Scene.flipUvY = true;
+		g_Scene.ComputeBoundingBoxes = true;
+		g_Scene.FlipNormals = -1;
+
+	} break;
+	case Scene::kBistroExterior: {
+		g_Scene.Matrix = Matrix4::MakeRotationX(-XM_PIDIV2);
+		g_Scene.ModelPath = ASSET_DIRECTORY "Models/Bistro/BistroExterior.h3d";
+		g_Scene.TextureFolderPath = ASSET_DIRECTORY L"Models/Bistro/";
+		g_Scene.Reflective = { "floor", "glass", "metal", "cobble", "brick" };
+		g_Scene.CutOuts = { "leaf", "leaves", "foliage" };
+		g_Scene.AmbientIntensity = 1.0;
+		g_Scene.SunIntensity = 2.0;
+		g_Scene.SunOrientation = -0.5;
+		g_Scene.SunInclination = 0.75;
+		g_Scene.StartingHeading = 0;
+		g_Scene.StartingPitch = -0.2;
+		g_Scene.StartingPosition = { -3700, 125, 4000 };
+		g_Scene.UseCustom = true;
+		g_Scene.flipUvY = true;
+		g_Scene.ComputeBoundingBoxes = true;
+		g_Scene.FlipNormals = -1;
+	} break;
 	case Scene::kSponza:
-		{
-			g_Scene.Matrix = Matrix4(XMMatrixIdentity());
-			g_Scene.ModelPath = ASSET_DIRECTORY "Models/Sponza/sponza.h3d";
-			g_Scene.TextureFolderPath = ASSET_DIRECTORY L"Models/Sponza/Textures/";
-			g_Scene.Reflective = {"floor", "column"};
-			g_Scene.CutOuts = {"thorn", "plant", "chain"};
-			g_Scene.UseCustom = false;
-		}
-		break;
-	case Scene::kRuggedSurface:
-		{
-			g_Scene.Matrix = Matrix4::MakeRotationX(-XM_PIDIV2) * Matrix4::MakeScale(5);
-			g_Scene.ModelPath = ASSET_DIRECTORY "Models/RuggedSurface/RuggedSurface.h3d";
-			g_Scene.TextureFolderPath = ASSET_DIRECTORY L"Models/RuggedSurface/";
-			g_Scene.Reflective = {"checker"};
-			g_Scene.flipUvY = false;
-			g_Scene.ComputeBoundingBoxes = true;
-		}
-		break;
+	{
+		g_Scene.Matrix = Matrix4(XMMatrixIdentity());
+		g_Scene.ModelPath = ASSET_DIRECTORY "Models/Sponza/sponza.h3d";
+		g_Scene.TextureFolderPath = ASSET_DIRECTORY L"Models/Sponza/Textures/";
+		g_Scene.Reflective = { "floor" };
+		g_Scene.CutOuts = { "thorn", "plant", "chain" };
+		g_Scene.UseCustom = false;
+		g_Scene.ComputeBoundingBoxes = true;
+		g_Scene.FlipNormals = 1;
+	} break;
 	default:
 		g_CreateScene(Scene::kSponza);
 		break;
@@ -2262,8 +2255,8 @@ void D3D12RaytracingMiniEngineSample::RenderScene()
 	psConstants.FrameIndexMod2 = TemporalEffects::GetFrameIndexMod2();
 	psConstants.UseSceneLighting = Settings::UseSceneLighting;
 	psConstants.NormalTextureStrength = Settings::NormalTextureStrength;
-
-
+	psConstants.FlipNormals = g_Scene.FlipNormals;
+	
 	if(!skipShadowMap)
 	{
 		Settings::g_ShadowRenderTimer.Reset();
@@ -2396,6 +2389,7 @@ void Raytracebarycentrics(
 	HitShaderConstants hitShaderConstants = {};
 	g_set_common_hitCb(hitShaderConstants);
 	hitShaderConstants.IsReflection = false;
+	hitShaderConstants.FlipNormals = g_Scene.FlipNormals;
 	context.WriteBuffer(g_hitConstantBuffer, 0, &hitShaderConstants, sizeof(hitShaderConstants));
 
 	// Transition resources
@@ -2440,6 +2434,7 @@ void RaytracebarycentricsSSR(
 	HitShaderConstants hitShaderConstants = {};
 	g_set_common_hitCb(hitShaderConstants);
 	hitShaderConstants.IsReflection = false;
+	hitShaderConstants.FlipNormals = g_Scene.FlipNormals;
 	context.WriteBuffer(g_hitConstantBuffer, 0, &hitShaderConstants, sizeof(hitShaderConstants));
 
 	ComputeContext &ctx = context.GetComputeContext();
@@ -2490,6 +2485,7 @@ void D3D12RaytracingMiniEngineSample::RaytraceShadows(
 	hitShaderConstants.modelToShadow = m_SunShadow.GetShadowMatrix();
 	hitShaderConstants.IsReflection = false;
 	hitShaderConstants.UseShadowRays = false;
+	hitShaderConstants.FlipNormals = g_Scene.FlipNormals;
 	context.WriteBuffer(g_hitConstantBuffer, 0, &hitShaderConstants, sizeof(hitShaderConstants));
 
 	ComputeContext &ctx = context.GetComputeContext();
@@ -2540,6 +2536,7 @@ void D3D12RaytracingMiniEngineSample::RaytraceDiffuse(
 	hitShaderConstants.modelToShadow = Transpose(m_SunShadow.GetShadowMatrix());
 	hitShaderConstants.IsReflection = false;
 	hitShaderConstants.UseShadowRays = Settings::RayTracingMode == Settings::RTM_DIFFUSE_WITH_SHADOWRAYS;
+	hitShaderConstants.FlipNormals = g_Scene.FlipNormals;
 	context.WriteBuffer(g_hitConstantBuffer, 0, &hitShaderConstants, sizeof(hitShaderConstants));
 
 	context.TransitionResource(g_dynamicConstantBuffer, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER);
@@ -2589,6 +2586,7 @@ void D3D12RaytracingMiniEngineSample::RaytraceReflections(
 	hitShaderConstants.modelToShadow = Transpose(m_SunShadow.GetShadowMatrix());
 	hitShaderConstants.IsReflection = true;
 	hitShaderConstants.UseShadowRays = false;
+	hitShaderConstants.FlipNormals = g_Scene.FlipNormals;
 	context.WriteBuffer(g_hitConstantBuffer, 0, &hitShaderConstants, sizeof(hitShaderConstants));
 
 	context.TransitionResource(g_dynamicConstantBuffer, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER);

@@ -247,7 +247,11 @@ float3 GetNormal(
 	float3 result = SAMPLE_TEX(g_localNormal).rgb * 2.0 - 1.0;
 
 	AntiAliasSpecular(result, inout_gloss);
-	float3x3 tbn = float3x3(vsTangent, vsBitangent, vsNormal);
+	float flipper = FlipNormals - (FlipNormals == 0);
+	float3x3 tbn = float3x3(
+		flipper * vsTangent,
+		flipper * vsBitangent,
+		flipper * vsNormal);
 	result = mul(result, tbn);
 
 	// Normalize result...
@@ -301,7 +305,6 @@ float GetShadowMultiplier(float3 position, int bounces)
 void Hit(inout RayPayload payload, in BuiltInTriangleIntersectionAttributes attr)
 {
 	int3 pixel = int3(DispatchRaysIndex().xy, g_dynamic.curCam);
-
 
 	payload.RayHitT = RayTCurrent();
 	if (payload.SkipShading)
@@ -378,7 +381,6 @@ void Hit(inout RayPayload payload, in BuiltInTriangleIntersectionAttributes attr
 
 	float gloss = 128.0;
 	bool hasValidNormal;
-
 	float3 normal = GetNormal(
 		uv, ddx, ddy, vsNormal, vsTangent, vsBitangent, gloss, hasValidNormal);
 
@@ -387,6 +389,7 @@ void Hit(inout RayPayload payload, in BuiltInTriangleIntersectionAttributes attr
 	{
 		return;
 	}
+
 
 	const float3 specularAlbedo = float3(0.56, 0.56, 0.56);
 	const float specularMask = SAMPLE_TEX(g_localSpecular).g;
@@ -416,20 +419,11 @@ void Hit(inout RayPayload payload, in BuiltInTriangleIntersectionAttributes attr
 	colorSum = ApplySRGBCurve(colorSum);
 	float4 pixelColor = g_screenOutput[pixel];
 
-
-	if(payload.Bounces == 1)
-	{
-		//RENDER_AND_RETURN(normal.xyzz);
-	}
 	
-	//RENDER_AND_RETURN(0);
-
 	if (payload.Bounces > 0)
 	{
 		colorSum = pixelColor.rgb * (1 - payload.Reflectivity) + payload.Reflectivity * colorSum;
 	}
-
-
 	
 	g_screenOutput[pixel] = float4(colorSum, pixelColor.a);
 

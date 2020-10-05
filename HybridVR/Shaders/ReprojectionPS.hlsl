@@ -99,11 +99,12 @@ MRT main(VertexOutput vOut)
 	{
 		discard;
 	}
-
+	float4 normal_ratio = gLeftEyeNormalTex.SampleLevel(gLinearSampler, vOut.texC, 0);
+	float initRatio = normal_ratio.w;
+	
 	float4 color = 0;
 	float4 colorRefl = gLeftEyeTex.SampleLevel(gLinearSampler, vOut.texC, 0);
 	float4 colorRaw = gLeftEyeRawTex.SampleLevel(gLinearSampler, vOut.texC, 0);
-	float4 normal_ratio = gLeftEyeNormalTex.SampleLevel(gLinearSampler, vOut.texC, 0);
 
 
 	double halfRange = angleBlendingRange / 2;
@@ -113,6 +114,9 @@ MRT main(VertexOutput vOut)
 	float depth = gDepthTex.SampleLevel(gLinearSampler, vOut.texC, 0);
 	float angle = abs(2 * atan(0.065 / (2 * depth)) - PI);
 
+	// Ratio is 0 when we're reusing reflections
+	// Ratio is > 0  but < 1 when we're blending reflections
+	// Ratio is 1 when we're redoing reflections
 	float ratio = saturate((angle - lower) / angleBlendingRange);
 	color = lerp(colorRefl, colorRaw, ratio);
 
@@ -132,10 +136,20 @@ MRT main(VertexOutput vOut)
 			color += float4(0, 0.1, 0, 0);
 		}
 	}
-	
+
+
 	MRT mrt;
+	float specular = color.w;
+	
+	ratio *= normal_ratio.w;
+
+	
+	specular += ratio == 0 && specular == 0;
+
 	mrt.Color = color;
+	mrt.Color.a = specular;
 	mrt.Normal = normal_ratio;
 	mrt.Normal.w = ratio;
+	
 	return mrt;
 }
