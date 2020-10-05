@@ -62,6 +62,7 @@ cbuffer PSConstants : register(b0)
     uint4 TileCount;
     uint4 FirstLightIndex;
     uint FrameIndexMod2;
+    int FlipNormal;
 }
 
 cbuffer MaterialInfo : register(b1)
@@ -352,7 +353,11 @@ MRT main(VSOutput vsOutput)
     {
 		normal = SAMPLE_TEX(texNormal) * 2.0 - 1.0;
 		AntiAliasSpecular(normal, gloss);
-		float3x3 tbn = float3x3(normalize(vsOutput.tangent), normalize(vsOutput.bitangent), normalize(vsOutput.normal));
+		
+		float3x3 tbn = float3x3(
+            FlipNormal * normalize(vsOutput.tangent), 
+            FlipNormal * normalize(vsOutput.bitangent), 
+            FlipNormal * normalize(vsOutput.normal));
 		normal = mul(normal, tbn);
 
         // Normalize result...
@@ -381,7 +386,6 @@ MRT main(VSOutput vsOutput)
 		}
         mrt.Normal = float4(normal, reflection);
 	}
-    
     return mrt;
 }
 
