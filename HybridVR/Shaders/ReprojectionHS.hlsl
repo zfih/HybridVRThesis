@@ -43,8 +43,8 @@ struct HS_Output
     float2 texC : TEXCRD;
 };
 
-static float gThreshold = 1; // TODO: Do we want to be able to change this? Yes
-//static float gThreshold = 0.997; // TODO: Do we want to be able to change this? Yes
+static float gThreshold = 1;
+//static float gThreshold = 0.997;
 static float gTessFactor = 16;
 static uint gQuadCountX = 16;
 
