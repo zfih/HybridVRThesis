@@ -99,20 +99,11 @@ bool Model::LoadH3D(const char *filename, Matrix4 &mat, Matrix4 &invMat, bool fl
 		Vertex *v = (Vertex*)(m_pVertexData + m_VertexStride * vertexIndex);
 
 		XMStoreFloat3(&v->p, mat * Vector4(v->p, 1));
-		bool invertNormals = false;
-		if(invertNormals)
-		{
-			XMStoreFloat3(&v->n, Normalize(invMat * Vector4(v->n, 0)));
-			XMStoreFloat3(&v->t, Normalize(invMat * Vector4(v->t, 0)));
-			XMStoreFloat3(&v->b, Normalize(invMat * Vector4(v->b, 0)));				
-		}
-		else
-		{
-			XMStoreFloat3(&v->n, Normalize(mat * Vector4(v->n, 0)));
-			XMStoreFloat3(&v->t, Normalize(mat * Vector4(v->t, 0)));
-			XMStoreFloat3(&v->b, Normalize(mat * Vector4(v->b, 0)));
-			
-		}
+
+		XMStoreFloat3(&v->n, Normalize(mat * Vector4(v->n, 0)));
+		XMStoreFloat3(&v->t, Normalize(mat * Vector4(v->t, 0)));
+		XMStoreFloat3(&v->b, Normalize(mat * Vector4(v->b, 0)));
+
 		
 		if(flipUvY)
 		{
@@ -250,7 +241,7 @@ void Model::LoadTextures(void)
 		case 5: return "Reflective";
 		}
 	};
-	
+
 	auto load_texture = [&](UINT TexType, const std::string &Primary, const std::string &Second,
 	                        const std::string &Default, bool SRgb)
 	{
@@ -275,7 +266,7 @@ void Model::LoadTextures(void)
 			return MatTextures[TexType]->GetSRV();
 		}
 
-		
+
 		std::cout << "Could not import " << type_to_string(TexType) << "-texture: " << Primary << "\". Using default\n";
 
 		return g_DefaultTexture->GetSRV();

@@ -137,6 +137,5 @@ MRT main(VertexOutput vOut)
 	mrt.Color = color;
 	mrt.Normal = normal_ratio;
 	mrt.Normal.w = ratio;
-	//mrt.Color = mrt.Normal;
 	return mrt;
 }

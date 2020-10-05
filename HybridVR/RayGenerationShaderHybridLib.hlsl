@@ -65,7 +65,7 @@ void RayGen()
 	float4 normalXYZ_ratio = g_normals[pixel];
 	float3 normal = normalXYZ_ratio.xyz;
 	float ratio = normalXYZ_ratio.w;
-	
+
 	float4 color_specular = g_screenOutput[pixel];
 	float specular = color_specular.w;
 	if(PixelNeedsReflections(ratio, specular))

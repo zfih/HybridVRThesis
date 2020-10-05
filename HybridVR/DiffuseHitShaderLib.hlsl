@@ -256,7 +256,6 @@ float3 GetNormal(
 	// Detect degenerate normals
 	out_success = !(!isfinite(lenSq) || lenSq < 1e-6);
 
-
 	result = lerp(vsNormal, result, NormalTextureStrength);
 
 	result = normalize(result);
@@ -383,6 +382,7 @@ void Hit(inout RayPayload payload, in BuiltInTriangleIntersectionAttributes attr
 	float3 normal = GetNormal(
 		uv, ddx, ddy, vsNormal, vsTangent, vsBitangent, gloss, hasValidNormal);
 
+	
 	if (!hasValidNormal)
 	{
 		return;
