@@ -435,7 +435,6 @@ MRT main(VSOutput vsOutput)
 		}
         mrt.Normal = float4(normal, reflection);
 	}
-    mrt.Color = normal.xyzz;
     return mrt;
 }
 
