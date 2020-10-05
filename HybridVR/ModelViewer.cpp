@@ -100,6 +100,7 @@ __declspec(align(16)) struct HitShaderConstants
 	Matrix4 modelToShadow;
 	UINT32 IsReflection;
 	UINT32 UseShadowRays;
+	int FlipNormals;
 };
 
 __declspec(align(16)) struct PSConstants
@@ -114,6 +115,7 @@ __declspec(align(16)) struct PSConstants
 	uint32_t FirstLightIndex[4];
 	uint32_t FrameIndexMod2;
 	float InvResolution[2];
+	int FlipNormals;
 };
 
 ByteAddressBuffer g_hitConstantBuffer;
@@ -215,6 +217,8 @@ struct SceneData
 	float SunOrientation;
 	float SunInclination;
 	float SunIntensity;
+	bool BuildBoundingBox;
+	int FlipNormals;
 };
 
 SceneData g_Scene {};
@@ -240,6 +244,8 @@ void g_CreateScene(Scene Scene)
 		g_Scene.StartingPosition = { -3700, 125, 4000 };
 		g_Scene.UseCustom = true;
 		g_Scene.flipUvY = true;
+		g_Scene.BuildBoundingBox = true;
+		g_Scene.FlipNormals = -1;
 	} break;
 	case Scene::kBistroExterior: {
 		g_Scene.Matrix = Matrix4::MakeRotationX(-XM_PIDIV2);
@@ -256,6 +262,8 @@ void g_CreateScene(Scene Scene)
 		g_Scene.StartingPosition = { -3700, 125, 4000 };
 		g_Scene.UseCustom = true;
 		g_Scene.flipUvY = true;
+		g_Scene.BuildBoundingBox = true;
+		g_Scene.FlipNormals = -1;
 	} break;
 	case Scene::kSponza:
 	{
@@ -265,6 +273,8 @@ void g_CreateScene(Scene Scene)
 		g_Scene.Reflective = { "floor" };
 		g_Scene.CutOuts = { "thorn", "plant", "chain" };
 		g_Scene.UseCustom = false;
+		g_Scene.BuildBoundingBox = false;
+		g_Scene.FlipNormals = 1;
 	} break;
 	default:
 		g_CreateScene(Scene::kSponza);
@@ -1781,6 +1791,7 @@ void D3D12RaytracingMiniEngineSample::SetupEye(Cam::CameraType eye, PSConstants&
 	psConstants.FrameIndexMod2 = TemporalEffects::GetFrameIndexMod2();
 	psConstants.InvResolution[0] = 1. / g_SceneColorBuffer.GetMipWidth(GetMipLevel(eye));
 	psConstants.InvResolution[1] = 1. / g_SceneColorBuffer.GetMipHeight(GetMipLevel(eye));
+	psConstants.FlipNormals = g_Scene.FlipNormals;
 
 	m_MainViewport.Width = static_cast<float>(g_SceneColorBuffer.GetMipWidth(GetMipLevel(eye)));
 	m_MainViewport.Height = static_cast<float>(g_SceneColorBuffer.GetMipHeight(GetMipLevel(eye)));
@@ -2128,6 +2139,7 @@ void Raytracebarycentrics(
 	// Create hit constants
 	HitShaderConstants hitShaderConstants = {};
 	hitShaderConstants.IsReflection = false;
+	hitShaderConstants.FlipNormals = g_Scene.FlipNormals;
 	context.WriteBuffer(g_hitConstantBuffer, 0, &hitShaderConstants, sizeof(hitShaderConstants));
 
 	// Transition resources
@@ -2175,6 +2187,7 @@ void RaytracebarycentricsSSR(
 
 	HitShaderConstants hitShaderConstants = {};
 	hitShaderConstants.IsReflection = false;
+	hitShaderConstants.FlipNormals = g_Scene.FlipNormals;
 	context.WriteBuffer(g_hitConstantBuffer, 0, &hitShaderConstants, sizeof(hitShaderConstants));
 
 	ComputeContext& ctx = context.GetComputeContext();
@@ -2228,6 +2241,7 @@ void D3D12RaytracingMiniEngineSample::RaytraceShadows(
 	hitShaderConstants.modelToShadow = m_SunShadow.GetShadowMatrix();
 	hitShaderConstants.IsReflection = false;
 	hitShaderConstants.UseShadowRays = false;
+	hitShaderConstants.FlipNormals = g_Scene.FlipNormals;
 	context.WriteBuffer(g_hitConstantBuffer, 0, &hitShaderConstants, sizeof(hitShaderConstants));
 
 	ComputeContext& ctx = context.GetComputeContext();
@@ -2281,6 +2295,7 @@ void D3D12RaytracingMiniEngineSample::RaytraceDiffuse(
 	hitShaderConstants.modelToShadow = Transpose(m_SunShadow.GetShadowMatrix());
 	hitShaderConstants.IsReflection = false;
 	hitShaderConstants.UseShadowRays = Settings::RayTracingMode == Settings::RTM_DIFFUSE_WITH_SHADOWRAYS;
+	hitShaderConstants.FlipNormals = g_Scene.FlipNormals;
 	context.WriteBuffer(g_hitConstantBuffer, 0, &hitShaderConstants, sizeof(hitShaderConstants));
 
 	context.TransitionResource(g_dynamicConstantBuffer, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER);
@@ -2333,6 +2348,7 @@ void D3D12RaytracingMiniEngineSample::RaytraceReflections(
 	hitShaderConstants.modelToShadow = Transpose(m_SunShadow.GetShadowMatrix());
 	hitShaderConstants.IsReflection = true;
 	hitShaderConstants.UseShadowRays = false;
+	hitShaderConstants.FlipNormals = g_Scene.FlipNormals;
 	context.WriteBuffer(g_hitConstantBuffer, 0, &hitShaderConstants, sizeof(hitShaderConstants));
 
 	context.TransitionResource(g_dynamicConstantBuffer, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER);

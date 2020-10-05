@@ -42,6 +42,7 @@ cbuffer HitShaderConstants : register(b0)
     float4x4 ModelToShadow;
     uint IsReflection;
     uint UseShadowRays;
+    int FlipNormals;
 }
 
 cbuffer b1 : register(b1)
