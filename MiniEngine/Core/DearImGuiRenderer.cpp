@@ -650,17 +650,7 @@ void ImGui::BuildGUI(Math::Camera* cam, GameCore::CameraController* controller)
         ImGui::Indent(-indent);
     } // LOD
 	
-    { // Other
-
-    	// Test?
-
-    	// TODO: How to solve these?
-    	// Display Profiler
-    	// Display Frame Rate
-    	// Load/Save Settings
-
-
-    	
+    { // Other    	
 		{ // use imgui
 	        bool checkbox = Settings::UseImGui;
 	        ImGui::Checkbox("Use ImGui", &checkbox);
