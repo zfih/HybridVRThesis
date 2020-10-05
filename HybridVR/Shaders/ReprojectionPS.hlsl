@@ -59,13 +59,13 @@ static float3 gClearColor = float3(0, 0, 0);
 
 float3 RemoveSRGBCurve(float3 x)
 {
-    // Approximately pow(x, 2.2)
+	// Approximately pow(x, 2.2)
 	return x < 0.04045 ? x / 12.92 : pow((x + 0.055) / 1.055, 2.4);
 }
 
 float3 ApplySRGBCurve(float3 x)
 {
-    // Approximately pow(x, 1.0 / 2.2)
+	// Approximately pow(x, 1.0 / 2.2)
 	return x < 0.0031308 ? 12.92 * x : 1.055 * pow(x, 1.0 / 2.4) - 0.055;
 }
 
@@ -95,26 +95,18 @@ bool inRange(float n, float min, float max)
 
 MRT main(VertexOutput vOut)
 {
-
 	// Discard if depth difference too big.
 	if(vOut.occFlag > depthThreshold)
 	{
 		discard;
 	}
+	float4 normal_ratio = gLeftEyeNormalTex.SampleLevel(gLinearSampler, vOut.texC, 0);
+	float initRatio = normal_ratio.w;
+	
+	float4 color = 0;
+	float4 colorRefl = gLeftEyeTex.SampleLevel(gLinearSampler, vOut.texC, 0);
+	float4 colorRaw = gLeftEyeRawTex.SampleLevel(gLinearSampler, vOut.texC, 0);
 
-	float4 color;
-
-	float4 colorRefl = float4(gLeftEyeTex.SampleLevel(gLinearSampler, vOut.texC, 0).rgb, 1);
-	
-	float4 colorRaw = float4(gLeftEyeRawTex.SampleLevel(gLinearSampler, vOut.texC, 0).rgb, 1);
-	
-	float4 normal = gLeftEyeNormalTex.SampleLevel(gLinearSampler, vOut.texC, 0);
-	MRT mrt;
-	mrt.Color = float4(0, 0, 0, 0);
-	mrt.Normal  = float4(0, 0, 0, 0);
-	
-	// Normalize result...
-	float lenSq = dot(normal, normal);
 
 	double halfRange = angleBlendingRange / 2;
 	double lower = angleThreshold - halfRange;
@@ -125,26 +117,37 @@ MRT main(VertexOutput vOut)
 	float ratio = saturate((reflDist - lower) / angleBlendingRange);
 	float invRatio = 1 - ratio;
 	color = invRatio * colorRefl + ratio * colorRaw;
-	normal.w *= ratio;
 
-
-	if (debugColors)
+	// Add debug colors
+	if(debugColors)
 	{
-		if (reflDist > upper) // Angle not good enough, redo
+		if(reflDist > upper) // Angle not good enough, redo
 		{
 			color += float4(0.1, 0.0, 0.1, 0);
 		}
-		else if (inRange(reflDist, lower, upper)) // Blend
+		else if(inRange(reflDist, lower, upper)) // Blend
 		{
 			color += float4(0.1, 0.1, 0, 0);
 		}
-		else // Angle is above upper, conserve pixel
+		else // Angle is below lower, conserve pixel
 		{
 			color += float4(0, 0.1, 0, 0);
 		}
 	}
 
+
+	MRT mrt;
+	float specular = color.w;
+	
+	ratio *= normal_ratio.w;
+
+	
+	specular += ratio == 0 && specular == 0;
+
 	mrt.Color = color;
-	mrt.Normal = normal;
+	mrt.Color.a = specular;
+	mrt.Normal = normal_ratio;
+	mrt.Normal.w = ratio;
+	
 	return mrt;
 }

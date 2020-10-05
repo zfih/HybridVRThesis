@@ -674,6 +674,12 @@ void ImGui::BuildGUI(Math::Camera* cam, GameCore::CameraController* controller)
     } // VR
 	
     { // Other
+        float normalTextureStrength = Settings::NormalTextureStrength;
+    	
+        ImGui::DragFloat("Normal Texture Strength", &normalTextureStrength, 0.05, 0, 1);
+    	
+        Settings::NormalTextureStrength = normalTextureStrength;
+    	
 		{ // use imgui
 	        bool checkbox = Settings::UseImGui;
 	        ImGui::Checkbox("Use ImGui", &checkbox);

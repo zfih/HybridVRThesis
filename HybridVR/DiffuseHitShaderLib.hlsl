@@ -382,7 +382,11 @@ float3 GetNormal(
 	float3 result = SAMPLE_TEX(g_localNormal).rgb * 2.0 - 1.0;
 
 	AntiAliasSpecular(result, inout_gloss);
-	float3x3 tbn = float3x3(vsTangent, vsBitangent, vsNormal);
+	float flipper = FlipNormals - (FlipNormals == 0);
+	float3x3 tbn = float3x3(
+		flipper * vsTangent,
+		flipper * vsBitangent,
+		flipper * vsNormal);
 	result = mul(result, tbn);
 
 	// Normalize result...
@@ -391,7 +395,10 @@ float3 GetNormal(
 	// Detect degenerate normals
 	out_success = !(!isfinite(lenSq) || lenSq < 1e-6);
 
-	result *= rsqrt(lenSq);
+	result = lerp(vsNormal, result, NormalTextureStrength);
+
+	result = normalize(result);
+	
 	return result;
 }
 
@@ -433,7 +440,6 @@ float GetShadowMultiplier(float3 position, int bounces)
 void Hit(inout RayPayload payload, in BuiltInTriangleIntersectionAttributes attr)
 {
 	int3 pixel = int3(DispatchRaysIndex().xy, g_dynamic.curCam);
-
 
 	payload.RayHitT = RayTCurrent();
 	if (payload.SkipShading)
@@ -513,10 +519,12 @@ void Hit(inout RayPayload payload, in BuiltInTriangleIntersectionAttributes attr
 	float3 normal = GetNormal(
 		uv, ddx, ddy, vsNormal, vsTangent, vsBitangent, gloss, hasValidNormal);
 
+	
 	if (!hasValidNormal)
 	{
 		return;
 	}
+
 
 	const float3 specularAlbedo = float3(0.56, 0.56, 0.56);
 	const float specularMask = SAMPLE_TEX(g_localSpecular).g;
@@ -553,13 +561,15 @@ void Hit(inout RayPayload payload, in BuiltInTriangleIntersectionAttributes attr
 #endif
 
 	colorSum = ApplySRGBCurve(colorSum);
+	float4 pixelColor = g_screenOutput[pixel];
 
+	
 	if (payload.Bounces > 0)
 	{
-		colorSum = g_screenOutput[pixel].rgb * (1 - payload.Reflectivity) + payload.Reflectivity * colorSum;
+		colorSum = pixelColor.rgb * (1 - payload.Reflectivity) + payload.Reflectivity * colorSum;
 	}
-
-	g_screenOutput[pixel] = float4(colorSum, 1);
+	
+	g_screenOutput[pixel] = float4(colorSum, pixelColor.a);
 
 	float reflectivity = CalculateReflectivity(specularMask, viewDir, normal);
 
@@ -575,6 +585,7 @@ void Hit(inout RayPayload payload, in BuiltInTriangleIntersectionAttributes attr
 		float3 direction;
 		GenerateReflectionRay(
 			worldPosition, viewDir, normal, origin, direction);
+
 		FireRay(worldPosition, direction, payload.Bounces + 1, payload.Reflectivity * reflectivity);
 	}
 }

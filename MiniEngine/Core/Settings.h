@@ -165,4 +165,11 @@ namespace Settings
 	extern NumVar AngleBlendingRange;
 	extern BoolVar DebugColors;
 	// Reprojection
+
+
+	// Normal Texture Strength
+	extern NumVar NormalTextureStrength;
+// Normal Texture Strength
+
+
 }
