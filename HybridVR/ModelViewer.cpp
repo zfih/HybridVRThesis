@@ -819,7 +819,7 @@ void D3D12RaytracingMiniEngineSample::InitializeRaytracingStateObjects(
 	                          byte* pShaderTable)
 	{
 		ID3D12StateObjectProperties* stateObjectProperties = nullptr;
-	ThrowIfFailed(pPSO->QueryInterface(IID_PPV_ARGS(&stateObjectProperties)));
+		ThrowIfFailed(pPSO->QueryInterface(IID_PPV_ARGS(&stateObjectProperties)));
 		void* pHitGroupIdentifierData = stateObjectProperties->
 			GetShaderIdentifier(hitGroupExportName);
 		for (UINT i = 0; i < numMeshes; i++)
@@ -1373,7 +1373,6 @@ void D3D12RaytracingMiniEngineSample::Startup(void)
     m_ExtraTextures[4] = Lighting::m_LightGrid.GetSRV();
     m_ExtraTextures[5] = Lighting::m_LightGridBitMask.GetSRV();
 
-	// TODO: Make init func?
 	// ASRP INIT STUFf
 	m_QuadDivideFactor = 16;
 	
@@ -2063,7 +2062,7 @@ void D3D12RaytracingMiniEngineSample::RenderPrepass(GraphicsContext& Ctx, Cam::C
 
 			if (!Settings::VRDepthStencil)
 			{
-				Ctx.ClearDepthAndStencil(g_SceneDepthBuffer, CameraType); // TODO: Check if CameraType is necessary
+				Ctx.ClearDepthAndStencil(g_SceneDepthBuffer, CameraType);
 			}
 
 			Ctx.SetPipelineState(m_DepthPSO[0]);

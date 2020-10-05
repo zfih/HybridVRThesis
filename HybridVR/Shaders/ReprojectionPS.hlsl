@@ -121,7 +121,8 @@ MRT main(VertexOutput vOut)
 
 	float depth = gDepthTex.SampleLevel(gLinearSampler, vOut.texC, 0);
 	// todo(Danh) 13:35 07/08: Pass in IPD
-	float angle = abs(2 * atan(0.065 / (2 * depth)) - PI);
+	float IPD = 0.065; // This is the IPD for the HTC Vive Pro Eye
+	float angle = abs(2 * atan(IPD / (2 * depth)) - PI);
 
 	float ratio = saturate((angle - lower) / angleBlendingRange);
 	float invRatio = 1 - ratio;
