@@ -674,15 +674,6 @@ void ImGui::BuildGUI(Math::Camera* cam, GameCore::CameraController* controller)
     } // VR
 	
     { // Other
-
-    	// Test?
-
-    	// TODO: How to solve these?
-    	// Display Profiler
-    	// Display Frame Rate
-    	// Load/Save Settings
-
-
         float normalTextureStrength = Settings::NormalTextureStrength;
     	
         ImGui::DragFloat("Normal Texture Strength", &normalTextureStrength, 0.05, 0, 1);
