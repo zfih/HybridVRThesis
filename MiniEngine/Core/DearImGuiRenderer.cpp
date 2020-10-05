@@ -662,16 +662,6 @@ void ImGui::BuildGUI(Math::Camera* cam, GameCore::CameraController* controller)
     } // LOD
 	
     { // Other
-
-    	// Test?
-
-    	// TODO: How to solve these?
-    	// Display Profiler
-    	// Display Frame Rate
-    	// Load/Save Settings
-
-
-    	
 		{ // use imgui
 	        bool checkbox = Settings::UseImGui;
 	        ImGui::Checkbox("Use ImGui", &checkbox);

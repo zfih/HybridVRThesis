@@ -768,7 +768,6 @@ void Graphics::CompositeOverlays( GraphicsContext& Context )
 
 void Graphics::SubmitToVRHMD(bool isArray)
 {
-	// TODO: Check if g_SceneColorBuffer is the correct one
 	if(isArray)
 	{
         VR::Submit(g_SceneColorBuffer);

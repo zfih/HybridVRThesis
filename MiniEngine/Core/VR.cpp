@@ -159,7 +159,6 @@ inline XMMATRIX VR::ConvertSteamVRMatrixToXMMatrix(
 }
 
 
-// TODO: NEEDS TESTING
 void VR::Submit(ColorBuffer buffer_array)
 {
 	if(!g_HMD)
