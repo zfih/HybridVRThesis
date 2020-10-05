@@ -302,7 +302,6 @@ void Hit(inout RayPayload payload, in BuiltInTriangleIntersectionAttributes attr
 		normal = normalize(mul(normal, tbn));
     }
     
-//<<<<<<< HEAD
 	float outputTextureWidth;
 	float outputTextureHeight;
 	float elements;
@@ -320,18 +319,6 @@ void Hit(inout RayPayload payload, in BuiltInTriangleIntersectionAttributes attr
         float3 shadowDirection = SunDirection;
         float3 shadowOrigin = worldPosition;
         RayDesc rayDesc = { shadowOrigin,
-//=======
-//	float3 outputColor = AmbientColor * diffuseColor * texSSAO[DispatchRaysIndex().xy];
-
-//	float shadow = 1.0;
-//	if (UseShadowRays)
-//	{
-//		float3 shadowDirection = SunDirection;
-//		float3 shadowOrigin = worldPosition;
-//		RayDesc rayDesc =
-//		{
-//			shadowOrigin,
-//>>>>>>> master
             0.1f,
             shadowDirection,
             FLT_MAX
@@ -364,33 +351,6 @@ void Hit(inout RayPayload payload, in BuiltInTriangleIntersectionAttributes attr
         SunDirection,
         SunColor);
 
-//<<<<<<< HEAD
-//    outputColor = ApplySRGBCurve(outputColor);
-    
-//    // TODO: Should be passed in via material info
-//    if (IsReflection)
-//    {
-//		float reflectivity = 
-//            normals.mips[g_dynamic.mip][int2(DispatchRaysIndex().xy)].w;
-//		/*if(g_dynamic.curCam == 1)
-//		{
-//            outputColor = float4(1, 0, 0, 0);
-//		}
-//        else if(g_dynamic.curCam ==0)
-//        {
-//            outputColor = float4(0, 1, 0, 0);
-//        }
-//        else
-//        {
-//            outputColor = float4(0, 0, 1, 0);
-
-//        }*/
-//		outputColor = g_screenOutput[int3(DispatchRaysIndex().x, DispatchRaysIndex().y, g_dynamic.curCam)].rgb + reflectivity * outputColor;
-//	}
-
-
-//	g_screenOutput[int3(DispatchRaysIndex().x, DispatchRaysIndex().y, g_dynamic.curCam)] = float4(outputColor, 1);
-//=======
 	outputColor = ApplySRGBCurve(outputColor);
     
 	if (payload.Bounces > 0)
@@ -421,5 +381,4 @@ void Hit(inout RayPayload payload, in BuiltInTriangleIntersectionAttributes attr
 		reflectionPayload.Reflectivity = reflectivity * payload.Reflectivity;
 		TraceRay(g_accel, RAY_FLAG_CULL_BACK_FACING_TRIANGLES, ~0, 0, 1, 0, rayDesc, reflectionPayload);
 	}
-//>>>>>>> master
 }

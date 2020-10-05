@@ -59,7 +59,6 @@ void main(uint3 DTid : SV_DispatchThreadID)
         }
     }
     
-    // TODO : FIX Cam 0 for now
     LowPassedImage[uint3(DTid.x, DTid.y, cam)] = colorSum;
 
 }
