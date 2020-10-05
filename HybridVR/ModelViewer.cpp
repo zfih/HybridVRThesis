@@ -1352,7 +1352,6 @@ void D3D12RaytracingMiniEngineSample::Startup(void)
     m_ExtraTextures[4] = Lighting::m_LightGrid.GetSRV();
     m_ExtraTextures[5] = Lighting::m_LightGridBitMask.GetSRV();
 
-	// TODO: Make init func?
 	// ASRP INIT STUFf
 	m_QuadDivideFactor = 16;
 	
@@ -1826,9 +1825,7 @@ void D3D12RaytracingMiniEngineSample::ReprojectScene()
 	quadLevelContext.TransitionResource(
 		g_SceneDiffBuffer, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 
-	// TODO: Maybe the top works. Maybe bottom. Who knows?
 	quadLevelContext.SetDynamicDescriptor(1, 0, g_SceneDiffBuffer.GetUAV());
-	//quadLevelContext.SetBufferUAV(1, g_SceneDiffBuffer, 0);
 	
 	struct ComputeCB
 	{
@@ -1882,9 +1879,7 @@ void D3D12RaytracingMiniEngineSample::ReprojectScene()
 	};
 
 	ReprojInput ri{
-		// TODO: FIX ENUM
-		//XMMatrixIdentity()
-		XMMatrixTranspose(m_Camera[1]->GetViewProjMatrix()) * 
+		XMMatrixTranspose(m_Camera[Cam::kRight]->GetViewProjMatrix()) * 
 		XMMatrixTranspose(XMMatrixInverse(nullptr, m_Camera[0]->GetViewProjMatrix())),
 		Settings::DepthThreshold
 	};
@@ -2018,7 +2013,7 @@ void D3D12RaytracingMiniEngineSample::RenderPrepass(GraphicsContext& Ctx, Cam::C
 
 				if (!Settings::VRDepthStencil)
 				{
-					Ctx.ClearDepthAndStencil(g_SceneDepthBuffer, CameraType); // TODO: Check if CameraType is necessary
+					Ctx.ClearDepthAndStencil(g_SceneDepthBuffer, CameraType);
 				}
 
 				Ctx.SetPipelineState(m_DepthPSO[0]);
