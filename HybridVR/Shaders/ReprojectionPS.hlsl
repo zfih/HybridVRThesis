@@ -58,13 +58,13 @@ static float3 gClearColor = float3(0, 0, 0);
 
 float3 RemoveSRGBCurve(float3 x)
 {
-    // Approximately pow(x, 2.2)
+	// Approximately pow(x, 2.2)
 	return x < 0.04045 ? x / 12.92 : pow((x + 0.055) / 1.055, 2.4);
 }
 
 float3 ApplySRGBCurve(float3 x)
 {
-    // Approximately pow(x, 1.0 / 2.2)
+	// Approximately pow(x, 1.0 / 2.2)
 	return x < 0.0031308 ? 12.92 * x : 1.055 * pow(x, 1.0 / 2.4) - 0.055;
 }
 
@@ -94,58 +94,48 @@ bool inRange(float n, float min, float max)
 
 MRT main(VertexOutput vOut)
 {
-
 	// Discard if depth difference too big.
 	if(vOut.occFlag > depthThreshold)
 	{
 		discard;
 	}
 
-	float4 color;
+	float4 color = 0;
+	float4 colorRefl = gLeftEyeTex.SampleLevel(gLinearSampler, vOut.texC, 0);
+	float4 colorRaw = gLeftEyeRawTex.SampleLevel(gLinearSampler, vOut.texC, 0);
+	float4 normal_ratio = gLeftEyeNormalTex.SampleLevel(gLinearSampler, vOut.texC, 0);
 
-	float4 colorRefl = float4(gLeftEyeTex.SampleLevel(gLinearSampler, vOut.texC, 0).rgb, 1);
-	
-	float4 colorRaw = float4(gLeftEyeRawTex.SampleLevel(gLinearSampler, vOut.texC, 0).rgb, 1);
-	
-	float4 normal = gLeftEyeNormalTex.SampleLevel(gLinearSampler, vOut.texC, 0);
-	MRT mrt;
-	mrt.Color = float4(0, 0, 0, 0);
-	mrt.Normal  = float4(0, 0, 0, 0);
-	
-	// Normalize result...
-	float lenSq = dot(normal, normal);
 
 	double halfRange = angleBlendingRange / 2;
 	double lower = angleThreshold - halfRange;
 	double upper = angleThreshold + halfRange;
 
 	float depth = gDepthTex.SampleLevel(gLinearSampler, vOut.texC, 0);
-	// todo(Danh) 13:35 07/08: Pass in IPD
 	float angle = abs(2 * atan(0.065 / (2 * depth)) - PI);
 
 	float ratio = saturate((angle - lower) / angleBlendingRange);
-	float invRatio = 1 - ratio;
-	color = invRatio * colorRefl + ratio * colorRaw;
-	normal.w *= ratio;
+	color = lerp(colorRefl, colorRaw, ratio);
 
-
-	if (debugColors)
+	// Add debug colors
+	if(debugColors)
 	{
-		if (angle > upper) // Angle not good enough, redo
+		if(angle > upper) // Angle not good enough, redo
 		{
 			color += float4(0.1, 0.0, 0.1, 0);
 		}
-		else if (inRange(angle, lower, upper)) // Blend
+		else if(inRange(angle, lower, upper)) // Blend
 		{
 			color += float4(0.1, 0.1, 0, 0);
 		}
-		else // Angle is above upper, conserve pixel
+		else // Angle is below lower, conserve pixel
 		{
 			color += float4(0, 0.1, 0, 0);
 		}
 	}
-
+	
+	MRT mrt;
 	mrt.Color = color;
-	mrt.Normal = normal;
+	mrt.Normal = normal_ratio;
+	mrt.Normal.w = ratio;
 	return mrt;
 }

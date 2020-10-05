@@ -64,6 +64,7 @@ uint4 TileCount;
 uint4 FirstLightIndex;
 uint FrameIndexMod2;
 int UseSceneLighting;
+float NormalTextureStrength;
 }
 
 cbuffer MaterialInfo : register(b1)
@@ -80,11 +81,11 @@ float3 ApplySRGBCurve(float3 x)
 	return x < 0.0031308 ? 12.92 * x : 1.055 * pow(x, 1.0 / 2.4) - 0.055;
 }
 
-void AntiAliasSpecular(inout float3 texNormal, inout float gloss)
+void AntiAliasSpecular(inout float3 inout_texNormal, inout float gloss)
 {
-	float normalLenSq = dot(texNormal, texNormal);
+	float normalLenSq = dot(inout_texNormal, inout_texNormal);
 	float invNormalLen = rsqrt(normalLenSq);
-	texNormal *= invNormalLen;
+	inout_texNormal *= invNormalLen;
 	gloss = lerp(1, gloss, rcp(invNormalLen));
 }
 
@@ -151,7 +152,7 @@ float3 ApplyLightCommon(
 	float3 halfVec = normalize(lightDir - viewDir);
 	float nDotH = saturate(dot(halfVec, normal));
 
-    FSchlick(specularColor, diffuseColor, lightDir, halfVec);
+	FSchlick(specularColor, diffuseColor, lightDir, halfVec);
 
 	float specularFactor = specularMask * pow(nDotH, gloss) * (gloss + 2) / 8;
 
@@ -345,64 +346,62 @@ float3 ApplySceneLights(
 				diffuse, specular, specularMask, gloss, normal, viewDir, pos, lightData.pos,
 				lightData.radiusSq, lightData.color, lightData.coneDir, lightData.coneAngles);
 		}
-		else if(lightData.type == 2)
-		{
-			/*colorSum += ApplyConeShadowedLight(
-				diffuse, specular, specularMask, gloss, normal, viewDir, pos,
-				lightData.pos, lightData.radiusSq, lightData.color, lightData.coneDir,
-				lightData.coneAngles, lightData.shadowTextureMatrix, lightIndex);
-				*/
-		}
 	}
 	return colorSum;
 }
 
 #define SAMPLE_TEX(texName) texName.Sample(sampler0, uv)
+
 float3 GetNormal(
 	float2 uv, float3 vsNormal, float3 vsTangent, float3 vsBitangent,
 	inout float inout_gloss, out bool out_success)
 {
-	float3 result = SAMPLE_TEX(texNormal) * 2.0 - 1.0;
+	float3 textureNormal = SAMPLE_TEX(texNormal) * 2.0 - 1.0;
+	AntiAliasSpecular(textureNormal, inout_gloss);
+	vsNormal = normalize(vsNormal);
 
-	AntiAliasSpecular(result, inout_gloss);
+	// Convert texture normal to world space
+
 	float3x3 tbn = float3x3(vsTangent, vsBitangent, vsNormal);
-	result = mul(result, tbn);
+	textureNormal = mul(textureNormal, tbn);
 
-	// Normalize result...
-	float lenSq = dot(result, result);
 
 	// Detect degenerate normals
+	float lenSq = dot(textureNormal, textureNormal);
 	out_success = !(!isfinite(lenSq) || lenSq < 1e-6);
 
-	result *= rsqrt(lenSq);
+	// Apply normal texture based on strength
+	float3 result = lerp(vsNormal, textureNormal, NormalTextureStrength);
+
+	result = normalize(result);
+
 	return result;
 }
-
 
 [RootSignature(ModelViewer_RootSig)]
 MRT main(VSOutput vsOutput)
 {
-    MRT mrt;
+	MRT mrt;
 	mrt.Color = float4(0, 0, 0, 0);
 	mrt.ColorRaw = float4(0, 0, 0, 0);
-    mrt.Normal = 0.0;
+	mrt.Normal = 0.0;
 
 	float2 uv = vsOutput.uv;
 	float gloss = 128.0;
 	bool hasValidNormals;
 	float3 normal = GetNormal(
-		uv, vsOutput.normal, vsOutput.tangent, vsOutput.bitangent, 
+		uv, vsOutput.normal, vsOutput.tangent, vsOutput.bitangent,
 		gloss, hasValidNormals);
 
-    const float3 specularAlbedo = float3(0.56, 0.56, 0.56);
-    const float specularMask = SAMPLE_TEX(texSpecular).g;
-    const float3 viewDir = normalize(vsOutput.viewDir);
-
+	const float3 specularAlbedo = float3(0.56, 0.56, 0.56);
+	const float specularMask = SAMPLE_TEX(texSpecular).g;
+	const float3 viewDir = normalize(vsOutput.viewDir);
 	float3 diffuseAlbedo = SAMPLE_TEX(texDiffuse);
 	float3 colorSum = 0;
-    colorSum += ApplyAmbientLight(diffuseAlbedo, 1, AmbientColor);
-    colorSum += ApplyDirectionalLight(diffuseAlbedo, specularAlbedo, specularMask, gloss, normal, viewDir, SunDirection, SunColor, vsOutput.shadowCoord);
-	
+	colorSum += ApplyAmbientLight(diffuseAlbedo, 1, AmbientColor);
+	colorSum += ApplyDirectionalLight(diffuseAlbedo, specularAlbedo, specularMask, gloss, normal, viewDir, SunDirection,
+	                                  SunColor, vsOutput.shadowCoord);
+
 	if(UseSceneLighting)
 	{
 		colorSum += ApplySceneLights(
@@ -410,14 +409,14 @@ MRT main(VSOutput vsOutput)
 			vsOutput.worldPos);
 	}
 
-	mrt.Color = float4(ApplySRGBCurve(colorSum), 1);
+	float ratio = 1;
+	mrt.Normal = float4(normal, ratio) * AreNormalsNeeded;
+
+	mrt.Color = float4(ApplySRGBCurve(colorSum), 0);
+	//mrt.Color = mrt.Normal;
+	mrt.Color.w = specularMask * AreNormalsNeeded;
 	mrt.ColorRaw = mrt.Color;
 
-
-	if (AreNormalsNeeded)
-	{
-		mrt.Normal = float4(normal, specularMask);
-	}
 	return mrt;
 }
 

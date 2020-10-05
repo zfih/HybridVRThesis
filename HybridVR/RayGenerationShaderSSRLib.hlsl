@@ -12,6 +12,8 @@
 #define HLSL
 #include "ModelViewerRaytracing.h"
 
+
+
 Texture2DArray<float> depths : register(t12);
 Texture2DArray<float4> normals : register(t13);
 
@@ -19,25 +21,38 @@ Texture2DArray<float4> normals : register(t13);
 void RayGen()
 {
 	uint3 pixel = float3(DispatchRaysIndex().xy, g_dynamic.curCam);
-
+	
 	float depth = depths[pixel];
 
-	float4 normalSpecular = normals[pixel];
-	float3 normal = normalSpecular.xyz;
-	float specular = normalSpecular.w;
+	float4 normalXYZ_ratio = normals[pixel];
+	float3 normal = normalXYZ_ratio.xyz;
+	float ratio = normalXYZ_ratio.w;
+	
+	float specular = g_screenOutput[pixel].a;
 
-
+	if(ratio == 0)
+	{
+		return;
+	}
+	
 	float3 origin;
 	float3 direction;
 	float reflectivity;
 	GenerateSSRRay(
-		pixel.xy, depth, normal, specular,
-		origin, direction, reflectivity);
-	
-	if (reflectivity == 0.0)
-		return;
+		pixel.xy,
+		depth,
+		normal,
+		specular,
+		origin,
+		direction,
+		reflectivity);
 
-	const int numBounces = 1;
-	FireRay(origin, direction, numBounces, reflectivity);
+	if (reflectivity == 0.0)
+	{
+		return;
+	}
 	
+	const int numBounces = 1;
+
+	FireRay(origin, direction, numBounces, reflectivity);
 }

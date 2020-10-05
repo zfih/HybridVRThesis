@@ -145,7 +145,7 @@ namespace GameCore
         //g_CommandManager.IdleGPU();
 
         Settings::g_RenderTimer.Stop();
-        //game.TakeScreenshot();
+        game.TakeScreenshot();
         return !game.IsDone();
     }
 

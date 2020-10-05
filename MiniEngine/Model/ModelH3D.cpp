@@ -99,12 +99,15 @@ bool Model::LoadH3D(const char *filename, Matrix4 &mat, Matrix4 &invMat, bool fl
 		Vertex *v = (Vertex*)(m_pVertexData + m_VertexStride * vertexIndex);
 
 		XMStoreFloat3(&v->p, mat * Vector4(v->p, 1));
-		XMStoreFloat3(&v->n, mat * Vector4(v->n, 0));
-		XMStoreFloat3(&v->t, mat * Vector4(v->t, 0));
-		XMStoreFloat3(&v->b, mat * Vector4(v->b, 0));
+
+		XMStoreFloat3(&v->n, Normalize(mat * Vector4(v->n, 0)));
+		XMStoreFloat3(&v->t, Normalize(mat * Vector4(v->t, 0)));
+		XMStoreFloat3(&v->b, Normalize(mat * Vector4(v->b, 0)));
+
+		
 		if(flipUvY)
 		{
-			v->uv.y = 1.0 - v->uv.y;
+			v->uv.y = 1.0f - v->uv.y;
 		}
 	}
 
@@ -226,6 +229,19 @@ void Model::LoadTextures(void)
 
 	const ManagedTexture *MatTextures[6] = {};
 
+	auto type_to_string = [](UINT TextureType)
+	{
+		switch(TextureType)
+		{
+		case 0: return "Diffuse";
+		case 1: return "Specular";
+		case 2: return "Emissive";
+		case 3: return "Normal";
+		case 4: return "LightMap";
+		case 5: return "Reflective";
+		}
+	};
+
 	auto load_texture = [&](UINT TexType, const std::string &Primary, const std::string &Second,
 	                        const std::string &Default, bool SRgb)
 	{
@@ -250,7 +266,8 @@ void Model::LoadTextures(void)
 			return MatTextures[TexType]->GetSRV();
 		}
 
-		std::cout << "Could not import asset: \"" << Primary << "\". Using default\n";
+
+		std::cout << "Could not import " << type_to_string(TexType) << "-texture: " << Primary << "\". Using default\n";
 
 		return g_DefaultTexture->GetSRV();
 	};

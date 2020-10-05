@@ -84,14 +84,6 @@ float2 GetUVAttribute(uint byteOffset)
     return asfloat(g_attributes.Load2(byteOffset));
 }
 
-void AntiAliasSpecular(inout float3 texNormal, inout float gloss)
-{
-    float normalLenSq = dot(texNormal, texNormal);
-    float invNormalLen = rsqrt(normalLenSq);
-    texNormal *= invNormalLen;
-    gloss = lerp(1, gloss, rcp(invNormalLen));
-}
-
 // Apply fresnel to modulate the specular albedo
 void FSchlick(inout float3 specular, inout float3 diffuse, float3 lightDir, float3 halfVec)
 {
