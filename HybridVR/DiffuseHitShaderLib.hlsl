@@ -434,7 +434,10 @@ void Hit(inout RayPayload payload, in BuiltInTriangleIntersectionAttributes attr
 		normal = g_localNormal.SampleGrad(g_s0, uv, ddx, ddy).rgb * 2.0 - 1.0;
 		//normal = g_localNormal.SampleLevel(g_s0, uv, 0).rgb * 2.0 - 1.0;
 		AntiAliasSpecular(normal, gloss);
-		float3x3 tbn = float3x3(vsTangent, vsBitangent, vsNormal);
+		float3x3 tbn = float3x3(
+			FlipNormals * vsTangent, 
+			FlipNormals * vsBitangent, 
+			FlipNormals * vsNormal);
 		normal = normalize(mul(normal, tbn));
     }
     
