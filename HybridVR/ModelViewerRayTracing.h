@@ -87,7 +87,7 @@ void GenerateReflectionRay(float3 position, float3 incidentDirection, float3 nor
 float CalculateReflectivity(float specular, float3 viewDir, float3 normal)
 {
 	float result = specular * pow(1.0 - saturate(dot(-viewDir, normal)), 5.0);
-    return result;
+    return 0.8;
 }
 
 void GenerateSSRRay(

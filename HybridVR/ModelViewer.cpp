@@ -274,8 +274,8 @@ void g_CreateScene(Scene Scene)
 		g_Scene.SunOrientation = -0.5;
 		g_Scene.SunInclination = 0.75;
 		g_Scene.StartingHeading = 0;
-		g_Scene.StartingPitch = -0.2;
-		g_Scene.StartingPosition = { 0, 125, 65 };
+		g_Scene.StartingPitch = 0;
+		g_Scene.StartingPosition = { 0, 40, 15 };
 		g_Scene.UseCustom = true;
 		g_Scene.ComputeBoundingBoxes = true;
 		g_Scene.FlipNormals = 1;
