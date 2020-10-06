@@ -89,7 +89,6 @@
     <Image Include="WideLogo.png" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="Models\sponza.h3d" />
     <None Include="packages.config" />
     <None Include="readme.md" />
     <None Include="Shaders\FillLightGridCS.hlsli">
