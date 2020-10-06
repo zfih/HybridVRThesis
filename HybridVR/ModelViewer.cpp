@@ -263,6 +263,24 @@ void g_CreateScene(Scene Scene)
 		g_Scene.ComputeBoundingBoxes = false;
 		g_Scene.FlipNormals = 1;
 	} break;
+	case Scene::kRuggedSurface:
+	{
+
+		g_Scene.Matrix = Matrix4::MakeRotationX(-XM_PIDIV2) * Matrix4::MakeScale(10);
+		g_Scene.ModelPath = ASSET_DIRECTORY "Models/RuggedSurface/RuggedSurface.h3d";
+		g_Scene.TextureFolderPath = ASSET_DIRECTORY L"Models/RuggedSurface/";
+		g_Scene.Reflective = { "checker"};
+		g_Scene.AmbientIntensity = 1.0;
+		g_Scene.SunIntensity = 2.0;
+		g_Scene.SunOrientation = -0.5;
+		g_Scene.SunInclination = 0.75;
+		g_Scene.StartingHeading = 0;
+		g_Scene.StartingPitch = -0.2;
+		g_Scene.StartingPosition = { 0, 125, 65 };
+		g_Scene.UseCustom = true;
+		g_Scene.ComputeBoundingBoxes = true;
+		g_Scene.FlipNormals = 1;
+	}break;
 	default:
 		g_CreateScene(Scene::kSponza);
 		break;
