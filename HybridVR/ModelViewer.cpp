@@ -260,7 +260,7 @@ void g_CreateScene(Scene Scene)
 		g_Scene.Reflective = { "floor" };
 		g_Scene.CutOuts = { "thorn", "plant", "chain" };
 		g_Scene.UseCustom = false;
-		g_Scene.ComputeBoundingBoxes = true;
+		g_Scene.ComputeBoundingBoxes = false;
 		g_Scene.FlipNormals = 1;
 	} break;
 	default:
@@ -434,7 +434,7 @@ private:
 
 int wmain(int argc, wchar_t **argv)
 {
-	g_CreateScene(Scene::kBistroExterior);
+	g_CreateScene(Scene::kRuggedSurface);
 
 #if _DEBUG
 	CComPtr<ID3D12Debug> debugInterface;
@@ -2639,6 +2639,7 @@ void D3D12RaytracingMiniEngineSample::RaytraceAsrpPlus(
 	hitShaderConstants.modelToShadow = Transpose(m_SunShadow.GetShadowMatrix());
 	hitShaderConstants.IsReflection = true;
 	hitShaderConstants.UseShadowRays = false;
+	hitShaderConstants.FlipNormals = g_Scene.FlipNormals;
 	context.WriteBuffer(g_hitConstantBuffer, 0, &hitShaderConstants, sizeof(hitShaderConstants));
 
 	context.TransitionResource(g_dynamicConstantBuffer, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER);

@@ -247,11 +247,10 @@ float3 GetNormal(
 	float3 result = SAMPLE_TEX(g_localNormal).rgb * 2.0 - 1.0;
 
 	AntiAliasSpecular(result, inout_gloss);
-	float flipper = FlipNormals - (FlipNormals == 0);
 	float3x3 tbn = float3x3(
-		flipper * vsTangent,
-		flipper * vsBitangent,
-		flipper * vsNormal);
+		FlipNormals * vsTangent,
+		FlipNormals * vsBitangent,
+		FlipNormals * vsNormal);
 	result = mul(result, tbn);
 
 	// Normalize result...

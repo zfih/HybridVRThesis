@@ -42,11 +42,6 @@ void FullTrace(int3 pixel)
 	FireRay(origin, direction, numBounces, reflectivity);
 }
 
-inline bool PixelCanBeReused(float ratio, float specular)
-{
-	return ratio != 0 || specular != 0;
-}
-
 inline bool PixelNeedsReflections(float ratio, float specular)
 {
 	return ratio != 0 && specular != 0;
