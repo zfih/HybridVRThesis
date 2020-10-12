@@ -550,7 +550,7 @@ void Hit(inout RayPayload payload, in BuiltInTriangleIntersectionAttributes attr
 		SunDirection,
 		SunColor);
 
-#if 0
+#if 1
 	//if (g_dynamic.useSceneLighting) // Wontfix: This causes reflections to be purple
 	{
 		colorSum += ApplySceneLights(
