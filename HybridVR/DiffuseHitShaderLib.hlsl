@@ -220,7 +220,7 @@ float3 ApplySceneLights(
 	float3 diffuse, float3 specular, float specularMask, float gloss,
 	float3 normal, float3 viewDir, float3 pos)
 {
-	float3 colorSum;
+	float3 colorSum = 0;
 	for (int pointLightIndex = 0; pointLightIndex < 128; pointLightIndex++)
 	{
 		LightData lightData = lightBuffer[pointLightIndex];
