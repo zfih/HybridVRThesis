@@ -222,7 +222,7 @@ float3 ApplySceneLights(
 	float3 diffuse, float3 specular, float specularMask, float gloss,
 	float3 normal, float3 viewDir, float3 pos)
 {
-	float3 colorSum;
+	float3 colorSum = 0;
 	for (int pointLightIndex = 0; pointLightIndex < 128; pointLightIndex++)
 	{
 		LightData lightData = lightBuffer[pointLightIndex];
@@ -550,14 +550,12 @@ void Hit(inout RayPayload payload, in BuiltInTriangleIntersectionAttributes attr
 		SunDirection,
 		SunColor);
 
-#if 1
-	//if (g_dynamic.useSceneLighting) // Wontfix: This causes reflections to be purple
+	if (g_dynamic.useSceneLighting) // Wontfix: This causes reflections to be purple
 	{
 		colorSum += ApplySceneLights(
 			diffuseColor.rgb, specularAlbedo, specularMask, gloss, normal,
 			viewDir, worldPosition);
 	}
-#endif
 
 	colorSum = ApplySRGBCurve(colorSum);
 	float4 pixelColor = g_screenOutput[pixel];
