@@ -143,7 +143,7 @@ namespace GameCore
     	
         Graphics::Present();
 
-        //game.TakeScreenshot();
+        game.TakeScreenshot();
         return !game.IsDone();
     }
 
