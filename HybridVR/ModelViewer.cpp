@@ -522,7 +522,7 @@ BoolVar ShowWaveTileCounts("Application/Forward+/Show Wave Tile Counts", false);
 
 BoolVar ReprojEnable("LOD/Reproject", true);
 NumVar DepthThreshold("LOD/Depth Threshold", 0.0005);
-NumVar AngleThreshold("LOD/Angle Threshold", 1.5f);
+NumVar DifferenceThreshold("LOD/Difference Threshold", 1.5f);
 NumVar AngleBlendingRange("LOD/Angle Blending Range", 0.0f);
 BoolVar DebugColors("LOD/Debug Colors", false);
 
@@ -1978,7 +1978,7 @@ void D3D12RaytracingMiniEngineSample::ReprojectScene()
 
 	ReprojInput ri{};
 	ri.reprojectionMat = reprojectionMatrix;
-	ri.angleThreshold = Settings::AngleThreshold;
+	ri.angleThreshold = Settings::DifferenceThreshold;
 	ri.depthThreshold = Settings::DepthThreshold;
 	ri.angleBlendingRange = Settings::AngleBlendingRange;
 	ri.debugColors = Settings::DebugColors;

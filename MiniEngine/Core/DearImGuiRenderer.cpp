@@ -649,9 +649,9 @@ void ImGui::BuildGUI(Math::Camera* cam, GameCore::CameraController* controller)
         ImGui::DragFloat("Depth Threshold", &depthThreshold, 0.00001f, 0, 0.1, "%.5f");
         Settings::DepthThreshold = depthThreshold;
     	
-        float angleThreshold = Settings::AngleThreshold;
-        ImGui::DragFloat("Angle Threshold", &angleThreshold, 0.001, 0, 1);
-        Settings::AngleThreshold = angleThreshold;
+        float differenceThreshold = Settings::DifferenceThreshold;
+        ImGui::DragFloat("Difference Threshold", &differenceThreshold, 0.001, 0, 1);
+        Settings::DifferenceThreshold = differenceThreshold;
     	
         float angleBlendingRange = Settings::AngleBlendingRange;
         ImGui::DragFloat("Angle Blending Range", &angleBlendingRange, 0.001, 0, 0.5);

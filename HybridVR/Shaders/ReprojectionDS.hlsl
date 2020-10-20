@@ -29,7 +29,7 @@ cbuffer ReprojInput : register(b0)
 	float3 camPosLeft;
     float depthThreshold;
     float3 camPosRight;
-    float angleThreshold;
+    float differenceThreshold;
 };
 
 struct HS_Constant_Output

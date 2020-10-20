@@ -35,8 +35,8 @@ cbuffer ReprojInput : register(b0)
 {
 float4x4 reprojectionMat;
 float depthThreshold;
-float angleThreshold;
-float angleBlendingRange;
+float differenceThreshold;
+float blendingRange;
 int debugColors;
 };
 
@@ -108,13 +108,13 @@ MRT main(VertexOutput vOut)
 	float4 colorRaw = gLeftEyeRawTex.SampleLevel(gLinearSampler, vOut.texC, 0);
 
 
-	double halfRange = angleBlendingRange / 2;
-	double lower = angleThreshold - halfRange;
-	double upper = angleThreshold + halfRange;
+	double halfRange = blendingRange / 2;
+	double lower = differenceThreshold - halfRange;
+	double upper = differenceThreshold + halfRange;
 
 	float reflDist = gReflDistTex.SampleLevel(gLinearSampler, vOut.texC, 0);
 
-	float ratio = saturate((reflDist - lower) / angleBlendingRange);
+	float ratio = saturate((reflDist - lower) / blendingRange);
 	float invRatio = 1 - ratio;
 	color = invRatio * colorRefl + ratio * colorRaw;
 
