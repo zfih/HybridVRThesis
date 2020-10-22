@@ -452,7 +452,7 @@ private:
 
 int wmain(int argc, wchar_t **argv)
 {
-	g_CreateScene(Scene::kSponza);
+	g_CreateScene(Scene::kBistroExterior);
 
 #if _DEBUG
 	CComPtr<ID3D12Debug> debugInterface;
@@ -523,7 +523,7 @@ BoolVar ShowWaveTileCounts("Application/Forward+/Show Wave Tile Counts", false);
 
 BoolVar ReprojEnable("LOD/Reproject", true);
 NumVar DepthThreshold("LOD/Depth Threshold", 0.001);
-NumVar AngleThreshold("LOD/Angle Threshold", 0.1f);
+NumVar AngleThreshold("LOD/Angle Threshold", 0.5f);
 NumVar AngleBlendingRange("LOD/Angle Blending Range", 0.02f);
 BoolVar DebugColors("LOD/Debug Colors", false);
 
