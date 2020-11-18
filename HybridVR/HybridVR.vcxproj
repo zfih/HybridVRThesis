@@ -6,6 +6,7 @@
     <PostBuildEventUseInBuild>
     </PostBuildEventUseInBuild>
     <OutDir>$(SolutionDir)$(Configuration)\</OutDir>
+    <PreBuildEventUseInBuild>true</PreBuildEventUseInBuild>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <PostBuildEventUseInBuild>
@@ -326,8 +327,8 @@
       </Command>
     </PreBuildEvent>
     <PreBuildEvent>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-      </Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">mkdir $(SolutionDir)Build\$(Platform)\$(Configuration)\Output\$(ProjectName)\Shaders</Command>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Creates required build folder</Message>
     </PreBuildEvent>
     <FxCompile>
       <EnableDebuggingInformation Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</EnableDebuggingInformation>
