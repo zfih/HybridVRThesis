@@ -675,7 +675,7 @@ void ImGui::BuildGUI(Math::Camera* cam, GameCore::CameraController* controller)
 	    ImGui::SliderFloat("StrideZCutoff", &HybridSsr::g_StrideZCutoff, 0, 5);
 	    ImGui::SliderFloat("FadeStart", &HybridSsr::g_FadeStart, 0, 1);
 	    ImGui::SliderFloat("FadeEnd", &HybridSsr::g_FadeEnd, 0, 1);
-        ImGui::Checkbox("DoFading", &HybridSsr::g_DoFading);
+        ImGui::Checkbox("Don't Ray Trace", &HybridSsr::g_DoFading);
 	}
     ImGui::End();
 }
