@@ -461,6 +461,14 @@
     <PreBuildEvent>
       <Message Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Creates needed build folder</Message>
     </PreBuildEvent>
+    <PreBuildEvent>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">if not exist "$(SolutionDir)Build\$(Platform)\$(Configuration)\Output\$(ProjectName)\CompiledShaders" mkdir $(SolutionDir)Build\$(Platform)\$(Configuration)\Output\$(ProjectName)\CompiledShaders</Command>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Creates needed build folder</Message>
+    </PreBuildEvent>
+    <PreBuildEvent>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">if not exist "$(SolutionDir)Build\$(Platform)\$(Configuration)\Output\$(ProjectName)\CompiledShaders" mkdir $(SolutionDir)Build\$(Platform)\$(Configuration)\Output\$(ProjectName)\CompiledShaders</Command>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">Creates needed build folder</Message>
+    </PreBuildEvent>
   </ItemDefinitionGroup>
   <ImportGroup Label="ExtensionTargets">
     <Import Project="..\..\Packages\zlib-vc140-static-64.1.2.11\build\native\zlib-vc140-static-64.targets" Condition="Exists('..\..\Packages\zlib-vc140-static-64.1.2.11\build\native\zlib-vc140-static-64.targets')" />
