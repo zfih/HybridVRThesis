@@ -17,10 +17,12 @@
     </IncludePath>
     <OutDir>$(SolutionDir)Build\$(Platform)\$(Configuration)\Output\$(ProjectName)\</OutDir>
     <IntDir>$(SolutionDir)Build\$(Platform)\$(Configuration)\Intermediate\$(ProjectName)\</IntDir>
+    <PreBuildEventUseInBuild>true</PreBuildEventUseInBuild>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">
     <PostBuildEventUseInBuild>
     </PostBuildEventUseInBuild>
+    <PreBuildEventUseInBuild>true</PreBuildEventUseInBuild>
   </PropertyGroup>
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|x64">
@@ -282,15 +284,15 @@
       <UseLibraryDependencyInputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</UseLibraryDependencyInputs>
     </ProjectReference>
     <PreBuildEvent>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-      </Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">if not exist "$(SolutionDir)Build\$(Platform)\$(Configuration)\Output\$(ProjectName)\Shaders" mkdir $(SolutionDir)Build\$(Platform)\$(Configuration)\Output\$(ProjectName)\Shaders &amp;&amp; if not exist "$(SolutionDir)Build\$(Platform)\$(Configuration)\Output\$(ProjectName)\CompiledShaders" mkdir $(SolutionDir)Build\$(Platform)\$(Configuration)\Output\$(ProjectName)\CompiledShaders </Command>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Creates required build folder</Message>
     </PreBuildEvent>
     <PreBuildEvent>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">
-      </Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">if not exist "$(SolutionDir)Build\$(Platform)\$(Configuration)\Output\$(ProjectName)\Shaders" mkdir $(SolutionDir)Build\$(Platform)\$(Configuration)\Output\$(ProjectName)\Shaders &amp;&amp; if not exist "$(SolutionDir)Build\$(Platform)\$(Configuration)\Output\$(ProjectName)\CompiledShaders" mkdir $(SolutionDir)Build\$(Platform)\$(Configuration)\Output\$(ProjectName)\CompiledShaders </Command>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">Creates required build folder</Message>
     </PreBuildEvent>
     <PreBuildEvent>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">if not exist "$(SolutionDir)Build\$(Platform)\$(Configuration)\Output\$(ProjectName)\Shaders" mkdir $(SolutionDir)Build\$(Platform)\$(Configuration)\Output\$(ProjectName)\Shaders</Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">if not exist "$(SolutionDir)Build\$(Platform)\$(Configuration)\Output\$(ProjectName)\Shaders" mkdir $(SolutionDir)Build\$(Platform)\$(Configuration)\Output\$(ProjectName)\Shaders &amp;&amp; if not exist "$(SolutionDir)Build\$(Platform)\$(Configuration)\Output\$(ProjectName)\CompiledShaders" mkdir $(SolutionDir)Build\$(Platform)\$(Configuration)\Output\$(ProjectName)\CompiledShaders </Command>
       <Message Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Creates required build folder</Message>
     </PreBuildEvent>
     <FxCompile>
