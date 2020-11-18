@@ -290,8 +290,8 @@
       </Command>
     </PreBuildEvent>
     <PreBuildEvent>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">mkdir $(SolutionDir)Build\$(Platform)\$(Configuration)\Output\$(ProjectName)\Shaders</Command>
-      <Message Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create needed folder</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">if not exist "$(SolutionDir)Build\$(Platform)\$(Configuration)\Output\$(ProjectName)\Shaders" mkdir $(SolutionDir)Build\$(Platform)\$(Configuration)\Output\$(ProjectName)\Shaders</Command>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Creates required build folder</Message>
     </PreBuildEvent>
     <FxCompile>
       <EnableDebuggingInformation Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</EnableDebuggingInformation>
